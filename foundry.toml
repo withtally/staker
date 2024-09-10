@@ -1,0 +1,52 @@
+[profile.default]
+  evm_version = "paris"
+  optimizer = true
+  optimizer_runs = 10_000_000
+  remappings = [
+    "openzeppelin/=lib/openzeppelin-contracts/contracts",
+    "uniswap-periphery/=lib/v3-periphery/contracts",
+    "@uniswap/v3-core=lib/v3-core",
+  ]
+  solc_version = "0.8.26"
+  verbosity = 3
+
+[profile.ci]
+  fuzz = { runs = 5000 }
+  invariant = { runs = 1000 }
+
+[profile.lite]
+  fuzz = { runs = 50 }
+  invariant = { runs = 10 }
+  # Speed up compilation and tests during development.
+  optimizer = false
+
+[rpc_endpoints]
+  mainnet = "${MAINNET_RPC_URL}"
+
+[fmt]
+  bracket_spacing = false
+  int_types = "long"
+  line_length = 100
+  multiline_func_header = "attributes_first"
+  number_underscore = "thousands"
+  quote_style = "double"
+  single_line_statement_blocks = "single"
+  tab_width = 2
+  wrap_comments = true
+
+[fuzz]
+  # We turn on this setting to prevent the fuzzer from picking DelegationSurrogate contracts,
+  # including before they're actually even deployed, as some other entity in the test, for example
+  # depositor. This makes no sense and breaks test assertions, but is extremely difficult to handle
+  # with assume statements because we don't have the surrogate address until it's deployed later in
+  # the test.
+  include_storage = false
+
+[invariant]
+  call_override = false
+  depth = 50
+  dictionary_weight = 80
+  fail_on_revert = false
+  include_push_bytes = true
+  include_storage = true
+  runs = 256
