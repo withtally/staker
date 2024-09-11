@@ -53,7 +53,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   );
 
   /// @notice Emitted when a beneficiary claims their earned reward.
-  event RewardClaimed(address indexed beneficiary, uint256 amount);
+  event RewardClaimed(DepositIdentifier indexed depositId, uint256 amount);
 
   /// @notice Emitted when this contract is notified of a new reward.
   event RewardNotified(uint256 amount, address notifier);
@@ -96,9 +96,12 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// @param beneficiary The address that accrues staking rewards earned by this deposit.
   struct Deposit {
     uint96 balance;
+    uint96 earningPower; // How much the deposit is currently earning, can be different from balance.
+    uint96 scaledUnclaimedRewardCheckpoint; // Used to be tracked by beneficiary, now part of the deposit data
+    uint256 rewardPerTokenCheckpoint; // Also used to be tracked by beneficiary
     address owner;
     address delegatee;
-    address beneficiary;
+    address beneficiary; // Who can *claim* the rewards, for this deposit
   }
 
   /// @notice Type hash used when encoding data for `stakeOnBehalf` calls.
@@ -151,7 +154,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   mapping(address depositor => uint256 amount) public depositorTotalStaked;
 
   /// @notice Tracks the total stake actively earning rewards for a given beneficiary account.
-  mapping(address beneficiary => uint256 amount) public earningPower;
+  // mapping(address beneficiary => uint256 amount) public earningPower;
 
   /// @notice Stores the metadata associated with a given deposit.
   mapping(DepositIdentifier depositId => Deposit deposit) public deposits;
@@ -177,7 +180,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// the value of the global accumulator at the last time a given beneficiary's rewards were
   /// calculated and stored. The difference between the global value and this value can be
   /// used to calculate the interim rewards earned by given account.
-  mapping(address account => uint256) public beneficiaryRewardPerTokenCheckpoint;
+  //mapping(address account => uint256) public beneficiaryRewardPerTokenCheckpoint;
 
   /// @notice Checkpoint of the unclaimed rewards earned by a given beneficiary with the scale
   /// factor included. This value is stored any time an action is taken that specifically impacts
@@ -248,8 +251,8 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// cause rewards to be checkpointed. This external helper method is useful for integrations, and
   /// returns the value after it has been scaled down to the reward token's raw decimal amount.
   /// @return Live value of the unclaimed rewards earned by a given beneficiary account.
-  function unclaimedReward(address _beneficiary) external view returns (uint256) {
-    return _scaledUnclaimedReward(_beneficiary) / SCALE_FACTOR;
+  function unclaimedReward(DepositIdentifier _depositId) external view returns (uint256) {
+    return _scaledUnclaimedReward(_depositId) / SCALE_FACTOR;
   }
 
   /// @notice Stake tokens to a new deposit. The caller must pre-approve the staking contract to
@@ -565,31 +568,35 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// @notice Claim reward tokens the message sender has earned as a stake beneficiary. Tokens are
   /// sent to the message sender.
   /// @return Amount of reward tokens claimed.
-  function claimReward() external returns (uint256) {
-    return _claimReward(msg.sender);
+  function claimReward(DepositIdentifier _depositId) external returns (uint256) {
+    Deposit storage deposit = deposits[_depositId];
+    if (msg.sender != deposit.beneficiary) revert UniStaker__Unauthorized("not beneficiary", msg.sender);
+    return _claimReward(_depositId);
   }
 
   /// @notice Claim earned reward tokens for a beneficiary, using a signature to validate the
   /// beneficiary's intent. Tokens are sent to the beneficiary.
-  /// @param _beneficiary Address of the beneficiary who will receive the reward.
+  /// @param _depositId TODO
   /// @param _deadline The timestamp after which the signature should expire.
   /// @param _signature Signature of the beneficiary authorizing this reward claim.
   /// @return Amount of reward tokens claimed.
-  function claimRewardOnBehalf(address _beneficiary, uint256 _deadline, bytes memory _signature)
+  function claimRewardOnBehalf(DepositIdentifier _depositId, uint256 _deadline, bytes memory _signature)
     external
     returns (uint256)
   {
     _revertIfPastDeadline(_deadline);
+    Deposit storage deposit = deposits[_depositId];
     _revertIfSignatureIsNotValidNow(
-      _beneficiary,
+      deposit.beneficiary,
       _hashTypedDataV4(
         keccak256(
-          abi.encode(CLAIM_REWARD_TYPEHASH, _beneficiary, _useNonce(_beneficiary), _deadline)
+          // TODO: the signature should actually be changed to sign over the depositId
+          abi.encode(CLAIM_REWARD_TYPEHASH, deposit.beneficiary, _useNonce(deposit.beneficiary), _deadline)
         )
       ),
       _signature
     );
-    return _claimReward(_beneficiary);
+    return _claimReward(_depositId);
   }
 
   /// @notice Called by an authorized rewards notifier to alert the staking contract that a new
@@ -644,11 +651,12 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// @return Live value of the unclaimed rewards earned by a given beneficiary account with the
   /// scale factor included.
   /// @dev See documentation for the public, non-scaled `unclaimedReward` method for more details.
-  function _scaledUnclaimedReward(address _beneficiary) internal view returns (uint256) {
-    return scaledUnclaimedRewardCheckpoint[_beneficiary]
+  function _scaledUnclaimedReward(DepositIdentifier _depositId) internal view returns (uint256) {
+    Deposit storage deposit = deposits[_depositId];
+    return deposit.scaledUnclaimedRewardCheckpoint
       + (
-        earningPower[_beneficiary]
-          * (rewardPerTokenAccumulated() - beneficiaryRewardPerTokenCheckpoint[_beneficiary])
+        deposit.earningPower
+          * (rewardPerTokenAccumulated() - deposit.rewardPerTokenCheckpoint)
       );
   }
 
@@ -703,16 +711,21 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     _revertIfAddressZero(_beneficiary);
 
     _checkpointGlobalReward();
-    _checkpointReward(_beneficiary);
+    // Not needed because rewards are earned by deposit, and this is a new deposit, so there's
+    // nothing to checkpoint
+    // _checkpointReward(_beneficiary);
 
     DelegationSurrogate _surrogate = _fetchOrDeploySurrogate(_delegatee);
     _depositId = _useDepositId();
 
     totalStaked += _amount;
     depositorTotalStaked[_depositor] += _amount;
-    earningPower[_beneficiary] += _amount;
+
     deposits[_depositId] = Deposit({
       balance: _amount,
+      earningPower: _amount, // TODO: apply delegatee scale factor
+      scaledUnclaimedRewardCheckpoint: 0,
+      rewardPerTokenCheckpoint: 0,
       owner: _depositor,
       delegatee: _delegatee,
       beneficiary: _beneficiary
@@ -730,13 +743,13 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     internal
   {
     _checkpointGlobalReward();
-    _checkpointReward(deposit.beneficiary);
+    _checkpointReward(_depositId); // TODO: fix
 
     DelegationSurrogate _surrogate = surrogates[deposit.delegatee];
 
     totalStaked += _amount;
     depositorTotalStaked[deposit.owner] += _amount;
-    earningPower[deposit.beneficiary] += _amount;
+    deposit.earningPower += _amount; // TODO: apply delegatee scaling factor
     deposit.balance += _amount;
     _stakeTokenSafeTransferFrom(deposit.owner, address(_surrogate), _amount);
     emit StakeDeposited(deposit.owner, _depositId, _amount, deposit.balance);
@@ -766,15 +779,13 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     DepositIdentifier _depositId,
     address _newBeneficiary
   ) internal {
-    _revertIfAddressZero(_newBeneficiary);
-    _checkpointGlobalReward();
-    _checkpointReward(deposit.beneficiary);
-    earningPower[deposit.beneficiary] -= deposit.balance;
-
-    _checkpointReward(_newBeneficiary);
+    // Because beneficiary is now just "who can claim the rewards", all we have to do is update it
+    // One side effect of this is that the owner could change the beneficiary before the rewards
+    // for the deposit were claimed, which also means a beneficiary could try to frontrun the
+    // change and claim the rewards immediately. It's probably not a huge issue, but we should
+    // think about what behavior we actually want.
     emit BeneficiaryAltered(_depositId, deposit.beneficiary, _newBeneficiary);
     deposit.beneficiary = _newBeneficiary;
-    earningPower[_newBeneficiary] += deposit.balance;
   }
 
   /// @notice Internal convenience method which withdraws the stake from an existing deposit.
@@ -784,12 +795,12 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     internal
   {
     _checkpointGlobalReward();
-    _checkpointReward(deposit.beneficiary);
+    _checkpointReward(_depositId);
 
     deposit.balance -= _amount; // overflow prevents withdrawing more than balance
     totalStaked -= _amount;
     depositorTotalStaked[deposit.owner] -= _amount;
-    earningPower[deposit.beneficiary] -= _amount;
+    deposit.earningPower -= _amount;
     _stakeTokenSafeTransferFrom(address(surrogates[deposit.delegatee]), deposit.owner, _amount);
     emit StakeWithdrawn(_depositId, _amount, deposit.balance);
   }
@@ -798,19 +809,23 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// @return Amount of reward tokens claimed.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public claimReward methods for additional documentation.
-  function _claimReward(address _beneficiary) internal returns (uint256) {
-    _checkpointGlobalReward();
-    _checkpointReward(_beneficiary);
+  // NOTE: similar to other methods, this should probably also take a storage pointer rather than
+  // having to redeclare it.
+  function _claimReward(DepositIdentifier _depositId) internal returns (uint256) {
+    Deposit storage deposit = deposits[_depositId];
 
-    uint256 _reward = scaledUnclaimedRewardCheckpoint[_beneficiary] / SCALE_FACTOR;
+    _checkpointGlobalReward();
+    _checkpointReward(_depositId);
+
+    uint256 _reward = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
     if (_reward == 0) return 0;
 
     // retain sub-wei dust that would be left due to the precision loss
-    scaledUnclaimedRewardCheckpoint[_beneficiary] =
-      scaledUnclaimedRewardCheckpoint[_beneficiary] - (_reward * SCALE_FACTOR);
-    emit RewardClaimed(_beneficiary, _reward);
+    deposit.scaledUnclaimedRewardCheckpoint =
+      uint96(deposit.scaledUnclaimedRewardCheckpoint) - uint96(_reward * SCALE_FACTOR);
+    emit RewardClaimed(_depositId, _reward);
 
-    SafeERC20.safeTransfer(REWARD_TOKEN, _beneficiary, _reward);
+    SafeERC20.safeTransfer(REWARD_TOKEN, deposit.beneficiary, _reward);
     return _reward;
   }
 
@@ -822,13 +837,16 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
 
   /// @notice Checkpoints the unclaimed rewards and reward per token accumulator of a given
   /// beneficiary account.
-  /// @param _beneficiary The account for which reward parameters will be checkpointed.
+  /// @param _depositId TODO
   /// @dev This is a sensitive internal helper method that must only be called after global rewards
   /// accumulator has been checkpointed. It assumes the global `rewardPerTokenCheckpoint` is up to
   /// date.
-  function _checkpointReward(address _beneficiary) internal {
-    scaledUnclaimedRewardCheckpoint[_beneficiary] = _scaledUnclaimedReward(_beneficiary);
-    beneficiaryRewardPerTokenCheckpoint[_beneficiary] = rewardPerTokenAccumulatedCheckpoint;
+  function _checkpointReward(DepositIdentifier _depositId) internal {
+    Deposit storage deposit = deposits[_depositId];
+    // Note: ignoring the casting safety here, as everything probably should be converted to 256
+    // for generalization purposes anyway.
+    deposit.scaledUnclaimedRewardCheckpoint = uint96(_scaledUnclaimedReward(_depositId));
+    deposit.rewardPerTokenCheckpoint = rewardPerTokenAccumulatedCheckpoint;
   }
 
   /// @notice Internal helper method which sets the admin address.
