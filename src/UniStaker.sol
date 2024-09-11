@@ -150,6 +150,9 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// @notice Global amount currently staked across all deposits.
   uint256 public totalStaked;
 
+  /// @notice Global active earning power.
+  uint256 public totalEarningPower;
+
   /// @notice Tracks the total staked by a depositor across all unique deposits.
   mapping(address depositor => uint256 amount) public depositorTotalStaked;
 
@@ -235,10 +238,10 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// This number should monotonically increase over time as more rewards are distributed.
   /// @return Live value of the global reward per token accumulator.
   function rewardPerTokenAccumulated() public view returns (uint256) {
-    if (totalStaked == 0) return rewardPerTokenAccumulatedCheckpoint;
+    if (totalEarningPower == 0) return rewardPerTokenAccumulatedCheckpoint;
 
     return rewardPerTokenAccumulatedCheckpoint
-      + (scaledRewardRate * (lastTimeRewardDistributed() - lastCheckpointTime)) / totalStaked;
+      + (scaledRewardRate * (lastTimeRewardDistributed() - lastCheckpointTime)) / totalEarningPower;
   }
 
   /// @notice Live value of the unclaimed rewards earned by a given beneficiary account. It is the
@@ -719,6 +722,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     _depositId = _useDepositId();
 
     totalStaked += _amount;
+    totalEarningPower += _amount; // TODO: apply delegatee scale factor
     depositorTotalStaked[_depositor] += _amount;
 
     deposits[_depositId] = Deposit({
@@ -748,6 +752,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     DelegationSurrogate _surrogate = surrogates[deposit.delegatee];
 
     totalStaked += _amount;
+    totalEarningPower += _amount; // TODO: apply delegatee scale factor
     depositorTotalStaked[deposit.owner] += _amount;
     deposit.earningPower += _amount; // TODO: apply delegatee scaling factor
     deposit.balance += _amount;
@@ -799,6 +804,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
 
     deposit.balance -= _amount; // overflow prevents withdrawing more than balance
     totalStaked -= _amount;
+    totalEarningPower -= _amount; // TODO: apply delegatee scale factor
     depositorTotalStaked[deposit.owner] -= _amount;
     deposit.earningPower -= _amount;
     _stakeTokenSafeTransferFrom(address(surrogates[deposit.delegatee]), deposit.owner, _amount);
@@ -842,6 +848,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// accumulator has been checkpointed. It assumes the global `rewardPerTokenCheckpoint` is up to
   /// date.
   function _checkpointReward(DepositIdentifier _depositId) internal {
+    // TODO: Should this also checkpoint the earning power based on delegatee earning power?
     Deposit storage deposit = deposits[_depositId];
     // Note: ignoring the casting safety here, as everything probably should be converted to 256
     // for generalization purposes anyway.
