@@ -11,6 +11,10 @@ import {Nonces} from "openzeppelin/utils/Nonces.sol";
 import {SignatureChecker} from "openzeppelin/utils/cryptography/SignatureChecker.sol";
 import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 
+interface IEarningPowerCalculator {
+  function getEarningPower(uint256 stake, address staker, address delegatee) external returns (uint256 earningPower);
+}
+
 /// @title UniStaker
 /// @author ScopeLift
 /// @notice This contract manages the distribution of rewards to stakers. Rewards are denominated
@@ -96,7 +100,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// @param beneficiary The address that accrues staking rewards earned by this deposit.
   struct Deposit {
     uint96 balance;
-    uint96 earningPower; // How much the deposit is currently earning, can be different from balance.
+    uint256 earningPower; // How much the deposit is currently earning, can be different from balance.
     uint96 scaledUnclaimedRewardCheckpoint; // Used to be tracked by beneficiary, now part of the deposit data
     uint256 rewardPerTokenCheckpoint; // Also used to be tracked by beneficiary
     address owner;
@@ -152,6 +156,9 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
 
   /// @notice Global active earning power.
   uint256 public totalEarningPower;
+
+  /// TODO: This would have to be set in the constructor and updatable by the admin.
+  IEarningPowerCalculator public earningPowerCalculator;
 
   /// @notice Tracks the total staked by a depositor across all unique deposits.
   mapping(address depositor => uint256 amount) public depositorTotalStaked;
@@ -720,14 +727,15 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
 
     DelegationSurrogate _surrogate = _fetchOrDeploySurrogate(_delegatee);
     _depositId = _useDepositId();
+    uint256 _earningPower = earningPowerCalculator.getEarningPower(_amount, _depositor, _delegatee);
 
     totalStaked += _amount;
-    totalEarningPower += _amount; // TODO: apply delegatee scale factor
+    totalEarningPower += _earningPower;
     depositorTotalStaked[_depositor] += _amount;
 
     deposits[_depositId] = Deposit({
       balance: _amount,
-      earningPower: _amount, // TODO: apply delegatee scale factor
+      earningPower: _earningPower,
       scaledUnclaimedRewardCheckpoint: 0,
       rewardPerTokenCheckpoint: 0,
       owner: _depositor,
@@ -747,15 +755,20 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     internal
   {
     _checkpointGlobalReward();
-    _checkpointReward(_depositId); // TODO: fix
+    _checkpointReward(_depositId);
 
     DelegationSurrogate _surrogate = surrogates[deposit.delegatee];
 
+    // make changes related to balance
     totalStaked += _amount;
-    totalEarningPower += _amount; // TODO: apply delegatee scale factor
-    depositorTotalStaked[deposit.owner] += _amount;
-    deposit.earningPower += _amount; // TODO: apply delegatee scaling factor
     deposit.balance += _amount;
+    depositorTotalStaked[deposit.owner] += _amount;
+
+    // make changes related to earning power
+    uint256 _earningPower = earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
+    totalEarningPower += _earningPower;
+    deposit.earningPower = _earningPower;
+
     _stakeTokenSafeTransferFrom(deposit.owner, address(_surrogate), _amount);
     emit StakeDeposited(deposit.owner, _depositId, _amount, deposit.balance);
   }
@@ -769,9 +782,20 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     address _newDelegatee
   ) internal {
     _revertIfAddressZero(_newDelegatee);
+
+    // We have to do checkpoints now because the user's earning power changes
+    _checkpointGlobalReward();
+    _checkpointReward(_depositId);
+
     DelegationSurrogate _oldSurrogate = surrogates[deposit.delegatee];
     emit DelegateeAltered(_depositId, deposit.delegatee, _newDelegatee);
+
+    // Calculate updated earning power given new delegatee
+    uint256 _earningPower = earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee);
+
     deposit.delegatee = _newDelegatee;
+    deposit.earningPower = _earningPower;
+
     DelegationSurrogate _newSurrogate = _fetchOrDeploySurrogate(_newDelegatee);
     _stakeTokenSafeTransferFrom(address(_oldSurrogate), address(_newSurrogate), deposit.balance);
   }
@@ -802,11 +826,17 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     _checkpointGlobalReward();
     _checkpointReward(_depositId);
 
+
+    // Make changes related to balance only
     deposit.balance -= _amount; // overflow prevents withdrawing more than balance
     totalStaked -= _amount;
-    totalEarningPower -= _amount; // TODO: apply delegatee scale factor
     depositorTotalStaked[deposit.owner] -= _amount;
-    deposit.earningPower -= _amount;
+
+    // Make changes related to earning power
+    uint256 _earningPower = earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
+    totalEarningPower -= _earningPower;
+    deposit.earningPower = _earningPower;
+
     _stakeTokenSafeTransferFrom(address(surrogates[deposit.delegatee]), deposit.owner, _amount);
     emit StakeWithdrawn(_depositId, _amount, deposit.balance);
   }
@@ -831,6 +861,13 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
       uint96(deposit.scaledUnclaimedRewardCheckpoint) - uint96(_reward * SCALE_FACTOR);
     emit RewardClaimed(_depositId, _reward);
 
+    // Update the earning power. We don't have to do this but if we're working on the deposit, why
+    // not? One awkward thing is that, as written, the beneficiary can claim the rewards, and can
+    // be different from the owner. Presumably they must have some kind of trust relationship, but
+    // it feels a little odd some entity other than the owner could cause the earning power to
+    // drop.
+    deposit.earningPower = earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
+
     SafeERC20.safeTransfer(REWARD_TOKEN, deposit.beneficiary, _reward);
     return _reward;
   }
@@ -849,6 +886,8 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// date.
   function _checkpointReward(DepositIdentifier _depositId) internal {
     // TODO: Should this also checkpoint the earning power based on delegatee earning power?
+    // Answer: No, I don't think so. We need to update earning power but *after* the checkpoint, so
+    // putting it here doesn't help.
     Deposit storage deposit = deposits[_depositId];
     // Note: ignoring the casting safety here, as everything probably should be converted to 256
     // for generalization purposes anyway.
