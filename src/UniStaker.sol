@@ -12,7 +12,18 @@ import {SignatureChecker} from "openzeppelin/utils/cryptography/SignatureChecker
 import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 
 interface IEarningPowerCalculator {
-  function getEarningPower(uint256 stake, address staker, address delegatee) external returns (uint256 earningPower);
+  function getEarningPower(
+    uint256 stake,
+    address staker,
+    address delegatee
+  ) external view returns (uint256 earningPower);
+
+  function getNewEarningPower(
+    uint256 stake,
+    address staker,
+    address delegatee,
+    uint256 currentEarningPower
+  ) external view returns (uint256 newEarningPower, bool isSignificant);
 }
 
 /// @title UniStaker
@@ -157,8 +168,11 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// @notice Global active earning power.
   uint256 public totalEarningPower;
 
-  /// TODO: This would have to be set in the constructor and updatable by the admin.
+  // TODO: This would have to be set in the constructor and updatable by the admin.
   IEarningPowerCalculator public earningPowerCalculator;
+
+  // TODO: This would also have to be set in the constructor and updatable by the admin.
+  uint256 maxEarningPowerUpdaterTip;
 
   /// @notice Tracks the total staked by a depositor across all unique deposits.
   mapping(address depositor => uint256 amount) public depositorTotalStaked;
@@ -653,6 +667,51 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     ) revert UniStaker__InsufficientRewardBalance();
 
     emit RewardNotified(_amount, msg.sender);
+  }
+
+  function forceUpdateEarningPower(DepositIdentifier _depositId, uint256 _tipRequested, address _tipReceiver) external {
+    if (_tipRequested > maxEarningPowerUpdaterTip) revert("Invalid Tip"); // TODO: would have error type
+
+    Deposit storage deposit = deposits[_depositId];
+
+    // Checkpoint system so reward checkpoint is updated
+    _checkpointGlobalReward();
+    _checkpointReward(_depositId);
+
+    (uint256 _newEarningPower, bool _isSignificantChange) = earningPowerCalculator.getNewEarningPower(deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower);
+    if (!_isSignificantChange) revert("Insignificant Earning Power Change");
+
+    uint256 _unclaimedRewards = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
+
+    if (_newEarningPower > deposit.earningPower && _unclaimedRewards < _tipRequested) {
+      // If the staker's earning power is increasing, we make sure there are enough rewards to pay
+      // the tip. Theoretically, we could do a more advanced calculation to decide if this is
+      // "worth it" for the user to pay for. For example, we could calculate, based on the tip,
+      // the current reward rate, and the user's change in earning power, how long it would take to
+      // earn the tip back, and thus only allow this if the difference is within some threshold time,
+      // e.g. a week or a day. This same calculation could also be implemented by the earning power
+      // calculator though, so this simpler enforcement is probably fine for the core staker. Also,
+      // none of this matters for a calculator that only returns a binary 0 earning power or full
+      // earning power.
+      revert("Insufficient Rewards To Pay Tip");
+    } else if (_newEarningPower < deposit.earningPower && (_unclaimedRewards - _tipRequested) < maxEarningPowerUpdaterTip) {
+      // If the staker's earning power is decreasing, we make sure there are enough rewards left
+      // for at least one more forced adjustment paying the max tip. This means the deposit will
+      // still have enough rewards left pay a tip that increases its earning power should the
+      // delegatee improve. This includes if the score drops all the way to zero. We could be even
+      // stricter here, and only require 2x tip if the new earning power IS 0. The current system
+      // is a little nicer to stakers, in that it gives them more time to adjust should their
+      // delegatee's earning power drop.
+      revert("Insufficient Rewards To Pay Tip");
+    }
+
+    // update the earning power
+    deposit.earningPower = _newEarningPower;
+    // Update unclaimed rewards to remove tip (ignore casting issues, will all go to uint256)
+    deposit.scaledUnclaimedRewardCheckpoint -= uint96(_tipRequested);
+
+    // Send tip.
+    SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _tipRequested);
   }
 
   /// @notice Live value of the unclaimed rewards earned by a given beneficiary account with the
