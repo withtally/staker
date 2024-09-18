@@ -11,6 +11,22 @@ import {Nonces} from "openzeppelin/utils/Nonces.sol";
 import {SignatureChecker} from "openzeppelin/utils/cryptography/SignatureChecker.sol";
 import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 
+
+interface IEarningPowerCalculator {
+  function getEarningPower(
+    uint256 stake,
+    address staker,
+    address delegatee
+  ) external view returns (uint256 earningPower);
+
+  function getNewEarningPower(
+    uint256 stake,
+    address staker,
+    address delegatee,
+    uint256 currentEarningPower
+  ) external view returns (uint256 newEarningPower, bool isSignificant);
+}
+
 /// @title UniStaker
 /// @author ScopeLift
 /// @notice This contract manages the distribution of rewards to stakers. Rewards are denominated
@@ -99,6 +115,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     address owner;
     address delegatee;
     address beneficiary;
+    uint256 earningPower;
   }
 
   /// @notice Type hash used when encoding data for `stakeOnBehalf` calls.
@@ -172,6 +189,12 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
 
   /// @notice Checkpoint value of the global reward per token accumulator.
   uint256 public rewardPerTokenAccumulatedCheckpoint;
+
+   /// @notice Global active earning power.
+  uint256 public totalEarningPower;
+
+  // TODO: This would have to be set in the constructor and updatable by the admin.
+  IEarningPowerCalculator public earningPowerCalculator;
 
   /// @notice Checkpoint of the reward per token accumulator on a per account basis. It represents
   /// the value of the global accumulator at the last time a given beneficiary's rewards were
@@ -638,6 +661,29 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     emit RewardNotified(_amount, msg.sender);
   }
 
+  function updateEarningPower(DepositIdentifier _depositId) external {
+    Deposit storage deposit = deposits[_depositId];
+
+    _checkpointGlobalReward();
+    _checkpointReward(deposit.beneficiary);
+
+    uint256 _currentEarningPower = deposit.earningPower;
+    (uint256 _newEarningPower, bool _isChangeSignificant) = earningPowerCalculator.getNewEarningPower(deposit.balance, deposit.owner, deposit.delegatee, _currentEarningPower);
+    require(_isChangeSignificant, "Earning Power Change Not Significant");
+
+    deposit.earningPower = _newEarningPower;
+
+    if (_currentEarningPower > _newEarningPower) {
+      uint256 _earningPowerDecrease = _currentEarningPower - _newEarningPower;
+      totalEarningPower -= _earningPowerDecrease;
+      earningPower[deposit.beneficiary] -= _earningPowerDecrease;
+    } else {
+      uint256 _earningPowerIncrease = _newEarningPower - _currentEarningPower;
+      totalEarningPower += _earningPowerIncrease;
+      earningPower[deposit.beneficiary] += _earningPowerIncrease;
+    }
+  }
+
   /// @notice Live value of the unclaimed rewards earned by a given beneficiary account with the
   /// scale factor included. Used internally for calculating reward checkpoints while minimizing
   /// precision loss.
@@ -715,7 +761,8 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
       balance: _amount,
       owner: _depositor,
       delegatee: _delegatee,
-      beneficiary: _beneficiary
+      beneficiary: _beneficiary,
+      earningPower: earningPowerCalculator.getEarningPower(_amount, _depositor, _delegatee)
     });
     _stakeTokenSafeTransferFrom(_depositor, address(_surrogate), _amount);
     emit StakeDeposited(_depositor, _depositId, _amount, _amount);
@@ -738,6 +785,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     depositorTotalStaked[deposit.owner] += _amount;
     earningPower[deposit.beneficiary] += _amount;
     deposit.balance += _amount;
+    deposit.earningPower = earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
     _stakeTokenSafeTransferFrom(deposit.owner, address(_surrogate), _amount);
     emit StakeDeposited(deposit.owner, _depositId, _amount, deposit.balance);
   }
@@ -755,6 +803,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     emit DelegateeAltered(_depositId, deposit.delegatee, _newDelegatee);
     deposit.delegatee = _newDelegatee;
     DelegationSurrogate _newSurrogate = _fetchOrDeploySurrogate(_newDelegatee);
+    deposit.earningPower = earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
     _stakeTokenSafeTransferFrom(address(_oldSurrogate), address(_newSurrogate), deposit.balance);
   }
 
@@ -769,12 +818,13 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     _revertIfAddressZero(_newBeneficiary);
     _checkpointGlobalReward();
     _checkpointReward(deposit.beneficiary);
-    earningPower[deposit.beneficiary] -= deposit.balance;
+
+    earningPower[deposit.beneficiary] -= deposit.earningPower;
 
     _checkpointReward(_newBeneficiary);
     emit BeneficiaryAltered(_depositId, deposit.beneficiary, _newBeneficiary);
     deposit.beneficiary = _newBeneficiary;
-    earningPower[_newBeneficiary] += deposit.balance;
+    earningPower[_newBeneficiary] = earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
   }
 
   /// @notice Internal convenience method which withdraws the stake from an existing deposit.
@@ -789,6 +839,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     deposit.balance -= _amount; // overflow prevents withdrawing more than balance
     totalStaked -= _amount;
     depositorTotalStaked[deposit.owner] -= _amount;
+    // TODO: remember current earning power, update it, calculate change, apply to beneficiary (could be +/-)
     earningPower[deposit.beneficiary] -= _amount;
     _stakeTokenSafeTransferFrom(address(surrogates[deposit.delegatee]), deposit.owner, _amount);
     emit StakeWithdrawn(_depositId, _amount, deposit.balance);
