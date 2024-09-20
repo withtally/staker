@@ -11,8 +11,8 @@ import {Nonces} from "openzeppelin/utils/Nonces.sol";
 import {SignatureChecker} from "openzeppelin/utils/cryptography/SignatureChecker.sol";
 import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 
-/// @title UniStaker
-/// @author ScopeLift
+/// @title GovernanceStaker
+/// @author [ScopeLift](https://scopelift.co)
 /// @notice This contract manages the distribution of rewards to stakers. Rewards are denominated
 /// in an ERC20 token and sent to the contract by authorized reward notifiers. To stake means to
 /// deposit a designated, delegable ERC20 governance token and leave it over a period of time.
@@ -28,7 +28,7 @@ import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 /// received, the reward duration restarts, and the rate at which rewards are streamed is updated
 /// to include the newly received rewards along with any remaining rewards that have finished
 /// streaming since the last time a reward was received.
-contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
+contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   type DepositIdentifier is uint256;
 
   /// @notice Emitted when stake is deposited by a depositor, either to a new deposit or one that
@@ -70,24 +70,24 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// @notice Thrown when an account attempts a call for which it lacks appropriate permission.
   /// @param reason Human readable code explaining why the call is unauthorized.
   /// @param caller The address that attempted the unauthorized call.
-  error UniStaker__Unauthorized(bytes32 reason, address caller);
+  error GovernanceStaker__Unauthorized(bytes32 reason, address caller);
 
   /// @notice Thrown if the new rate after a reward notification would be zero.
-  error UniStaker__InvalidRewardRate();
+  error GovernanceStaker__InvalidRewardRate();
 
   /// @notice Thrown if the following invariant is broken after a new reward: the contract should
   /// always have a reward balance sufficient to distribute at the reward rate across the reward
   /// duration.
-  error UniStaker__InsufficientRewardBalance();
+  error GovernanceStaker__InsufficientRewardBalance();
 
   /// @notice Thrown if a caller attempts to specify address zero for certain designated addresses.
-  error UniStaker__InvalidAddress();
+  error GovernanceStaker__InvalidAddress();
 
   /// @notice Thrown when an onBehalf method is called with a deadline that has expired.
-  error UniStaker__ExpiredDeadline();
+  error GovernanceStaker__ExpiredDeadline();
 
   /// @notice Thrown if a caller supplies an invalid signature to a method that requires one.
-  error UniStaker__InvalidSignature();
+  error GovernanceStaker__InvalidSignature();
 
   /// @notice Metadata associated with a discrete staking deposit.
   /// @param balance The deposit's staked balance.
@@ -193,7 +193,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
   /// @param _admin Address which will have permission to manage rewardNotifiers.
   constructor(IERC20 _rewardToken, IERC20Delegates _stakeToken, address _admin)
-    EIP712("UniStaker", "1")
+    EIP712("GovernanceStaker", "1")
   {
     REWARD_TOKEN = _rewardToken;
     STAKE_TOKEN = _stakeToken;
@@ -608,7 +608,9 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   ///    required that a notifier contract always transfers the `_amount` to this contract before
   ///    calling this method.
   function notifyRewardAmount(uint256 _amount) external {
-    if (!isRewardNotifier[msg.sender]) revert UniStaker__Unauthorized("not notifier", msg.sender);
+    if (!isRewardNotifier[msg.sender]) {
+      revert GovernanceStaker__Unauthorized("not notifier", msg.sender);
+    }
 
     // We checkpoint the accumulator without updating the timestamp at which it was updated,
     // because that second operation will be done after updating the reward rate.
@@ -624,7 +626,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     rewardEndTime = block.timestamp + REWARD_DURATION;
     lastCheckpointTime = block.timestamp;
 
-    if ((scaledRewardRate / SCALE_FACTOR) == 0) revert UniStaker__InvalidRewardRate();
+    if ((scaledRewardRate / SCALE_FACTOR) == 0) revert GovernanceStaker__InvalidRewardRate();
 
     // This check cannot _guarantee_ sufficient rewards have been transferred to the contract,
     // because it cannot isolate the unclaimed rewards owed to stakers left in the balance. While
@@ -633,7 +635,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     // admin.
     if (
       (scaledRewardRate * REWARD_DURATION) > (REWARD_TOKEN.balanceOf(address(this)) * SCALE_FACTOR)
-    ) revert UniStaker__InsufficientRewardBalance();
+    ) revert GovernanceStaker__InsufficientRewardBalance();
 
     emit RewardNotified(_amount, msg.sender);
   }
@@ -839,33 +841,34 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     admin = _newAdmin;
   }
 
-  /// @notice Internal helper method which reverts UniStaker__Unauthorized if the message sender is
-  /// not the admin.
+  /// @notice Internal helper method which reverts GovernanceStaker__Unauthorized if the message
+  /// sender is not the admin.
   function _revertIfNotAdmin() internal view {
-    if (msg.sender != admin) revert UniStaker__Unauthorized("not admin", msg.sender);
+    if (msg.sender != admin) revert GovernanceStaker__Unauthorized("not admin", msg.sender);
   }
 
-  /// @notice Internal helper method which reverts UniStaker__Unauthorized if the alleged owner is
+  /// @notice Internal helper method which reverts GovernanceStaker__Unauthorized if the alleged
+  /// owner is
   /// not the true owner of the deposit.
   /// @param deposit Deposit to validate.
   /// @param owner Alleged owner of deposit.
   function _revertIfNotDepositOwner(Deposit storage deposit, address owner) internal view {
-    if (owner != deposit.owner) revert UniStaker__Unauthorized("not owner", owner);
+    if (owner != deposit.owner) revert GovernanceStaker__Unauthorized("not owner", owner);
   }
 
-  /// @notice Internal helper method which reverts with UniStaker__InvalidAddress if the account in
-  /// question is address zero.
+  /// @notice Internal helper method which reverts with GovernanceStaker__InvalidAddress if the
+  /// account in question is address zero.
   /// @param _account Account to verify.
   function _revertIfAddressZero(address _account) internal pure {
-    if (_account == address(0)) revert UniStaker__InvalidAddress();
+    if (_account == address(0)) revert GovernanceStaker__InvalidAddress();
   }
 
   function _revertIfPastDeadline(uint256 _deadline) internal view {
-    if (block.timestamp > _deadline) revert UniStaker__ExpiredDeadline();
+    if (block.timestamp > _deadline) revert GovernanceStaker__ExpiredDeadline();
   }
 
-  /// @notice Internal helper method which reverts with UniStaker__InvalidSignature if the signature
-  /// is invalid.
+  /// @notice Internal helper method which reverts with GovernanceStaker__InvalidSignature if the
+  /// signature is invalid.
   /// @param _signer Address of the signer.
   /// @param _hash Hash of the message.
   /// @param _signature Signature to validate.
@@ -874,6 +877,6 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     view
   {
     bool _isValid = SignatureChecker.isValidSignatureNow(_signer, _hash, _signature);
-    if (!_isValid) revert UniStaker__InvalidSignature();
+    if (!_isValid) revert GovernanceStaker__InvalidSignature();
   }
 }

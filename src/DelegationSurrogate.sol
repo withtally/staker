@@ -4,7 +4,7 @@ pragma solidity ^0.8.23;
 import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 
 /// @title DelegationSurrogate
-/// @author ScopeLift
+/// @author [ScopeLift](https://scopelift.co)
 /// @notice A dead-simple contract whose only purpose is to hold governance tokens on behalf of
 /// users while delegating voting power to one specific delegatee. This is needed because a single
 /// address can only delegate its (full) token weight to a single address at a time. Thus, when a
