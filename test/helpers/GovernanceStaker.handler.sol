@@ -6,14 +6,14 @@ import {StdCheats} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
 import {console} from "forge-std/console.sol";
 import {AddressSet, LibAddressSet} from "../helpers/AddressSet.sol";
-import {UniStaker} from "src/UniStaker.sol";
+import {GovernanceStaker} from "src/GovernanceStaker.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-contract UniStakerHandler is CommonBase, StdCheats, StdUtils {
+contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
   using LibAddressSet for AddressSet;
 
   // system setup
-  UniStaker public uniStaker;
+  GovernanceStaker public govStaker;
   IERC20 public stakeToken;
   IERC20 public rewardToken;
   address public admin;
@@ -46,11 +46,11 @@ contract UniStakerHandler is CommonBase, StdCheats, StdUtils {
     _;
   }
 
-  constructor(UniStaker _uniStaker) {
-    uniStaker = _uniStaker;
-    stakeToken = IERC20(address(_uniStaker.STAKE_TOKEN()));
-    rewardToken = IERC20(address(_uniStaker.REWARD_TOKEN()));
-    admin = uniStaker.admin();
+  constructor(GovernanceStaker _govStaker) {
+    govStaker = _govStaker;
+    stakeToken = IERC20(address(_govStaker.STAKE_TOKEN()));
+    rewardToken = IERC20(address(_govStaker.REWARD_TOKEN()));
+    admin = govStaker.admin();
   }
 
   function _mintStakeToken(address _to, uint256 _amount) internal {
@@ -68,10 +68,10 @@ contract UniStakerHandler is CommonBase, StdCheats, StdUtils {
     countCall("enableRewardNotifier")
     doCheckpoints
   {
-    vm.assume(_notifier != address(0) && _notifier != address(uniStaker));
+    vm.assume(_notifier != address(0) && _notifier != address(govStaker));
     _rewardNotifiers.add(_notifier);
     vm.prank(admin);
-    uniStaker.setRewardNotifier(_notifier, true);
+    govStaker.setRewardNotifier(_notifier, true);
   }
 
   function notifyRewardAmount(uint256 _amount, uint256 _actorSeed)
@@ -82,11 +82,11 @@ contract UniStakerHandler is CommonBase, StdCheats, StdUtils {
     _useActor(_rewardNotifiers, _actorSeed);
     vm.assume(_currentActor != address(0));
     _amount = _bound(_amount, 0, 100_000_000e18);
-    ghost_prevRewardPerTokenAccumulatedCheckpoint = uniStaker.rewardPerTokenAccumulatedCheckpoint();
+    ghost_prevRewardPerTokenAccumulatedCheckpoint = govStaker.rewardPerTokenAccumulatedCheckpoint();
     _mintRewardToken(_currentActor, _amount);
     vm.startPrank(_currentActor);
-    rewardToken.transfer(address(uniStaker), _amount);
-    uniStaker.notifyRewardAmount(_amount);
+    rewardToken.transfer(address(govStaker), _amount);
+    govStaker.notifyRewardAmount(_amount);
     vm.stopPrank();
     ghost_rewardsNotified += _amount;
   }
@@ -106,14 +106,14 @@ contract UniStakerHandler is CommonBase, StdCheats, StdUtils {
     _mintStakeToken(_currentActor, _amount);
 
     vm.startPrank(_currentActor);
-    stakeToken.approve(address(uniStaker), _amount);
-    uniStaker.stake(_amount, _delegatee, _beneficiary);
+    stakeToken.approve(address(govStaker), _amount);
+    govStaker.stake(_amount, _delegatee, _beneficiary);
     vm.stopPrank();
 
     // update handler state
     _depositIds[_currentActor].push(ghost_depositCount);
     ghost_depositCount++;
-    _surrogates.add(address(uniStaker.surrogates(_delegatee)));
+    _surrogates.add(address(govStaker.surrogates(_delegatee)));
     ghost_stakeSum += _amount;
   }
 
@@ -125,13 +125,13 @@ contract UniStakerHandler is CommonBase, StdCheats, StdUtils {
     _useActor(_depositors, _actorSeed);
     vm.assume(_currentActor != address(0));
     vm.assume(_depositIds[_currentActor].length > 0);
-    UniStaker.DepositIdentifier _depositId =
-      UniStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
-    (uint96 _balance,,,) = uniStaker.deposits(_depositId);
+    GovernanceStaker.DepositIdentifier _depositId =
+      GovernanceStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
+    (uint96 _balance,,,) = govStaker.deposits(_depositId);
     _amount = uint96(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
-    stakeToken.approve(address(uniStaker), _amount);
-    uniStaker.stakeMore(_depositId, _amount);
+    stakeToken.approve(address(govStaker), _amount);
+    govStaker.stakeMore(_depositId, _amount);
     vm.stopPrank();
     ghost_stakeSum += _amount;
   }
@@ -144,12 +144,12 @@ contract UniStakerHandler is CommonBase, StdCheats, StdUtils {
     _useActor(_depositors, _actorSeed);
     vm.assume(_currentActor != address(0));
     vm.assume(_depositIds[_currentActor].length > 0);
-    UniStaker.DepositIdentifier _depositId =
-      UniStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
-    (uint96 _balance,,,) = uniStaker.deposits(_depositId);
+    GovernanceStaker.DepositIdentifier _depositId =
+      GovernanceStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
+    (uint96 _balance,,,) = govStaker.deposits(_depositId);
     _amount = uint96(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
-    uniStaker.withdraw(_depositId, _amount);
+    govStaker.withdraw(_depositId, _amount);
     vm.stopPrank();
     ghost_stakeWithdrawn += _amount;
   }
@@ -157,13 +157,13 @@ contract UniStakerHandler is CommonBase, StdCheats, StdUtils {
   function claimReward(uint256 _actorSeed) public countCall("claimReward") doCheckpoints {
     _useActor(_beneficiaries, _actorSeed);
     vm.startPrank(_currentActor);
-    uint256 rewardsClaimed = uniStaker.claimReward();
+    uint256 rewardsClaimed = govStaker.claimReward();
     vm.stopPrank();
     ghost_rewardsClaimed += rewardsClaimed;
   }
 
   function warpAhead(uint256 _seconds) public countCall("warpAhead") doCheckpoints {
-    _seconds = _bound(_seconds, 0, uniStaker.REWARD_DURATION() * 2);
+    _seconds = _bound(_seconds, 0, govStaker.REWARD_DURATION() * 2);
     skip(_seconds);
   }
 
@@ -204,7 +204,7 @@ contract UniStakerHandler is CommonBase, StdCheats, StdUtils {
   }
 
   function _checkpoint_ghost_prevRewardPerTokenAccumulatedCheckpoint() internal {
-    ghost_prevRewardPerTokenAccumulatedCheckpoint = uniStaker.rewardPerTokenAccumulatedCheckpoint();
+    ghost_prevRewardPerTokenAccumulatedCheckpoint = govStaker.rewardPerTokenAccumulatedCheckpoint();
   }
 
   function callSummary() external view {

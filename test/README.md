@@ -52,8 +52,8 @@ These actions are typical user actions that can be taken on the system. They are
 
 These are actions that are outside the normal use of the system. They are used to test the system's behavior under abnormal conditions.
 
-- [ ] directly transfer in some amount of STAKE_TOKEN to UniStaker
-- [ ] directly transfer some amount of REWARD_TOKEN to UniStaker
+- [ ] directly transfer in some amount of STAKE_TOKEN to GovernanceStaker
+- [ ] directly transfer some amount of REWARD_TOKEN to GovernanceStaker
 - [ ] transfer stake directly to surrogate
 - [ ] reentrancy attempts
 - [ ] SELFDESTRUCT to this contract

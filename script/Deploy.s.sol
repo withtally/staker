@@ -7,7 +7,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {Script} from "forge-std/Script.sol";
 
 import {DeployInput} from "script/DeployInput.sol";
-import {UniStaker} from "src/UniStaker.sol";
+import {GovernanceStaker} from "src/GovernanceStaker.sol";
 import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {INotifiableRewardReceiver} from "src/interfaces/INotifiableRewardReceiver.sol";
 
@@ -21,19 +21,19 @@ contract Deploy is Script, DeployInput {
     );
   }
 
-  function run() public returns (UniStaker) {
+  function run() public returns (GovernanceStaker) {
     vm.startBroadcast(deployerPrivateKey);
     // Deploy the staking contract
-    UniStaker uniStaker = new UniStaker(
+    GovernanceStaker govStaker = new GovernanceStaker(
       IERC20(PAYOUT_TOKEN_ADDRESS),
       IERC20Delegates(STAKE_TOKEN_ADDRESS),
       vm.addr(deployerPrivateKey)
     );
 
-    // Change UniStaker admin from `msg.sender` to the Governor timelock
-    uniStaker.setAdmin(UNISWAP_GOVERNOR_TIMELOCK);
+    // Change GovernanceStaker admin from `msg.sender` to the Governor timelock
+    govStaker.setAdmin(GOVERNOR_TIMELOCK);
     vm.stopBroadcast();
 
-    return uniStaker;
+    return govStaker;
   }
 }

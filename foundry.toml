@@ -2,17 +2,17 @@
   evm_version = "paris"
   optimizer = true
   optimizer_runs = 10_000_000
-  remappings = [
-    "openzeppelin/=lib/openzeppelin-contracts/contracts",
-    "uniswap-periphery/=lib/v3-periphery/contracts",
-    "@uniswap/v3-core=lib/v3-core",
-  ]
+  remappings = ["openzeppelin/=lib/openzeppelin-contracts/contracts"]
   solc_version = "0.8.26"
   verbosity = 3
 
 [profile.ci]
   fuzz = { runs = 5000 }
   invariant = { runs = 1000 }
+
+[profile.coverage]
+  fuzz = { runs = 100 }
+  invariant = { runs = 0 }
 
 [profile.lite]
   fuzz = { runs = 50 }

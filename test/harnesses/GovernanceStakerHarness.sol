@@ -2,15 +2,15 @@
 pragma solidity ^0.8.23;
 
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
-import {UniStaker} from "src/UniStaker.sol";
+import {GovernanceStaker} from "src/GovernanceStaker.sol";
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 
-contract UniStakerHarness is UniStaker {
+contract GovernanceStakerHarness is GovernanceStaker {
   constructor(IERC20 _rewardsToken, IERC20Delegates _stakeToken, address _admin)
-    UniStaker(_rewardsToken, _stakeToken, _admin)
+    GovernanceStaker(_rewardsToken, _stakeToken, _admin)
   {}
 
   function exposed_useDepositId() external returns (DepositIdentifier _depositId) {

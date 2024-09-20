@@ -4,14 +4,14 @@ pragma solidity ^0.8.23;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import {UniStaker} from "src/UniStaker.sol";
-import {UniStakerHandler} from "test/helpers/UniStaker.handler.sol";
+import {GovernanceStaker} from "src/GovernanceStaker.sol";
+import {GovernanceStakerHandler} from "test/helpers/GovernanceStaker.handler.sol";
 import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
 import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
 
-contract UniStakerInvariants is Test {
-  UniStakerHandler public handler;
-  UniStaker public uniStaker;
+contract GovernanceStakerInvariants is Test {
+  GovernanceStakerHandler public handler;
+  GovernanceStaker public govStaker;
   ERC20Fake rewardToken;
   ERC20VotesMock govToken;
   address rewardsNotifier;
@@ -25,17 +25,17 @@ contract UniStakerInvariants is Test {
 
     rewardsNotifier = address(0xaffab1ebeef);
     vm.label(rewardsNotifier, "Rewards Notifier");
-    uniStaker = new UniStaker(rewardToken, govToken, rewardsNotifier);
-    handler = new UniStakerHandler(uniStaker);
+    govStaker = new GovernanceStaker(rewardToken, govToken, rewardsNotifier);
+    handler = new GovernanceStakerHandler(govStaker);
 
     bytes4[] memory selectors = new bytes4[](7);
-    selectors[0] = UniStakerHandler.stake.selector;
-    selectors[1] = UniStakerHandler.validStakeMore.selector;
-    selectors[2] = UniStakerHandler.validWithdraw.selector;
-    selectors[3] = UniStakerHandler.warpAhead.selector;
-    selectors[4] = UniStakerHandler.claimReward.selector;
-    selectors[5] = UniStakerHandler.enableRewardNotifier.selector;
-    selectors[6] = UniStakerHandler.notifyRewardAmount.selector;
+    selectors[0] = GovernanceStakerHandler.stake.selector;
+    selectors[1] = GovernanceStakerHandler.validStakeMore.selector;
+    selectors[2] = GovernanceStakerHandler.validWithdraw.selector;
+    selectors[3] = GovernanceStakerHandler.warpAhead.selector;
+    selectors[4] = GovernanceStakerHandler.claimReward.selector;
+    selectors[5] = GovernanceStakerHandler.enableRewardNotifier.selector;
+    selectors[6] = GovernanceStakerHandler.notifyRewardAmount.selector;
 
     targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
 
@@ -45,19 +45,19 @@ contract UniStakerInvariants is Test {
   // Invariants
 
   function invariant_Sum_of_all_depositor_balances_equals_total_stake() public {
-    assertEq(uniStaker.totalStaked(), handler.reduceDepositors(0, this.accumulateDeposits));
+    assertEq(govStaker.totalStaked(), handler.reduceDepositors(0, this.accumulateDeposits));
   }
 
   function invariant_Sum_of_beneficiary_earning_power_equals_total_stake() public {
-    assertEq(uniStaker.totalStaked(), handler.reduceBeneficiaries(0, this.accumulateEarningPower));
+    assertEq(govStaker.totalStaked(), handler.reduceBeneficiaries(0, this.accumulateEarningPower));
   }
 
   function invariant_Sum_of_surrogate_balance_equals_total_stake() public {
-    assertEq(uniStaker.totalStaked(), handler.reduceDelegates(0, this.accumulateSurrogateBalance));
+    assertEq(govStaker.totalStaked(), handler.reduceDelegates(0, this.accumulateSurrogateBalance));
   }
 
   function invariant_Cumulative_staked_minus_withdrawals_equals_total_stake() public view {
-    assertEq(uniStaker.totalStaked(), handler.ghost_stakeSum() - handler.ghost_stakeWithdrawn());
+    assertEq(govStaker.totalStaked(), handler.ghost_stakeSum() - handler.ghost_stakeWithdrawn());
   }
 
   function invariant_Sum_of_notified_rewards_equals_all_claimed_rewards_plus_rewards_left()
@@ -66,21 +66,21 @@ contract UniStakerInvariants is Test {
   {
     assertEq(
       handler.ghost_rewardsNotified(),
-      rewardToken.balanceOf(address(uniStaker)) + handler.ghost_rewardsClaimed()
+      rewardToken.balanceOf(address(govStaker)) + handler.ghost_rewardsClaimed()
     );
   }
 
   function invariant_Sum_of_unclaimed_reward_should_be_less_than_or_equal_to_total_rewards() public {
     assertLe(
       handler.reduceBeneficiaries(0, this.accumulateUnclaimedReward),
-      rewardToken.balanceOf(address(uniStaker))
+      rewardToken.balanceOf(address(govStaker))
     );
   }
 
   function invariant_RewardPerTokenAccumulatedCheckpoint_should_be_greater_or_equal_to_the_last_rewardPerTokenAccumulatedCheckpoint(
   ) public view {
     assertGe(
-      uniStaker.rewardPerTokenAccumulatedCheckpoint(),
+      govStaker.rewardPerTokenAccumulatedCheckpoint(),
       handler.ghost_prevRewardPerTokenAccumulatedCheckpoint()
     );
   }
@@ -93,7 +93,7 @@ contract UniStakerInvariants is Test {
   // Helpers
 
   function accumulateDeposits(uint256 balance, address depositor) external view returns (uint256) {
-    return balance + uniStaker.depositorTotalStaked(depositor);
+    return balance + govStaker.depositorTotalStaked(depositor);
   }
 
   function accumulateEarningPower(uint256 earningPower, address caller)
@@ -101,7 +101,7 @@ contract UniStakerInvariants is Test {
     view
     returns (uint256)
   {
-    return earningPower + uniStaker.earningPower(caller);
+    return earningPower + govStaker.earningPower(caller);
   }
 
   function accumulateUnclaimedReward(uint256 unclaimedReward, address beneficiary)
@@ -109,7 +109,7 @@ contract UniStakerInvariants is Test {
     view
     returns (uint256)
   {
-    return unclaimedReward + uniStaker.unclaimedReward(beneficiary);
+    return unclaimedReward + govStaker.unclaimedReward(beneficiary);
   }
 
   function accumulateSurrogateBalance(uint256 balance, address delegate)
@@ -117,7 +117,7 @@ contract UniStakerInvariants is Test {
     view
     returns (uint256)
   {
-    address surrogateAddr = address(uniStaker.surrogates(delegate));
-    return balance + IERC20(address(uniStaker.STAKE_TOKEN())).balanceOf(surrogateAddr);
+    address surrogateAddr = address(govStaker.surrogates(delegate));
+    return balance + IERC20(address(govStaker.STAKE_TOKEN())).balanceOf(surrogateAddr);
   }
 }
