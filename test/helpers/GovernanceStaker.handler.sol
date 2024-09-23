@@ -127,7 +127,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     vm.assume(_depositIds[_currentActor].length > 0);
     GovernanceStaker.DepositIdentifier _depositId =
       GovernanceStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
-    (uint256 _balance,,,) = govStaker.deposits(_depositId);
+    (uint256 _balance,,,,,,) = govStaker.deposits(_depositId);
     _amount = uint256(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
     stakeToken.approve(address(govStaker), _amount);
@@ -146,7 +146,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     vm.assume(_depositIds[_currentActor].length > 0);
     GovernanceStaker.DepositIdentifier _depositId =
       GovernanceStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
-    (uint256 _balance,,,) = govStaker.deposits(_depositId);
+    (uint256 _balance,,,,,,) = govStaker.deposits(_depositId);
     _amount = uint256(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
     govStaker.withdraw(_depositId, _amount);
@@ -154,10 +154,18 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     ghost_stakeWithdrawn += _amount;
   }
 
-  function claimReward(uint256 _actorSeed) public countCall("claimReward") doCheckpoints {
-    _useActor(_beneficiaries, _actorSeed);
+  function claimReward(uint256 _actorSeed, uint256 _actorDepositSeed)
+    public
+    countCall("claimReward")
+    doCheckpoints
+  {
+    _useActor(_depositors, _actorSeed);
+    vm.assume(_currentActor != address(0));
+    vm.assume(_depositIds[_currentActor].length > 0);
+    GovernanceStaker.DepositIdentifier _depositId =
+      GovernanceStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
     vm.startPrank(_currentActor);
-    uint256 rewardsClaimed = govStaker.claimReward();
+    uint256 rewardsClaimed = govStaker.claimReward(_depositId);
     vm.stopPrank();
     ghost_rewardsClaimed += rewardsClaimed;
   }

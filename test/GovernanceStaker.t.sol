@@ -130,13 +130,23 @@ contract GovernanceStakerTest is Test, PercentAssertions {
     view
     returns (GovernanceStaker.Deposit memory)
   {
-    (uint256 _balance, address _owner, address _delegatee, address _beneficiary) =
-      govStaker.deposits(_depositId);
+    (
+      uint256 _balance,
+      address _owner,
+      address _delegatee,
+      address _beneficiary,
+      uint256 _earningPower,
+      uint256 _rewardPerTokenCheckpoint,
+      uint256 _scaledUnclaimedRewardCheckpoint
+    ) = govStaker.deposits(_depositId);
     return GovernanceStaker.Deposit({
       balance: _balance,
       owner: _owner,
       delegatee: _delegatee,
-      beneficiary: _beneficiary
+      beneficiary: _beneficiary,
+      earningPower: _earningPower,
+      rewardPerTokenCheckpoint: _rewardPerTokenCheckpoint,
+      scaledUnclaimedRewardCheckpoint: _scaledUnclaimedRewardCheckpoint
     });
   }
 
@@ -596,92 +606,6 @@ contract Stake is GovernanceStakerTest {
     assertEq(_deposit2.delegatee, _delegatee2);
   }
 
-  function testFuzz_AssignsEarningPowerToDepositorIfNoBeneficiaryIsSpecified(
-    address _depositor,
-    uint256 _amount,
-    address _delegatee
-  ) public {
-    _amount = _boundMintAmount(_amount);
-    _mintGovToken(_depositor, _amount);
-
-    GovernanceStaker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
-    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
-
-    assertEq(govStaker.earningPower(_depositor), _amount);
-    assertEq(_deposit.beneficiary, _depositor);
-  }
-
-  function testFuzz_AssignsEarningPowerToTheBeneficiaryProvided(
-    address _depositor,
-    uint256 _amount,
-    address _delegatee,
-    address _beneficiary
-  ) public {
-    _amount = _boundMintAmount(_amount);
-    _mintGovToken(_depositor, _amount);
-
-    GovernanceStaker.DepositIdentifier _depositId =
-      _stake(_depositor, _amount, _delegatee, _beneficiary);
-    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
-
-    assertEq(govStaker.earningPower(_beneficiary), _amount);
-    assertEq(_deposit.beneficiary, _beneficiary);
-  }
-
-  function testFuzz_AssignsEarningPowerToDifferentBeneficiariesForDifferentDepositsFromTheSameDepositor(
-    address _depositor,
-    uint256 _amount1,
-    uint256 _amount2,
-    address _delegatee,
-    address _beneficiary1,
-    address _beneficiary2
-  ) public {
-    vm.assume(_beneficiary1 != _beneficiary2);
-    _amount1 = _boundMintAmount(_amount1);
-    _amount2 = _boundMintAmount(_amount2);
-    _mintGovToken(_depositor, _amount1 + _amount2);
-
-    // Perform both deposits and track their identifiers separately
-    GovernanceStaker.DepositIdentifier _depositId1 =
-      _stake(_depositor, _amount1, _delegatee, _beneficiary1);
-    GovernanceStaker.DepositIdentifier _depositId2 =
-      _stake(_depositor, _amount2, _delegatee, _beneficiary2);
-    GovernanceStaker.Deposit memory _deposit1 = _fetchDeposit(_depositId1);
-    GovernanceStaker.Deposit memory _deposit2 = _fetchDeposit(_depositId2);
-
-    // Check that the earning power has been recorded independently
-    assertEq(_deposit1.beneficiary, _beneficiary1);
-    assertEq(govStaker.earningPower(_beneficiary1), _amount1);
-    assertEq(_deposit2.beneficiary, _beneficiary2);
-    assertEq(govStaker.earningPower(_beneficiary2), _amount2);
-  }
-
-  function testFuzz_AssignsEarningPowerToTheSameBeneficiarySpecifiedByTwoDifferentDepositors(
-    address _depositor1,
-    address _depositor2,
-    uint256 _amount1,
-    uint256 _amount2,
-    address _delegatee,
-    address _beneficiary
-  ) public {
-    _amount1 = _boundMintAmount(_amount1);
-    _amount2 = _boundMintAmount(_amount2);
-    _mintGovToken(_depositor1, _amount1);
-    _mintGovToken(_depositor2, _amount2);
-
-    // Perform both deposits and track their identifiers separately
-    GovernanceStaker.DepositIdentifier _depositId1 =
-      _stake(_depositor1, _amount1, _delegatee, _beneficiary);
-    GovernanceStaker.DepositIdentifier _depositId2 =
-      _stake(_depositor2, _amount2, _delegatee, _beneficiary);
-    GovernanceStaker.Deposit memory _deposit1 = _fetchDeposit(_depositId1);
-    GovernanceStaker.Deposit memory _deposit2 = _fetchDeposit(_depositId2);
-
-    assertEq(_deposit1.beneficiary, _beneficiary);
-    assertEq(_deposit2.beneficiary, _beneficiary);
-    assertEq(govStaker.earningPower(_beneficiary), _amount1 + _amount2);
-  }
-
   mapping(GovernanceStaker.DepositIdentifier depositId => bool isUsed) isIdUsed;
 
   function test_NeverReusesADepositIdentifier() public {
@@ -1120,28 +1044,6 @@ contract StakeMore is GovernanceStakerTest {
     vm.stopPrank();
 
     assertEq(govToken.balanceOf(address(_surrogate)), _depositAmount + _addAmount);
-  }
-
-  function testFuzz_AddsToExistingBeneficiaryEarningPower(
-    address _depositor,
-    uint256 _depositAmount,
-    uint256 _addAmount,
-    address _delegatee,
-    address _beneficiary
-  ) public {
-    GovernanceStaker.DepositIdentifier _depositId;
-    (_depositAmount, _depositId) =
-      _boundMintAndStake(_depositor, _depositAmount, _delegatee, _beneficiary);
-
-    _addAmount = _boundToRealisticStake(_addAmount);
-    _mintGovToken(_depositor, _addAmount);
-
-    vm.startPrank(_depositor);
-    govToken.approve(address(govStaker), _addAmount);
-    govStaker.stakeMore(_depositId, _addAmount);
-    vm.stopPrank();
-
-    assertEq(govStaker.earningPower(_beneficiary), _depositAmount + _addAmount);
   }
 
   function testFuzz_AddsToTheTotalStaked(
@@ -2142,8 +2044,6 @@ contract AlterBeneficiary is GovernanceStakerTest {
     GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.beneficiary, _newBeneficiary);
-    assertEq(govStaker.earningPower(_newBeneficiary), _depositAmount);
-    assertEq(govStaker.earningPower(_firstBeneficiary), 0);
   }
 
   function testFuzz_AllowsStakerToReiterateTheirBeneficiary(
@@ -2164,7 +2064,6 @@ contract AlterBeneficiary is GovernanceStakerTest {
     GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.beneficiary, _beneficiary);
-    assertEq(govStaker.earningPower(_beneficiary), _depositAmount);
   }
 
   function testFuzz_EmitsAnEventWhenBeneficiaryAltered(
@@ -2587,147 +2486,6 @@ contract Withdraw is GovernanceStakerTest {
       _depositAmount1 + _depositAmount2 - _withdrawalAmount
     );
     assertEq(govStaker.totalStaked(), _depositAmount1 + _depositAmount2 - _withdrawalAmount);
-  }
-
-  function testFuzz_RemovesEarningPowerFromADepositorWhoHadSelfAssignedIt(
-    address _depositor,
-    uint256 _depositAmount,
-    address _delegatee,
-    uint256 _withdrawalAmount
-  ) public {
-    GovernanceStaker.DepositIdentifier _depositId;
-    (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
-    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount));
-
-    vm.prank(_depositor);
-    govStaker.withdraw(_depositId, _withdrawalAmount);
-
-    assertEq(govStaker.earningPower(_depositor), _depositAmount - _withdrawalAmount);
-  }
-
-  function testFuzz_RemovesEarningPowerFromABeneficiary(
-    address _depositor,
-    uint256 _depositAmount,
-    address _delegatee,
-    address _beneficiary,
-    uint256 _withdrawalAmount
-  ) public {
-    GovernanceStaker.DepositIdentifier _depositId;
-    (_depositAmount, _depositId) =
-      _boundMintAndStake(_depositor, _depositAmount, _delegatee, _beneficiary);
-    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount));
-
-    vm.prank(_depositor);
-    govStaker.withdraw(_depositId, _withdrawalAmount);
-
-    assertEq(govStaker.earningPower(_beneficiary), _depositAmount - _withdrawalAmount);
-  }
-
-  function testFuzz_RemovesEarningPowerFromABeneficiaryAssignedByTwoDepositors(
-    address _depositor1,
-    address _depositor2,
-    uint256 _depositAmount1,
-    uint256 _depositAmount2,
-    address _delegatee,
-    address _beneficiary,
-    uint256 _withdrawalAmount1,
-    uint256 _withdrawalAmount2
-  ) public {
-    GovernanceStaker.DepositIdentifier _depositId1;
-    (_depositAmount1, _depositId1) =
-      _boundMintAndStake(_depositor1, _depositAmount1, _delegatee, _beneficiary);
-    _withdrawalAmount1 = uint256(bound(_withdrawalAmount1, 0, _depositAmount1));
-
-    GovernanceStaker.DepositIdentifier _depositId2;
-    (_depositAmount2, _depositId2) =
-      _boundMintAndStake(_depositor2, _depositAmount2, _delegatee, _beneficiary);
-    _withdrawalAmount2 = uint256(bound(_withdrawalAmount2, 0, _depositAmount2));
-
-    vm.prank(_depositor1);
-    govStaker.withdraw(_depositId1, _withdrawalAmount1);
-
-    assertEq(
-      govStaker.earningPower(_beneficiary), _depositAmount1 - _withdrawalAmount1 + _depositAmount2
-    );
-
-    vm.prank(_depositor2);
-    govStaker.withdraw(_depositId2, _withdrawalAmount2);
-
-    assertEq(
-      govStaker.earningPower(_beneficiary),
-      _depositAmount1 - _withdrawalAmount1 + _depositAmount2 - _withdrawalAmount2
-    );
-  }
-
-  function testFuzz_RemovesEarningPowerFromDifferentBeneficiariesOfTheSameDepositor(
-    address _depositor,
-    uint256 _depositAmount1,
-    uint256 _depositAmount2,
-    address _delegatee,
-    address _beneficiary1,
-    address _beneficiary2,
-    uint256 _withdrawalAmount1,
-    uint256 _withdrawalAmount2
-  ) public {
-    vm.assume(_beneficiary1 != _beneficiary2);
-
-    GovernanceStaker.DepositIdentifier _depositId1;
-    (_depositAmount1, _depositId1) =
-      _boundMintAndStake(_depositor, _depositAmount1, _delegatee, _beneficiary1);
-    _withdrawalAmount1 = uint256(bound(_withdrawalAmount1, 0, _depositAmount1));
-
-    GovernanceStaker.DepositIdentifier _depositId2;
-    (_depositAmount2, _depositId2) =
-      _boundMintAndStake(_depositor, _depositAmount2, _delegatee, _beneficiary2);
-    _withdrawalAmount2 = uint256(bound(_withdrawalAmount2, 0, _depositAmount2));
-
-    vm.prank(_depositor);
-    govStaker.withdraw(_depositId1, _withdrawalAmount1);
-
-    assertEq(govStaker.earningPower(_beneficiary1), _depositAmount1 - _withdrawalAmount1);
-    assertEq(govStaker.earningPower(_beneficiary2), _depositAmount2);
-
-    vm.prank(_depositor);
-    govStaker.withdraw(_depositId2, _withdrawalAmount2);
-
-    assertEq(govStaker.earningPower(_beneficiary1), _depositAmount1 - _withdrawalAmount1);
-    assertEq(govStaker.earningPower(_beneficiary2), _depositAmount2 - _withdrawalAmount2);
-  }
-
-  function testFuzz_RemovesEarningPowerFromDifferentBeneficiariesAndDifferentDepositors(
-    address _depositor1,
-    address _depositor2,
-    uint256 _depositAmount1,
-    uint256 _depositAmount2,
-    address _delegatee,
-    address _beneficiary1,
-    address _beneficiary2,
-    uint256 _withdrawalAmount1,
-    uint256 _withdrawalAmount2
-  ) public {
-    vm.assume(_beneficiary1 != _beneficiary2);
-
-    GovernanceStaker.DepositIdentifier _depositId1;
-    (_depositAmount1, _depositId1) =
-      _boundMintAndStake(_depositor1, _depositAmount1, _delegatee, _beneficiary1);
-    _withdrawalAmount1 = uint256(bound(_withdrawalAmount1, 0, _depositAmount1));
-
-    GovernanceStaker.DepositIdentifier _depositId2;
-    (_depositAmount2, _depositId2) =
-      _boundMintAndStake(_depositor2, _depositAmount2, _delegatee, _beneficiary2);
-    _withdrawalAmount2 = uint256(bound(_withdrawalAmount2, 0, _depositAmount2));
-
-    vm.prank(_depositor1);
-    govStaker.withdraw(_depositId1, _withdrawalAmount1);
-
-    assertEq(govStaker.earningPower(_beneficiary1), _depositAmount1 - _withdrawalAmount1);
-    assertEq(govStaker.earningPower(_beneficiary2), _depositAmount2);
-
-    vm.prank(_depositor2);
-    govStaker.withdraw(_depositId2, _withdrawalAmount2);
-
-    assertEq(govStaker.earningPower(_beneficiary1), _depositAmount1 - _withdrawalAmount1);
-    assertEq(govStaker.earningPower(_beneficiary2), _depositAmount2 - _withdrawalAmount2);
   }
 
   function testFuzz_EmitsAnEventWhenThereIsAWithdrawal(
@@ -3167,17 +2925,7 @@ contract GovernanceStakerRewardsTest is GovernanceStakerTest {
     console2.log("-----------------------------------------------");
   }
 
-  function __dumpDebugDepositorRewards(address _depositor) public view {
-    console2.log("earningPower[_depositor]");
-    console2.log(govStaker.earningPower(_depositor));
-    console2.log("beneficiaryRewardPerTokenCheckpoint[_depositor]");
-    console2.log(govStaker.beneficiaryRewardPerTokenCheckpoint(_depositor));
-    console2.log("scaledUnclaimedRewardCheckpoint[_depositor]");
-    console2.log(govStaker.scaledUnclaimedRewardCheckpoint(_depositor));
-    console2.log("unclaimedReward(_depositor)");
-    console2.log(govStaker.unclaimedReward(_depositor));
-    console2.log("-----------------------------------------------");
-  }
+  function __dumpDebugDepositorRewards(address _depositor) public view {}
 
   function _jumpAheadByPercentOfRewardDuration(uint256 _percent) public {
     uint256 _seconds = (_percent * govStaker.REWARD_DURATION()) / 100;
@@ -3888,14 +3636,15 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // The full duration passes
     _jumpAheadByPercentOfRewardDuration(101);
 
     // The user should have earned all the rewards
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor), _rewardAmount);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId), _rewardAmount);
   }
 
   function testFuzz_CalculatesCorrectEarningsWhenASingleDepositorAssignsABeneficiaryAndStakesForFullDuration(
@@ -3908,52 +3657,15 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens w/ a beneficiary
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // The full duration passes
     _jumpAheadByPercentOfRewardDuration(101);
 
     // The beneficiary should have earned all the rewards
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_beneficiary), _rewardAmount);
-  }
-
-  function testFuzz_CalculatesCorrectEarningsWhenASingleDepositorUpdatesTheirBeneficiary(
-    address _depositor,
-    address _delegatee,
-    address _beneficiary1,
-    address _beneficiary2,
-    uint256 _stakeAmount,
-    uint256 _rewardAmount,
-    uint256 _percentDuration
-  ) public {
-    vm.assume(
-      _beneficiary1 != _beneficiary2 && _beneficiary1 != address(0) && _beneficiary2 != address(0)
-    );
-
-    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-    _percentDuration = bound(_percentDuration, 0, 100);
-
-    // A user deposits staking tokens w/ a beneficiary
-    (, GovernanceStaker.DepositIdentifier _depositId) =
-      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary1);
-    // The contract is notified of a reward
-    _mintTransferAndNotifyReward(_rewardAmount);
-    // Part of the rewards duration passes
-    _jumpAheadByPercentOfRewardDuration(_percentDuration);
-    // The depositor alters their beneficiary
-    vm.prank(_depositor);
-    govStaker.alterBeneficiary(_depositId, _beneficiary2);
-    // The rest of the duration elapses
-    _jumpAheadByPercentOfRewardDuration(100 - _percentDuration);
-
-    // The beneficiary should have earned all the rewards
-    assertLteWithinOnePercent(
-      govStaker.unclaimedReward(_beneficiary1), _percentOf(_rewardAmount, _percentDuration)
-    );
-    assertLteWithinOnePercent(
-      govStaker.unclaimedReward(_beneficiary2), _percentOf(_rewardAmount, 100 - _percentDuration)
-    );
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId), _rewardAmount);
   }
 
   function testFuzz_CalculatesCorrectEarningsForASingleUserThatDepositsStakeForPartialDuration(
@@ -3967,7 +3679,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // One third of the duration passes
@@ -3975,7 +3688,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
 
     // The user should have earned one third of the rewards
     assertLteWithinOnePercent(
-      govStaker.unclaimedReward(_depositor), _percentOf(_rewardAmount, _durationPercent)
+      govStaker.unclaimedReward(_depositId), _percentOf(_rewardAmount, _durationPercent)
     );
   }
 
@@ -3992,64 +3705,13 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // Two thirds of the duration time passes
     _jumpAheadByPercentOfRewardDuration(66);
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The rest of the duration elapses
     _jumpAheadByPercentOfRewardDuration(34);
 
     // The user should have earned 1/3rd of the rewards
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor), _percentOf(_rewardAmount, 34));
-  }
-
-  function testFuzz_CalculatesCorrectEarningsForASingleUserStakeForPartialDurationWithABeneficiary(
-    address _depositor,
-    address _delegatee,
-    address _beneficiary,
-    uint256 _stakeAmount,
-    uint256 _rewardAmount,
-    uint256 _durationPercent
-  ) public {
-    vm.assume(_beneficiary != address(0));
-
-    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-    _durationPercent = bound(_durationPercent, 0, 100);
-
-    // A user deposits staking tokens and assigns a beneficiary
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
-    // The contract is notified of a reward
-    _mintTransferAndNotifyReward(_rewardAmount);
-    // Some portion of the duration passes
-    _jumpAheadByPercentOfRewardDuration(_durationPercent);
-
-    // The beneficiary should have earned a portion of the rewards equal to the amount of the
-    // duration that has passed
-    assertLteWithinOnePercent(
-      govStaker.unclaimedReward(_beneficiary), _percentOf(_rewardAmount, _durationPercent)
-    );
-  }
-
-  function testFuzz_CalculatesCorrectEarningsForASingleUserThatDepositsPartiallyThroughTheDurationWithABeneficiary(
-    address _depositor,
-    address _delegatee,
-    address _beneficiary,
-    uint256 _stakeAmount,
-    uint256 _rewardAmount
-  ) public {
-    vm.assume(_beneficiary != address(0));
-    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-
-    // The contract is notified of a reward
-    _mintTransferAndNotifyReward(_rewardAmount);
-    // Two thirds of the duration time passes
-    _jumpAheadByPercentOfRewardDuration(66);
-    // A user deposits staking tokens and assigns a beneficiary
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
-    // The rest of the duration elapses
-    _jumpAheadByPercentOfRewardDuration(34);
-
-    // The beneficiary should have earned 1/3rd of the reward
-    assertLteWithinOnePercent(
-      govStaker.unclaimedReward(_beneficiary), _percentOf(_rewardAmount, 34)
-    );
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId), _percentOf(_rewardAmount, 34));
   }
 
   function testFuzz_CalculatesCorrectEarningsForASingleUserThatDepositsStakeForTheFullDurationWithNoNewRewards(
@@ -4062,95 +3724,21 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
-    // The contract is notified of a reward
-    _mintTransferAndNotifyReward(_rewardAmount);
-
-    // The full duration passes
-    _jumpAheadByPercentOfRewardDuration(100);
-    // Time moves forward with no rewards
-    _jumpAheadByPercentOfRewardDuration(_noRewardsSkip);
-
-    // Send new rewards, which should have no impact on the amount earned until time elapses
-    _mintTransferAndNotifyReward(_rewardAmount);
-
-    // The user should have earned all the rewards
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor), _rewardAmount);
-  }
-
-  function testFuzz_CalculatesCorrectEarningsForASingleUserThatDepositsStakeForTheFullDurationWithDelayedReward(
-    address _depositor,
-    address _delegatee,
-    uint256 _stakeAmount,
-    uint256 _rewardAmount,
-    uint16 _noRewardsSkip
-  ) public {
-    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-
-    // A user deposits staking tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
-    // The contract is notified of a reward
-    _mintTransferAndNotifyReward(_rewardAmount);
-
-    // The full duration passes
-    _jumpAheadByPercentOfRewardDuration(100);
-    // Time moves forward with no rewards
-    _jumpAheadByPercentOfRewardDuration(_noRewardsSkip);
-
-    // Send new rewards
-    _mintTransferAndNotifyReward(_rewardAmount);
-    // We end another full duration
-    _jumpAheadByPercentOfRewardDuration(100);
-
-    // The user should have earned all the rewards
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor), _rewardAmount * 2);
-  }
-
-  function testFuzz_CalculatesCorrectEarningsWhenASingleDepositorUpdatesTheirBeneficiaryWithNoNewRewards(
-    address _depositor,
-    address _delegatee,
-    address _beneficiary1,
-    address _beneficiary2,
-    uint256 _stakeAmount,
-    uint256 _rewardAmount,
-    uint256 _percentDuration,
-    uint16 _noRewardsSkip
-  ) public {
-    vm.assume(
-      _beneficiary1 != _beneficiary2 && _beneficiary1 != address(0) && _beneficiary2 != address(0)
-    );
-
-    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-    _percentDuration = bound(_percentDuration, 0, 100);
-
-    // A user deposits staking tokens w/ a beneficiary
     (, GovernanceStaker.DepositIdentifier _depositId) =
-      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary1);
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
-    // Part of the rewards duration passes
-    _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
-    // The depositor alters their beneficiary
-    vm.prank(_depositor);
-    govStaker.alterBeneficiary(_depositId, _beneficiary2);
-
-    // The rest of the duration elapses
-    _jumpAheadByPercentOfRewardDuration(100 - _percentDuration);
-
-    // Skip ahead with no rewards
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(100);
+    // Time moves forward with no rewards
     _jumpAheadByPercentOfRewardDuration(_noRewardsSkip);
 
     // Send new rewards, which should have no impact on the amount earned until time elapses
     _mintTransferAndNotifyReward(_rewardAmount);
 
-    // The beneficiaries should have earned all the rewards for the first duration
-    assertLteWithinOnePercent(
-      govStaker.unclaimedReward(_beneficiary1), _percentOf(_rewardAmount, _percentDuration)
-    );
-    assertLteWithinOnePercent(
-      govStaker.unclaimedReward(_beneficiary2), _percentOf(_rewardAmount, 100 - _percentDuration)
-    );
+    // The user should have earned all the rewards
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId), _rewardAmount);
   }
 
   function testFuzz_CalculatesCorrectEarningsForASingleUserThatDepositsStakeForTheFullDurationAndClaims(
@@ -4165,7 +3753,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
 
@@ -4174,7 +3763,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
 
     // The depositor claims the rewards
     vm.prank(_depositor);
-    govStaker.claimReward();
+    govStaker.claimReward(_depositId);
 
     // Send new rewards
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4187,7 +3776,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // The depositor should have earned a portion of the rewards equal to the amount of the next
     // duration that has passed.
     assertLteWithinOnePercent(
-      govStaker.unclaimedReward(_depositor), _percentOf(_rewardAmount, _durationPercent)
+      govStaker.unclaimedReward(_depositId), _percentOf(_rewardAmount, _durationPercent)
     );
   }
 
@@ -4203,7 +3792,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
 
@@ -4212,7 +3802,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
 
     // The depositor claims the reward
     vm.prank(_depositor);
-    govStaker.claimReward();
+    govStaker.claimReward(_depositId);
 
     // We skip ahead to the end of the duration
     _jumpAheadByPercentOfRewardDuration(100 - _durationPercent);
@@ -4224,7 +3814,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     assertLteWithinOnePercent(balance, _percentOf(_rewardAmount, _durationPercent));
     // The depositor earned the portion of the reward after the rewards were claimed
     assertLteWithinOnePercent(
-      govStaker.unclaimedReward(_depositor), _percentOf(_rewardAmount, 100 - _durationPercent)
+      govStaker.unclaimedReward(_depositId), _percentOf(_rewardAmount, 100 - _durationPercent)
     );
   }
 
@@ -4239,19 +3829,21 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId1) =
+      _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // Some time passes
     _jumpAhead(3000);
     // Another depositor deposits the same number of staking tokens
-    _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId2) =
+      _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // The full duration passes
     _jumpAheadByPercentOfRewardDuration(101);
 
     // Each user should have earned half of the rewards
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), _percentOf(_rewardAmount, 50));
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), _percentOf(_rewardAmount, 50));
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId1), _percentOf(_rewardAmount, 50));
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId2), _percentOf(_rewardAmount, 50));
   }
 
   function testFuzz_CalculatesCorrectEarningsForTwoUsersWhenOneStakesMorePartiallyThroughTheDuration(
@@ -4270,7 +3862,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // Some time passes
     _jumpAhead(3000);
     // Another depositor deposits the same number of staking tokens
-    _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId2) =
+      _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // One third of the duration passes
@@ -4294,8 +3887,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
       _percentOf(_percentOf(_rewardAmount, 50), 34) + _percentOf(_percentOf(_rewardAmount, 25), 66);
 
     // Each user should have earned half of the rewards
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), _depositor1ExpectedEarnings);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), _depositor2ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId1), _depositor1ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId2), _depositor2ExpectedEarnings);
   }
 
   function testFuzz_CalculatesCorrectEarningsForTwoUsersThatDepositEqualStakeForFullDurationAndBothClaim(
@@ -4310,11 +3903,13 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId1) =
+      _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // Some time passes
     _jumpAhead(3000);
     // Another depositor deposits the same number of staking tokens
-    _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId2) =
+      _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // The full duration passes
@@ -4322,11 +3917,11 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
 
     // Depositor 1 claims
     vm.prank(_depositor1);
-    govStaker.claimReward();
+    govStaker.claimReward(_depositId1);
 
     // Depositor 2 claims
     vm.prank(_depositor2);
-    govStaker.claimReward();
+    govStaker.claimReward(_depositId2);
 
     uint256 depositor1Balance = govStaker.REWARD_TOKEN().balanceOf(address(_depositor1));
     uint256 depositor2Balance = govStaker.REWARD_TOKEN().balanceOf(address(_depositor2));
@@ -4336,8 +3931,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     assertLteWithinOnePercent(depositor2Balance, _percentOf(_rewardAmount, 50));
 
     // Each user should have earned nothing since they both claimed their rewards
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), 0);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), 0);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId1), 0);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId2), 0);
   }
 
   function testFuzz_CalculatesCorrectEarningsForTwoUsersWhenOneStakesMorePartiallyThroughTheDurationAndOneClaims(
@@ -4357,14 +3952,15 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // Some time passes
     _jumpAhead(3000);
     // Another depositor deposits the same number of staking tokens
-    _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId2) =
+      _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // One third of the duration passes
     _jumpAheadByPercentOfRewardDuration(34);
     // The first depositor claims their reward
     vm.prank(_depositor1);
-    govStaker.claimReward();
+    govStaker.claimReward(_depositId1);
     // The first depositor triples their deposit by staking 2x more
     _mintGovToken(_depositor1, 2 * _stakeAmount);
     vm.startPrank(_depositor1);
@@ -4384,211 +3980,13 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     uint256 depositor1Balance = govStaker.REWARD_TOKEN().balanceOf(address(_depositor1));
     uint256 depositor2Balance = govStaker.REWARD_TOKEN().balanceOf(address(_depositor2));
 
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), _depositor1ExpectedEarnings);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), _depositor2ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId1), _depositor1ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId2), _depositor2ExpectedEarnings);
 
     // Depositor 1 should have received the reward they earned from before they claimed
     assertLteWithinOnePercent(depositor1Balance, _percentOf(_percentOf(_rewardAmount, 50), 34));
     // Depositor 2 should not have received anything because they did not claim
     assertLteWithinOnePercent(depositor2Balance, 0);
-  }
-
-  function testFuzz_CalculatesCorrectEarningsForFourUsersThatDepositEqualStakeForFullDurationWhereOneIsABeneficiaryOfTwoOthers(
-    address _depositor1,
-    address _depositor2,
-    address _depositor3,
-    address _depositor4,
-    address _delegatee,
-    uint256 _stakeAmount,
-    uint256 _rewardAmount
-  ) public {
-    vm.assume(
-      _depositor1 != _depositor2 && _depositor1 != _depositor2 && _depositor2 != _depositor3
-        && _depositor1 != _depositor3 && _depositor1 != _depositor4 && _depositor2 != _depositor4
-        && _depositor3 != _depositor4
-    );
-    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-
-    // A user deposits staking tokens
-    _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
-    // Some time passes
-    _jumpAhead(3000);
-    // Another depositor deposits the same number of staking tokens
-    _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
-    // Some time passes
-    _jumpAhead(3000);
-    // Another depositor deposits and adds the first depositor as the beneficiary
-    _boundMintAndStake(_depositor3, _stakeAmount, _delegatee, _depositor1);
-    // Some time passes
-    _jumpAhead(3000);
-    // Another depositor deposits and adds the first depositor as the beneficiary
-    _boundMintAndStake(_depositor4, _stakeAmount, _delegatee, _depositor1);
-    // The contract is notified of a reward
-    _mintTransferAndNotifyReward(_rewardAmount);
-    // The full duration passes
-    _jumpAheadByPercentOfRewardDuration(101);
-
-    // The first depositor has earn 3/4 of the and depositor 2 should earn a quarter of the reward
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), _percentOf(_rewardAmount, 75));
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), _percentOf(_rewardAmount, 25));
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor3), 0);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor4), 0);
-  }
-
-  function testFuzz_CalculatesCorrectEarningsForFourUsersWhenOneStakesMorePartiallyThroughTheDurationAndTwoBeneficiaries(
-    address _depositor1,
-    address _depositor2,
-    address _depositor3,
-    address _depositor4,
-    address _delegatee,
-    uint256 _stakeAmount,
-    uint256 _rewardAmount
-  ) public {
-    vm.assume(
-      _depositor1 != _depositor2 && _depositor1 != _depositor2 && _depositor2 != _depositor3
-        && _depositor1 != _depositor3 && _depositor1 != _depositor4 && _depositor2 != _depositor4
-        && _depositor3 != _depositor4
-    );
-    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-
-    // A user deposits staking tokens
-    (, GovernanceStaker.DepositIdentifier _depositId1) =
-      _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
-    // Some time passes
-    _jumpAhead(3000);
-    // Another depositor deposits the same number of staking tokens
-    _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
-    // Some time passes
-    _jumpAhead(3000);
-    // Another depositor deposits the same number of staking tokens and adds the second depositor as
-    // a beneficiary
-    _boundMintAndStake(_depositor3, _stakeAmount, _delegatee, _depositor2);
-    // Some time passes
-    _jumpAhead(3000);
-    // Another depositor deposits the same number of staking tokens and adds the first depositor as
-    // a beneficiary
-    _boundMintAndStake(_depositor4, _stakeAmount, _delegatee, _depositor1);
-
-    // The contract is notified of a reward
-    _mintTransferAndNotifyReward(_rewardAmount);
-    // One third of the duration passes
-    _jumpAheadByPercentOfRewardDuration(34);
-    // The first user doubles their stake
-    _mintGovToken(_depositor1, _stakeAmount);
-    vm.startPrank(_depositor1);
-    govToken.approve(address(govStaker), _stakeAmount);
-    govStaker.stakeMore(_depositId1, _stakeAmount);
-    vm.stopPrank();
-    // The rest of the duration passes
-    _jumpAheadByPercentOfRewardDuration(66);
-
-    // Depositor 1 earns half the reward for one third the time and three fifths for two thirds of
-    // the time
-    uint256 _depositor1ExpectedEarnings =
-      _percentOf(_percentOf(_rewardAmount, 50), 34) + _percentOf(_percentOf(_rewardAmount, 60), 66);
-    // Depositor 2 earns half the reward for one third the time and two fifths for two thirds of
-    // the time
-    uint256 _depositor2ExpectedEarnings =
-      _percentOf(_percentOf(_rewardAmount, 50), 34) + _percentOf(_percentOf(_rewardAmount, 40), 66);
-
-    // The third and fourth depositor earn nothing because they are sending their rewards to a
-    // beneficiary
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), _depositor1ExpectedEarnings);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), _depositor2ExpectedEarnings);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor3), 0);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor4), 0);
-  }
-
-  function testFuzz_CalculatesCorrectEarningsForFourUsersWhenTwoStakeMorePartiallyThroughTheDurationAndOneBeneficiary(
-    address _depositor1,
-    address _depositor2,
-    address _depositor3,
-    address _depositor4,
-    uint256 _stakeAmount,
-    uint256 _rewardAmount
-  ) public {
-    vm.assume(
-      _depositor1 != _depositor2 && _depositor1 != _depositor2 && _depositor2 != _depositor3
-        && _depositor1 != _depositor3 && _depositor1 != _depositor4 && _depositor2 != _depositor4
-        && _depositor3 != _depositor4
-    );
-    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-
-    // A user deposits staking tokens
-    (, GovernanceStaker.DepositIdentifier _depositId1) =
-      _boundMintAndStake(_depositor1, _stakeAmount, _depositor1);
-    // Some time passes
-    _jumpAhead(3000);
-    // Another depositor deposits the same number of staking tokens
-    (, GovernanceStaker.DepositIdentifier _depositId2) =
-      _boundMintAndStake(_depositor2, _stakeAmount, _depositor1);
-    // Some time passes
-    _jumpAhead(3000);
-    // Another depositor deposits the same number of staking tokens
-    (, GovernanceStaker.DepositIdentifier _depositId3) =
-      _boundMintAndStake(_depositor3, _stakeAmount, _depositor1);
-    // Some time passes
-    _jumpAhead(3000);
-    // Another depositor deposits the same number of staking tokens
-    _boundMintAndStake(_depositor4, _stakeAmount, _depositor1);
-
-    // The contract is notified of a reward
-    _mintTransferAndNotifyReward(_rewardAmount);
-    // One quarter of the duration passes
-    _jumpAheadByPercentOfRewardDuration(25);
-    // The first user doubles their deposit
-    _mintGovToken(_depositor1, _stakeAmount);
-    vm.startPrank(_depositor1);
-    govToken.approve(address(govStaker), _stakeAmount);
-    govStaker.stakeMore(_depositId1, _stakeAmount);
-    vm.stopPrank();
-
-    // Another quarter of the duration passes
-    _jumpAheadByPercentOfRewardDuration(25);
-    // The second users doubles their deposit
-    vm.startPrank(_depositor2);
-    _mintGovToken(_depositor2, _stakeAmount);
-    vm.startPrank(_depositor2);
-    govToken.approve(address(govStaker), _stakeAmount);
-    govStaker.stakeMore(_depositId2, _stakeAmount);
-    vm.stopPrank();
-
-    // The third user changes their beneficiary
-    vm.startPrank(_depositor3);
-    govStaker.alterBeneficiary(_depositId3, _depositor1);
-    vm.stopPrank();
-
-    // The first depositor withdraws half of their deposit
-    vm.startPrank(_depositor1);
-    govStaker.withdraw(_depositId1, _stakeAmount);
-    vm.stopPrank();
-
-    // The rest of the duration passes
-    _jumpAheadByPercentOfRewardDuration(50);
-
-    // Depositor 1 earns 25% of the reward for one quarter of the time and 40% of the reward three
-    // quarter of the time
-    uint256 _depositor1ExpectedEarnings =
-      _percentOf(_percentOf(_rewardAmount, 25), 25) + _percentOf(_percentOf(_rewardAmount, 40), 75);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), _depositor1ExpectedEarnings);
-
-    // Depositor 2 earns a quarter of the reward for one quarter of the time, a fifth of the
-    // reward one quarter of the time, and 40 percent of the reward half the time
-    uint256 _depositor2ExpectedEarnings = _percentOf(_percentOf(_rewardAmount, 25), 25)
-      + _percentOf(_percentOf(_rewardAmount, 20), 25) + _percentOf(_percentOf(_rewardAmount, 40), 50);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), _depositor2ExpectedEarnings);
-
-    // Depositor 3 earns 25% of the reward for a quarter of the time, 20% of the reward a quarter of
-    // the time and no reward half the time.
-    uint256 _depositor3ExpectedEarnings =
-      _percentOf(_percentOf(_rewardAmount, 25), 25) + _percentOf(_percentOf(_rewardAmount, 20), 25);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor3), _depositor3ExpectedEarnings);
-
-    // Depositor 4 earns 25% of the reward for a quarter of the time, 20% of the reward 3 quarters
-    // of the time.
-    uint256 _depositor4ExpectedEarnings =
-      _percentOf(_percentOf(_rewardAmount, 25), 25) + _percentOf(_percentOf(_rewardAmount, 20), 75);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor4), _depositor4ExpectedEarnings);
   }
 
   function testFuzz_CalculatesCorrectEarningsWhenAUserStakesThroughTheDurationAndAnotherStakesPartially(
@@ -4602,7 +4000,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // The first user stakes some tokens
-    _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId1) =
+      _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // A small amount of time passes
     _jumpAhead(3000);
     // The contract is notified of a reward
@@ -4610,7 +4009,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // Two thirds of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(66);
     // A second user stakes the same amount of tokens
-    _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId2) =
+      _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // The rest of the duration elapses
     _jumpAheadByPercentOfRewardDuration(34);
 
@@ -4621,8 +4021,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // Depositor 2 earns 1/2 the rewards for 1/3rd of the duration time
     uint256 _depositor2ExpectedEarnings = _percentOf(_percentOf(_rewardAmount, 50), 34);
 
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), _depositor1ExpectedEarnings);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), _depositor2ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId1), _depositor1ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId2), _depositor2ExpectedEarnings);
   }
 
   function testFuzz_CalculatesCorrectEarningsWhenAUserDepositsAndThereAreTwoRewards(
@@ -4636,7 +4036,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     (_stakeAmount, _rewardAmount2) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount2);
 
     // A user stakes tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount1);
     // Two thirds of duration elapses
@@ -4653,7 +4054,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // reward plus the second reward.
     uint256 _depositorExpectedEarnings = _percentOf(_rewardAmount1, 66)
       + _percentOf(_percentOf(_rewardAmount1, 34) + _rewardAmount2, 34);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor), _depositorExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId), _depositorExpectedEarnings);
   }
 
   function testFuzz_CalculatesCorrectEarningsWhenTwoUsersDepositForPartialDurationsAndThereAreTwoRewards(
@@ -4673,11 +4074,13 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // One quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
     // A user stakes some tokens
-    _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId1) =
+      _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // Another 40 percent of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(40);
     // Another user stakes some tokens
-    _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId2) =
+      _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // Another quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
     // The contract receives another reward, resetting the duration
@@ -4701,8 +4104,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     uint256 _depositor1ExpectedEarnings =
       _percentOf(_rewardAmount1, 40) + _depositor2ExpectedEarnings;
 
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), _depositor1ExpectedEarnings);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), _depositor2ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId1), _depositor1ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId2), _depositor2ExpectedEarnings);
   }
 
   function testFuzz_CalculatesCorrectEarningsWhenTwoUsersDepositDifferentAmountsForPartialDurationsAndThereAreTwoRewards(
@@ -4723,11 +4126,13 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // One quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
     // A user stakes some tokens
-    _boundMintAndStake(_depositor1, _stakeAmount1, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId1) =
+      _boundMintAndStake(_depositor1, _stakeAmount1, _delegatee);
     // Another 40 percent of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(40);
     // Another user stakes some tokens
-    _boundMintAndStake(_depositor2, _stakeAmount2, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId2) =
+      _boundMintAndStake(_depositor2, _stakeAmount2, _delegatee);
     // Another quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
     // The contract receives another reward, resetting the duration
@@ -4754,8 +4159,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     uint256 _depositor1ExpectedEarnings = _percentOf(_rewardAmount1, 40)
       + (_stakeAmount1 * _combinedPhaseExpectedTotalRewards) / _combinedStake;
 
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), _depositor1ExpectedEarnings);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), _depositor2ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId1), _depositor1ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId2), _depositor2ExpectedEarnings);
   }
 
   // Could potentially add duration
@@ -4772,7 +4177,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     (_stakeAmount, _rewardAmount3) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount3);
 
     // A user stakes tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount1);
     // Two thirds of duration elapses
@@ -4797,7 +4203,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
       + _percentOf(
         _percentOf(_percentOf(_rewardAmount1, 60) + _rewardAmount2, 70) + _rewardAmount3, 30
       );
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor), _depositorExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId), _depositorExpectedEarnings);
   }
 
   function testFuzz_CalculatesCorrectEarningsWhenTwoUsersDepositForPartialDurationsAndThereAreThreeRewards(
@@ -4819,11 +4225,13 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // One quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
     // A user stakes some tokens
-    _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId1) =
+      _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // Another 20 percent of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(20);
     // Another user stakes some tokens
-    _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId2) =
+      _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // Another 20 percent of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(20);
     // The contract receives another reward, resetting the duration
@@ -4860,8 +4268,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     uint256 _depositor1ExpectedEarnings =
       _percentOf(_rewardAmount1, 20) + _depositor2ExpectedEarnings;
 
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), _depositor1ExpectedEarnings);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), _depositor2ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId1), _depositor1ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId2), _depositor2ExpectedEarnings);
   }
 
   function testFuzz_CalculatesCorrectEarningsWhenTwoUsersDepositDifferentAmountsForPartialDurationsAndThereAreThreeRewards(
@@ -4884,11 +4292,13 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // One quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
     // A user stakes some tokens
-    _boundMintAndStake(_depositor1, _stakeAmount1, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId1) =
+      _boundMintAndStake(_depositor1, _stakeAmount1, _delegatee);
     // Another 40 percent of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(20);
     // Another user stakes some tokens
-    _boundMintAndStake(_depositor2, _stakeAmount2, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId2) =
+      _boundMintAndStake(_depositor2, _stakeAmount2, _delegatee);
     // Another quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(20);
     // The contract receives another reward, resetting the duration
@@ -4923,8 +4333,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     uint256 _depositor1ExpectedEarnings = _percentOf(_rewardAmount1, 20)
       + (_stakeAmount1 * _combinedPhaseExpectedTotalRewards) / _combinedStake;
 
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor1), _depositor1ExpectedEarnings);
-    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositor2), _depositor2ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId1), _depositor1ExpectedEarnings);
+    assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId2), _depositor2ExpectedEarnings);
   }
 
   function testFuzz_CalculatesEarningsThatAreLessThanOrEqualToRewardsReceived(
@@ -4943,18 +4353,20 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor1, _stakeAmount1, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId1) =
+      _boundMintAndStake(_depositor1, _stakeAmount1, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // A portion of the duration passes
     _jumpAheadByPercentOfRewardDuration(_durationPercent);
     // Another user deposits stake
-    _boundMintAndStake(_depositor2, _stakeAmount2, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId2) =
+      _boundMintAndStake(_depositor2, _stakeAmount2, _delegatee);
     // The rest of the duration elapses
     _jumpAheadByPercentOfRewardDuration(100 - _durationPercent);
 
-    uint256 _earned1 = govStaker.unclaimedReward(_depositor1);
-    uint256 _earned2 = govStaker.unclaimedReward(_depositor2);
+    uint256 _earned1 = govStaker.unclaimedReward(_depositId1);
+    uint256 _earned2 = govStaker.unclaimedReward(_depositId2);
 
     // Rewards earned by depositors should always at most equal to the actual reward amount
     assertLteWithinOnePercent(_earned1 + _earned2, _rewardAmount);
@@ -4982,8 +4394,10 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     vm.stopPrank();
 
     // User deposit staking tokens
-    _stake(_depositor1, _smallDepositAmount, _delegatee);
-    _stake(_depositor2, _smallDepositAmount, _delegatee);
+    GovernanceStaker.DepositIdentifier _depositId1 =
+      _stake(_depositor1, _smallDepositAmount, _delegatee);
+    GovernanceStaker.DepositIdentifier _depositId2 =
+      _stake(_depositor2, _smallDepositAmount, _delegatee);
     _stake(_depositor3, _largeDepositAmount, _delegatee);
 
     // Every block _attacker deposits 0 stake and assigns _depositor1 as beneficiary, thus leading
@@ -4999,7 +4413,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     // Despite the attempted griefing attack, the unclaimed rewards for the two depositors should
     // be ~the same.
     assertLteWithinOnePercent(
-      govStaker.unclaimedReward(_depositor1), govStaker.unclaimedReward(_depositor2)
+      govStaker.unclaimedReward(_depositId1), govStaker.unclaimedReward(_depositId2)
     );
   }
 }
@@ -5018,16 +4432,17 @@ contract ClaimReward is GovernanceStakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // A portion of the duration passes
     _jumpAheadByPercentOfRewardDuration(_durationPercent);
 
-    uint256 _earned = govStaker.unclaimedReward(_depositor);
+    uint256 _earned = govStaker.unclaimedReward(_depositId);
 
     vm.prank(_depositor);
-    govStaker.claimReward();
+    govStaker.claimReward(_depositId);
 
     assertEq(rewardToken.balanceOf(_depositor), _earned);
   }
@@ -5045,16 +4460,17 @@ contract ClaimReward is GovernanceStakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // A portion of the duration passes
     _jumpAheadByPercentOfRewardDuration(_durationPercent);
 
-    uint256 _earned = govStaker.unclaimedReward(_depositor);
+    uint256 _earned = govStaker.unclaimedReward(_depositId);
 
     vm.prank(_depositor);
-    uint256 _claimedAmount = govStaker.claimReward();
+    uint256 _claimedAmount = govStaker.claimReward(_depositId);
 
     assertEq(_earned, _claimedAmount);
   }
@@ -5070,16 +4486,46 @@ contract ClaimReward is GovernanceStakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // A portion of the duration passes
     _jumpAheadByPercentOfRewardDuration(_durationPercent);
 
     vm.prank(_depositor);
-    govStaker.claimReward();
+    govStaker.claimReward(_depositId);
 
-    assertEq(govStaker.unclaimedReward(_depositor), 0);
+    assertEq(govStaker.unclaimedReward(_depositId), 0);
+  }
+
+  function testFuzz_AllowsABeneficiaryWhoIsNotTheDepositOwnerToClaimRewards(
+    address _depositor,
+    address _delegatee,
+    address _beneficiary,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    uint256 _durationPercent
+  ) public {
+    vm.assume(_beneficiary != address(govStaker));
+    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
+    _durationPercent = bound(_durationPercent, 1, 100);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // A portion of the duration passes
+    _jumpAheadByPercentOfRewardDuration(_durationPercent);
+
+    uint256 _earned = govStaker.unclaimedReward(_depositId);
+
+    vm.prank(_beneficiary);
+    govStaker.claimReward(_depositId);
+
+    assertEq(govStaker.unclaimedReward(_depositId), 0);
+    assertEq(rewardToken.balanceOf(_beneficiary), _earned);
   }
 
   function testFuzz_EmitsAnEventWhenRewardsAreClaimed(
@@ -5093,19 +4539,52 @@ contract ClaimReward is GovernanceStakerRewardsTest {
     _durationPercent = bound(_durationPercent, 1, 100);
 
     // A user deposits staking tokens
-    _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // A portion of the duration passes
     _jumpAheadByPercentOfRewardDuration(_durationPercent);
 
-    uint256 _earned = govStaker.unclaimedReward(_depositor);
+    uint256 _earned = govStaker.unclaimedReward(_depositId);
 
     vm.expectEmit();
-    emit GovernanceStaker.RewardClaimed(_depositor, _earned);
+    emit GovernanceStaker.RewardClaimed(_depositId, _depositor, _earned);
 
     vm.prank(_depositor);
-    govStaker.claimReward();
+    govStaker.claimReward(_depositId);
+  }
+
+  function testFuzz_RevertIf_TheCallerIsNotTheDepositBeneficiary(
+    address _depositor,
+    address _delegatee,
+    address _beneficiary,
+    address _notBeneficiary,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    uint256 _durationPercent
+  ) public {
+    vm.assume(_notBeneficiary != _beneficiary && _notBeneficiary != _depositor);
+    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
+    _durationPercent = bound(_durationPercent, 1, 100);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // A portion of the duration passes
+    _jumpAheadByPercentOfRewardDuration(_durationPercent);
+
+    vm.prank(_notBeneficiary);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        GovernanceStaker.GovernanceStaker__Unauthorized.selector,
+        bytes32("not beneficiary"),
+        _notBeneficiary
+      )
+    );
+    govStaker.claimReward(_depositId);
   }
 }
 
@@ -5140,7 +4619,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     _jumpAheadByPercentOfRewardDuration(_durationPercent);
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
 
-    uint256 _earned = govStaker.unclaimedReward(_beneficiary);
+    uint256 _earned = govStaker.unclaimedReward(_depositId);
 
     stdstore.target(address(govStaker)).sig("nonces(address)").with_key(_beneficiary).checked_write(
       _currentNonce
@@ -5148,7 +4627,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
 
     bytes32 _message = keccak256(
       abi.encode(
-        govStaker.CLAIM_REWARD_TYPEHASH(), _beneficiary, govStaker.nonces(_beneficiary), _deadline
+        govStaker.CLAIM_REWARD_TYPEHASH(), _depositId, govStaker.nonces(_beneficiary), _deadline
       )
     );
 
@@ -5157,7 +4636,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     bytes memory _signature = _sign(_beneficiaryPrivateKey, _messageHash);
 
     vm.prank(_sender);
-    govStaker.claimRewardOnBehalf(_beneficiary, _deadline, _signature);
+    govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
 
     assertEq(rewardToken.balanceOf(_beneficiary), _earned);
   }
@@ -5190,7 +4669,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     _jumpAheadByPercentOfRewardDuration(_durationPercent);
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
 
-    uint256 _earned = govStaker.unclaimedReward(_beneficiary);
+    uint256 _earned = govStaker.unclaimedReward(_depositId);
 
     stdstore.target(address(govStaker)).sig("nonces(address)").with_key(_beneficiary).checked_write(
       _currentNonce
@@ -5198,7 +4677,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
 
     bytes32 _message = keccak256(
       abi.encode(
-        govStaker.CLAIM_REWARD_TYPEHASH(), _beneficiary, govStaker.nonces(_beneficiary), _deadline
+        govStaker.CLAIM_REWARD_TYPEHASH(), _depositId, govStaker.nonces(_beneficiary), _deadline
       )
     );
 
@@ -5207,7 +4686,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     bytes memory _signature = _sign(_beneficiaryPrivateKey, _messageHash);
 
     vm.prank(_sender);
-    uint256 _claimedAmount = govStaker.claimRewardOnBehalf(_beneficiary, _deadline, _signature);
+    uint256 _claimedAmount = govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
 
     assertEq(_earned, _claimedAmount);
   }
@@ -5256,7 +4735,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
 
     vm.expectRevert(GovernanceStaker.GovernanceStaker__InvalidSignature.selector);
     vm.prank(_sender);
-    govStaker.claimRewardOnBehalf(_beneficiary, _deadline, _signature);
+    govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
   }
 
   function testFuzz_RevertIf_DeadlineExpired(
@@ -5301,7 +4780,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
 
     vm.expectRevert(GovernanceStaker.GovernanceStaker__ExpiredDeadline.selector);
     vm.prank(_sender);
-    govStaker.claimRewardOnBehalf(_beneficiary, _deadline, _signature);
+    govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
   }
 
   function testFuzz_RevertIf_InvalidSignatureIsPassed(
@@ -5351,7 +4830,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
 
     vm.expectRevert(GovernanceStaker.GovernanceStaker__InvalidSignature.selector);
     vm.prank(_sender);
-    govStaker.claimRewardOnBehalf(_beneficiary, _deadline, _signature);
+    govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
   }
 }
 
@@ -5488,7 +4967,7 @@ contract Multicall is GovernanceStakerRewardsTest {
     govStaker.multicall(_calls);
     vm.stopPrank();
 
-    (uint256 _amountResult,, address _delegateeResult, address _beneficiaryResult) =
+    (uint256 _amountResult,, address _delegateeResult, address _beneficiaryResult,,,) =
       govStaker.deposits(_depositId);
     assertEq(govStaker.depositorTotalStaked(_depositor), _stakeAmount0 + _stakeAmount1);
     assertEq(_amountResult, _stakeAmount0 + _stakeAmount1);
