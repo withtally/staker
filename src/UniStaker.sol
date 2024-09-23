@@ -43,7 +43,7 @@ interface IEarningPowerCalculator {
 /// received, the reward duration restarts, and the rate at which rewards are streamed is updated
 /// to include the newly received rewards along with any remaining rewards that have finished
 /// streaming since the last time a reward was received.
-contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
+contract UniStaker is Multicall, EIP712, Nonces {
   type DepositIdentifier is uint256;
 
   /// @notice Emitted when stake is deposited by a depositor, either to a new deposit or one that
@@ -76,8 +76,6 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// @notice Emitted when the admin address is set.
   event AdminSet(address indexed oldAdmin, address indexed newAdmin);
 
-  /// @notice Emitted when a reward notifier address is enabled or disabled.
-  event RewardNotifierSet(address indexed account, bool isEnabled);
 
   /// @notice Emitted when a surrogate contract is deployed.
   event SurrogateDeployed(address indexed delegatee, address indexed surrogate);
@@ -143,8 +141,6 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   bytes32 public constant CLAIM_REWARD_TYPEHASH =
     keccak256("ClaimReward(address beneficiary,uint256 nonce,uint256 deadline)");
 
-  /// @notice ERC20 token in which rewards are denominated and distributed.
-  IERC20 public immutable REWARD_TOKEN;
 
   /// @notice Delegable governance token which users stake to earn rewards.
   IERC20Delegates public immutable STAKE_TOKEN;
@@ -213,36 +209,12 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   /// This value is reset to zero when a beneficiary account claims their earned rewards.
   mapping(address account => uint256 amount) public scaledUnclaimedRewardCheckpoint;
 
-  /// @notice Maps addresses to whether they are authorized to call `notifyRewardAmount`.
-  mapping(address rewardNotifier => bool) public isRewardNotifier;
 
-  /// @param _rewardToken ERC20 token in which rewards will be denominated.
   /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
-  /// @param _admin Address which will have permission to manage rewardNotifiers.
-  constructor(IERC20 _rewardToken, IERC20Delegates _stakeToken, address _admin)
+  constructor(IERC20Delegates _stakeToken)
     EIP712("UniStaker", "1")
   {
-    REWARD_TOKEN = _rewardToken;
     STAKE_TOKEN = _stakeToken;
-    _setAdmin(_admin);
-  }
-
-  /// @notice Set the admin address.
-  /// @param _newAdmin Address of the new admin.
-  /// @dev Caller must be the current admin.
-  function setAdmin(address _newAdmin) external {
-    _revertIfNotAdmin();
-    _setAdmin(_newAdmin);
-  }
-
-  /// @notice Enables or disables a reward notifier address.
-  /// @param _rewardNotifier Address of the reward notifier.
-  /// @param _isEnabled `true` to enable the `_rewardNotifier`, or `false` to disable.
-  /// @dev Caller must be the current admin.
-  function setRewardNotifier(address _rewardNotifier, bool _isEnabled) external {
-    _revertIfNotAdmin();
-    isRewardNotifier[_rewardNotifier] = _isEnabled;
-    emit RewardNotifierSet(_rewardNotifier, _isEnabled);
   }
 
   /// @notice Timestamp representing the last time at which rewards have been distributed, which is
@@ -589,131 +561,6 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     _withdraw(deposit, _depositId, _amount);
   }
 
-  /// @notice Claim reward tokens the message sender has earned as a stake beneficiary. Tokens are
-  /// sent to the message sender.
-  /// @return Amount of reward tokens claimed.
-  function claimReward(DepositIdentifier _depositId) external returns (uint256) {
-    Deposit storage deposit = deposits[_depositId];
-    if (msg.sender != deposit.beneficiary) revert UniStaker__Unauthorized("not beneficiary", msg.sender);
-    return _claimReward(_depositId);
-  }
-
-  /// @notice Claim earned reward tokens for a beneficiary, using a signature to validate the
-  /// beneficiary's intent. Tokens are sent to the beneficiary.
-  /// @param _depositId TODO
-  /// @param _deadline The timestamp after which the signature should expire.
-  /// @param _signature Signature of the beneficiary authorizing this reward claim.
-  /// @return Amount of reward tokens claimed.
-  function claimRewardOnBehalf(DepositIdentifier _depositId, uint256 _deadline, bytes memory _signature)
-    external
-    returns (uint256)
-  {
-    _revertIfPastDeadline(_deadline);
-    Deposit storage deposit = deposits[_depositId];
-    _revertIfSignatureIsNotValidNow(
-      deposit.beneficiary,
-      _hashTypedDataV4(
-        keccak256(
-          // TODO: the signature should actually be changed to sign over the depositId
-          abi.encode(CLAIM_REWARD_TYPEHASH, deposit.beneficiary, _useNonce(deposit.beneficiary), _deadline)
-        )
-      ),
-      _signature
-    );
-    return _claimReward(_depositId);
-  }
-
-  /// @notice Called by an authorized rewards notifier to alert the staking contract that a new
-  /// reward has been transferred to it. It is assumed that the reward has already been
-  /// transferred to this staking contract before the rewards notifier calls this method.
-  /// @param _amount Quantity of reward tokens the staking contract is being notified of.
-  /// @dev It is critical that only well behaved contracts are approved by the admin to call this
-  /// method, for two reasons.
-  ///
-  /// 1. A misbehaving contract could grief stakers by frequently notifying this contract of tiny
-  ///    rewards, thereby continuously stretching out the time duration over which real rewards are
-  ///    distributed. It is required that reward notifiers supply reasonable rewards at reasonable
-  ///    intervals.
-  //  2. A misbehaving contract could falsely notify this contract of rewards that were not actually
-  ///    distributed, creating a shortfall for those claiming their rewards after others. It is
-  ///    required that a notifier contract always transfers the `_amount` to this contract before
-  ///    calling this method.
-  function notifyRewardAmount(uint256 _amount) external {
-    if (!isRewardNotifier[msg.sender]) revert UniStaker__Unauthorized("not notifier", msg.sender);
-
-    // We checkpoint the accumulator without updating the timestamp at which it was updated,
-    // because that second operation will be done after updating the reward rate.
-    rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
-
-    if (block.timestamp >= rewardEndTime) {
-      scaledRewardRate = (_amount * SCALE_FACTOR) / REWARD_DURATION;
-    } else {
-      uint256 _remainingReward = scaledRewardRate * (rewardEndTime - block.timestamp);
-      scaledRewardRate = (_remainingReward + _amount * SCALE_FACTOR) / REWARD_DURATION;
-    }
-
-    rewardEndTime = block.timestamp + REWARD_DURATION;
-    lastCheckpointTime = block.timestamp;
-
-    if ((scaledRewardRate / SCALE_FACTOR) == 0) revert UniStaker__InvalidRewardRate();
-
-    // This check cannot _guarantee_ sufficient rewards have been transferred to the contract,
-    // because it cannot isolate the unclaimed rewards owed to stakers left in the balance. While
-    // this check is useful for preventing degenerate cases, it is not sufficient. Therefore, it is
-    // critical that only safe reward notifier contracts are approved to call this method by the
-    // admin.
-    if (
-      (scaledRewardRate * REWARD_DURATION) > (REWARD_TOKEN.balanceOf(address(this)) * SCALE_FACTOR)
-    ) revert UniStaker__InsufficientRewardBalance();
-
-    emit RewardNotified(_amount, msg.sender);
-  }
-
-  function forceUpdateEarningPower(DepositIdentifier _depositId, uint256 _tipRequested, address _tipReceiver) external {
-    if (_tipRequested > maxEarningPowerUpdaterTip) revert("Invalid Tip"); // TODO: would have error type
-
-    Deposit storage deposit = deposits[_depositId];
-
-    // Checkpoint system so reward checkpoint is updated
-    _checkpointGlobalReward();
-    _checkpointReward(_depositId);
-
-    (uint256 _newEarningPower, bool _isSignificantChange) = earningPowerCalculator.getNewEarningPower(deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower);
-    if (!_isSignificantChange) revert("Insignificant Earning Power Change");
-
-    uint256 _unclaimedRewards = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
-
-    if (_newEarningPower > deposit.earningPower && _unclaimedRewards < _tipRequested) {
-      // If the staker's earning power is increasing, we make sure there are enough rewards to pay
-      // the tip. Theoretically, we could do a more advanced calculation to decide if this is
-      // "worth it" for the user to pay for. For example, we could calculate, based on the tip,
-      // the current reward rate, and the user's change in earning power, how long it would take to
-      // earn the tip back, and thus only allow this if the difference is within some threshold time,
-      // e.g. a week or a day. This same calculation could also be implemented by the earning power
-      // calculator though, so this simpler enforcement is probably fine for the core staker. Also,
-      // none of this matters for a calculator that only returns a binary 0 earning power or full
-      // earning power.
-      revert("Insufficient Rewards To Pay Tip");
-    } else if (_newEarningPower < deposit.earningPower && (_unclaimedRewards - _tipRequested) < maxEarningPowerUpdaterTip) {
-      // If the staker's earning power is decreasing, we make sure there are enough rewards left
-      // for at least one more forced adjustment paying the max tip. This means the deposit will
-      // still have enough rewards left pay a tip that increases its earning power should the
-      // delegatee improve. This includes if the score drops all the way to zero. We could be even
-      // stricter here, and only require 2x tip if the new earning power IS 0. The current system
-      // is a little nicer to stakers, in that it gives them more time to adjust should their
-      // delegatee's earning power drop.
-      revert("Insufficient Rewards To Pay Tip");
-    }
-
-    // update the earning power
-    deposit.earningPower = _newEarningPower;
-    // Update unclaimed rewards to remove tip (ignore casting issues, will all go to uint256)
-    deposit.scaledUnclaimedRewardCheckpoint -= uint96(_tipRequested);
-
-    // Send tip.
-    SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _tipRequested);
-  }
-
   /// @notice Live value of the unclaimed rewards earned by a given beneficiary account with the
   /// scale factor included. Used internally for calculating reward checkpoints while minimizing
   /// precision loss.
@@ -900,37 +747,6 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     emit StakeWithdrawn(_depositId, _amount, deposit.balance);
   }
 
-  /// @notice Internal convenience method which claims earned rewards.
-  /// @return Amount of reward tokens claimed.
-  /// @dev This method must only be called after proper authorization has been completed.
-  /// @dev See public claimReward methods for additional documentation.
-  // NOTE: similar to other methods, this should probably also take a storage pointer rather than
-  // having to redeclare it.
-  function _claimReward(DepositIdentifier _depositId) internal returns (uint256) {
-    Deposit storage deposit = deposits[_depositId];
-
-    _checkpointGlobalReward();
-    _checkpointReward(_depositId);
-
-    uint256 _reward = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
-    if (_reward == 0) return 0;
-
-    // retain sub-wei dust that would be left due to the precision loss
-    deposit.scaledUnclaimedRewardCheckpoint =
-      uint96(deposit.scaledUnclaimedRewardCheckpoint) - uint96(_reward * SCALE_FACTOR);
-    emit RewardClaimed(_depositId, _reward);
-
-    // Update the earning power. We don't have to do this but if we're working on the deposit, why
-    // not? One awkward thing is that, as written, the beneficiary can claim the rewards, and can
-    // be different from the owner. Presumably they must have some kind of trust relationship, but
-    // it feels a little odd some entity other than the owner could cause the earning power to
-    // drop.
-    deposit.earningPower = earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
-
-    SafeERC20.safeTransfer(REWARD_TOKEN, deposit.beneficiary, _reward);
-    return _reward;
-  }
-
   /// @notice Checkpoints the global reward per token accumulator.
   function _checkpointGlobalReward() internal {
     rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
@@ -952,20 +768,6 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
     // for generalization purposes anyway.
     deposit.scaledUnclaimedRewardCheckpoint = uint96(_scaledUnclaimedReward(_depositId));
     deposit.rewardPerTokenCheckpoint = rewardPerTokenAccumulatedCheckpoint;
-  }
-
-  /// @notice Internal helper method which sets the admin address.
-  /// @param _newAdmin Address of the new admin.
-  function _setAdmin(address _newAdmin) internal {
-    _revertIfAddressZero(_newAdmin);
-    emit AdminSet(admin, _newAdmin);
-    admin = _newAdmin;
-  }
-
-  /// @notice Internal helper method which reverts UniStaker__Unauthorized if the message sender is
-  /// not the admin.
-  function _revertIfNotAdmin() internal view {
-    if (msg.sender != admin) revert UniStaker__Unauthorized("not admin", msg.sender);
   }
 
   /// @notice Internal helper method which reverts UniStaker__Unauthorized if the alleged owner is
