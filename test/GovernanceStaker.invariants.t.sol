@@ -48,10 +48,6 @@ contract GovernanceStakerInvariants is Test {
     assertEq(govStaker.totalStaked(), handler.reduceDepositors(0, this.accumulateDeposits));
   }
 
-  function invariant_Sum_of_beneficiary_earning_power_equals_total_stake() public {
-    assertEq(govStaker.totalStaked(), handler.reduceBeneficiaries(0, this.accumulateEarningPower));
-  }
-
   function invariant_Sum_of_surrogate_balance_equals_total_stake() public {
     assertEq(govStaker.totalStaked(), handler.reduceDelegates(0, this.accumulateSurrogateBalance));
   }
@@ -67,13 +63,6 @@ contract GovernanceStakerInvariants is Test {
     assertEq(
       handler.ghost_rewardsNotified(),
       rewardToken.balanceOf(address(govStaker)) + handler.ghost_rewardsClaimed()
-    );
-  }
-
-  function invariant_Sum_of_unclaimed_reward_should_be_less_than_or_equal_to_total_rewards() public {
-    assertLe(
-      handler.reduceBeneficiaries(0, this.accumulateUnclaimedReward),
-      rewardToken.balanceOf(address(govStaker))
     );
   }
 
@@ -94,22 +83,6 @@ contract GovernanceStakerInvariants is Test {
 
   function accumulateDeposits(uint256 balance, address depositor) external view returns (uint256) {
     return balance + govStaker.depositorTotalStaked(depositor);
-  }
-
-  function accumulateEarningPower(uint256 earningPower, address caller)
-    external
-    view
-    returns (uint256)
-  {
-    return earningPower + govStaker.earningPower(caller);
-  }
-
-  function accumulateUnclaimedReward(uint256 unclaimedReward, address beneficiary)
-    external
-    view
-    returns (uint256)
-  {
-    return unclaimedReward + govStaker.unclaimedReward(beneficiary);
   }
 
   function accumulateSurrogateBalance(uint256 balance, address delegate)
