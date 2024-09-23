@@ -64,21 +64,21 @@ contract GovernanceStakerTest is Test, PercentAssertions {
     vm.warp(block.timestamp + _seconds);
   }
 
-  function _boundMintAmount(uint96 _amount) internal pure returns (uint96) {
-    return uint96(bound(_amount, 0, 100_000_000e18));
+  function _boundMintAmount(uint256 _amount) internal pure returns (uint256) {
+    return uint256(bound(_amount, 0, 100_000_000e18));
   }
 
-  function _mintGovToken(address _to, uint96 _amount) internal {
+  function _mintGovToken(address _to, uint256 _amount) internal {
     vm.assume(_to != address(0));
     govToken.mint(_to, _amount);
   }
 
-  function _boundToRealisticStake(uint96 _stakeAmount)
+  function _boundToRealisticStake(uint256 _stakeAmount)
     public
     pure
-    returns (uint96 _boundedStakeAmount)
+    returns (uint256 _boundedStakeAmount)
   {
-    _boundedStakeAmount = uint96(bound(_stakeAmount, 0.1e18, 25_000_000e18));
+    _boundedStakeAmount = uint256(bound(_stakeAmount, 0.1e18, 25_000_000e18));
   }
 
   // Remember each depositor and surrogate (as they're deployed) and ensure that there is
@@ -95,7 +95,7 @@ contract GovernanceStakerTest is Test, PercentAssertions {
     );
   }
 
-  function _stake(address _depositor, uint96 _amount, address _delegatee)
+  function _stake(address _depositor, uint256 _amount, address _delegatee)
     internal
     returns (GovernanceStaker.DepositIdentifier _depositId)
   {
@@ -110,7 +110,7 @@ contract GovernanceStakerTest is Test, PercentAssertions {
     _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
   }
 
-  function _stake(address _depositor, uint96 _amount, address _delegatee, address _beneficiary)
+  function _stake(address _depositor, uint256 _amount, address _delegatee, address _beneficiary)
     internal
     returns (GovernanceStaker.DepositIdentifier _depositId)
   {
@@ -130,7 +130,7 @@ contract GovernanceStakerTest is Test, PercentAssertions {
     view
     returns (GovernanceStaker.Deposit memory)
   {
-    (uint96 _balance, address _owner, address _delegatee, address _beneficiary) =
+    (uint256 _balance, address _owner, address _delegatee, address _beneficiary) =
       govStaker.deposits(_depositId);
     return GovernanceStaker.Deposit({
       balance: _balance,
@@ -140,9 +140,9 @@ contract GovernanceStakerTest is Test, PercentAssertions {
     });
   }
 
-  function _boundMintAndStake(address _depositor, uint96 _amount, address _delegatee)
+  function _boundMintAndStake(address _depositor, uint256 _amount, address _delegatee)
     internal
-    returns (uint96 _boundedAmount, GovernanceStaker.DepositIdentifier _depositId)
+    returns (uint256 _boundedAmount, GovernanceStaker.DepositIdentifier _depositId)
   {
     _boundedAmount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _boundedAmount);
@@ -151,10 +151,10 @@ contract GovernanceStakerTest is Test, PercentAssertions {
 
   function _boundMintAndStake(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary
-  ) internal returns (uint96 _boundedAmount, GovernanceStaker.DepositIdentifier _depositId) {
+  ) internal returns (uint256 _boundedAmount, GovernanceStaker.DepositIdentifier _depositId) {
     _boundedAmount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _boundedAmount);
     _depositId = _stake(_depositor, _boundedAmount, _delegatee, _beneficiary);
@@ -216,10 +216,10 @@ contract Constructor is GovernanceStakerTest {
 contract Stake is GovernanceStakerTest {
   function testFuzz_DeploysAndTransfersTokensToANewSurrogateWhenAnAccountStakes(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee
   ) public {
-    _amount = uint96(bound(_amount, 1, type(uint96).max));
+    _amount = uint256(bound(_amount, 1, type(uint256).max));
     _mintGovToken(_depositor, _amount);
     _stake(_depositor, _amount, _delegatee);
 
@@ -232,10 +232,10 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_EmitsAStakingDepositEventWhenStakingWithoutASpecifiedBeneficiary(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee
   ) public {
-    _amount = uint96(bound(_amount, 1, type(uint96).max));
+    _amount = uint256(bound(_amount, 1, type(uint256).max));
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -259,10 +259,10 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_EmitsABeneficiaryAlteredEventWhenStakingWithoutASpecifiedBeneficiary(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee
   ) public {
-    _amount = uint96(bound(_amount, 1, type(uint96).max));
+    _amount = uint256(bound(_amount, 1, type(uint256).max));
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -285,10 +285,10 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_EmitsADelegateeAlteredEventWhenStakingWithoutASpecifiedBeneficiary(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee
   ) public {
-    _amount = uint96(bound(_amount, 1, type(uint96).max));
+    _amount = uint256(bound(_amount, 1, type(uint256).max));
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -311,11 +311,11 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_EmitsAStakingDepositEventWhenStakingWithASpecifiedBeneficiary(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary
   ) public {
-    _amount = uint96(bound(_amount, 1, type(uint96).max));
+    _amount = uint256(bound(_amount, 1, type(uint256).max));
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -339,11 +339,11 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_EmitsABeneficiaryAlteredEventWhenStakingWithASpecifiedBeneficiary(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary
   ) public {
-    _amount = uint96(bound(_amount, 1, type(uint96).max));
+    _amount = uint256(bound(_amount, 1, type(uint256).max));
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -366,11 +366,11 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_EmitsADelegateeAlteredEventWhenStakingWithASpecifiedBeneficiary(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary
   ) public {
-    _amount = uint96(bound(_amount, 1, type(uint96).max));
+    _amount = uint256(bound(_amount, 1, type(uint256).max));
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -393,9 +393,9 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_TransfersToAnExistingSurrogateWhenStakedToTheSameDelegatee(
     address _depositor1,
-    uint96 _amount1,
+    uint256 _amount1,
     address _depositor2,
-    uint96 _amount2,
+    uint256 _amount2,
     address _delegatee
   ) public {
     _amount1 = _boundMintAmount(_amount1);
@@ -421,9 +421,9 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_DeploysAndTransfersTokenToTwoSurrogatesWhenAccountsStakesToDifferentDelegatees(
     address _depositor1,
-    uint96 _amount1,
+    uint256 _amount1,
     address _depositor2,
-    uint96 _amount2,
+    uint256 _amount2,
     address _delegatee1,
     address _delegatee2
   ) public {
@@ -455,7 +455,7 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_UpdatesTheTotalStakedWhenAnAccountStakes(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee
   ) public {
     _amount = _boundMintAmount(_amount);
@@ -468,9 +468,9 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_UpdatesTheTotalStakedWhenTwoAccountsStake(
     address _depositor1,
-    uint96 _amount1,
+    uint256 _amount1,
     address _depositor2,
-    uint96 _amount2,
+    uint256 _amount2,
     address _delegatee1,
     address _delegatee2
   ) public {
@@ -488,8 +488,8 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_UpdatesAnAccountsTotalStakedAccounting(
     address _depositor,
-    uint96 _amount1,
-    uint96 _amount2,
+    uint256 _amount1,
+    uint256 _amount2,
     address _delegatee1,
     address _delegatee2
   ) public {
@@ -508,9 +508,9 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_UpdatesDifferentAccountsTotalStakedAccountingIndependently(
     address _depositor1,
-    uint96 _amount1,
+    uint256 _amount1,
     address _depositor2,
-    uint96 _amount2,
+    uint256 _amount2,
     address _delegatee1,
     address _delegatee2
   ) public {
@@ -529,7 +529,7 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_TracksTheBalanceForASpecificDeposit(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee
   ) public {
     _amount = _boundMintAmount(_amount);
@@ -544,8 +544,8 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_TracksTheBalanceForDifferentDepositsFromTheSameAccountIndependently(
     address _depositor,
-    uint96 _amount1,
-    uint96 _amount2,
+    uint256 _amount1,
+    uint256 _amount2,
     address _delegatee1,
     address _delegatee2
   ) public {
@@ -571,8 +571,8 @@ contract Stake is GovernanceStakerTest {
   function testFuzz_TracksTheBalanceForDepositsFromDifferentAccountsIndependently(
     address _depositor1,
     address _depositor2,
-    uint96 _amount1,
-    uint96 _amount2,
+    uint256 _amount1,
+    uint256 _amount2,
     address _delegatee1,
     address _delegatee2
   ) public {
@@ -598,7 +598,7 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_AssignsEarningPowerToDepositorIfNoBeneficiaryIsSpecified(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee
   ) public {
     _amount = _boundMintAmount(_amount);
@@ -613,7 +613,7 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_AssignsEarningPowerToTheBeneficiaryProvided(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary
   ) public {
@@ -630,8 +630,8 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_AssignsEarningPowerToDifferentBeneficiariesForDifferentDepositsFromTheSameDepositor(
     address _depositor,
-    uint96 _amount1,
-    uint96 _amount2,
+    uint256 _amount1,
+    uint256 _amount2,
     address _delegatee,
     address _beneficiary1,
     address _beneficiary2
@@ -659,8 +659,8 @@ contract Stake is GovernanceStakerTest {
   function testFuzz_AssignsEarningPowerToTheSameBeneficiarySpecifiedByTwoDifferentDepositors(
     address _depositor1,
     address _depositor2,
-    uint96 _amount1,
-    uint96 _amount2,
+    uint256 _amount1,
+    uint256 _amount2,
     address _delegatee,
     address _beneficiary
   ) public {
@@ -686,7 +686,7 @@ contract Stake is GovernanceStakerTest {
 
   function test_NeverReusesADepositIdentifier() public {
     address _depositor = address(0xdeadbeef);
-    uint96 _amount = 116;
+    uint256 _amount = 116;
     address _delegatee = address(0xaceface);
 
     GovernanceStaker.DepositIdentifier _depositId;
@@ -709,7 +709,7 @@ contract Stake is GovernanceStakerTest {
     // that the DepositIdentifier is never reused.
     for (uint256 _i; _i < 100; _i++) {
       // Perform the stake and save the deposit identifier
-      _amount = uint96(_bound(_amount, 0, 100_000_000_000e18));
+      _amount = uint256(_bound(_amount, 0, 100_000_000_000e18));
       _mintGovToken(_depositor, _amount);
       _depositId = _stake(_depositor, _amount, _delegatee);
 
@@ -720,12 +720,12 @@ contract Stake is GovernanceStakerTest {
 
       // Assign new inputs for the next deposit by hashing the last inputs
       _depositor = address(uint160(uint256(keccak256(abi.encode(_depositor)))));
-      _amount = uint96(uint256(keccak256(abi.encode(_amount))));
+      _amount = uint256(uint256(keccak256(abi.encode(_amount))));
       _delegatee = address(uint160(uint256(keccak256(abi.encode(_delegatee)))));
     }
   }
 
-  function testFuzz_RevertIf_DelegateeIsTheZeroAddress(address _depositor, uint96 _amount) public {
+  function testFuzz_RevertIf_DelegateeIsTheZeroAddress(address _depositor, uint256 _amount) public {
     _amount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _amount);
     govToken.approve(address(govStaker), _amount);
@@ -737,7 +737,7 @@ contract Stake is GovernanceStakerTest {
 
   function testFuzz_RevertIf_BeneficiaryIsTheZeroAddress(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee
   ) public {
     vm.assume(_delegatee != address(0));
@@ -757,7 +757,7 @@ contract PermitAndStake is GovernanceStakerTest {
 
   function testFuzz_PerformsTheApprovalByCallingPermitThenPerformsStake(
     uint256 _depositorPrivateKey,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _deadline,
@@ -802,7 +802,7 @@ contract PermitAndStake is GovernanceStakerTest {
 
   function testFuzz_SuccessfullyStakeWhenApprovalExistsAndPermitSignatureIsInvalid(
     uint256 _depositorPrivateKey,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     uint256 _approvalAmount,
     address _delegatee,
     address _beneficiary
@@ -840,7 +840,7 @@ contract PermitAndStake is GovernanceStakerTest {
   function testFuzz_RevertIf_ThePermitSignatureIsInvalidAndTheApprovalIsInsufficient(
     address _notDepositor,
     uint256 _depositorPrivateKey,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     uint256 _approvalAmount,
     address _delegatee,
     address _beneficiary,
@@ -892,7 +892,7 @@ contract StakeOnBehalf is GovernanceStakerTest {
   function testFuzz_StakesOnBehalfOfAnotherAccount(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _currentNonce,
@@ -944,7 +944,7 @@ contract StakeOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_WrongNonceIsUsed(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _currentNonce,
@@ -992,7 +992,7 @@ contract StakeOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_DeadlineExpired(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _currentNonce,
@@ -1038,7 +1038,7 @@ contract StakeOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_InvalidSignatureIsPassed(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _currentNonce,
@@ -1076,7 +1076,7 @@ contract StakeOnBehalf is GovernanceStakerTest {
     // Here we use `_randomSeed` as an arbitrary source of randomness to replace a legit parameter
     // with an attack-like one.
     if (_randomSeed % 6 == 0) {
-      _depositAmount = uint96(uint256(keccak256(abi.encode(_depositAmount))));
+      _depositAmount = uint256(uint256(keccak256(abi.encode(_depositAmount))));
     } else if (_randomSeed % 6 == 1) {
       _delegatee = address(uint160(uint256(keccak256(abi.encode(_delegatee)))));
     } else if (_randomSeed % 6 == 2) {
@@ -1100,8 +1100,8 @@ contract StakeOnBehalf is GovernanceStakerTest {
 contract StakeMore is GovernanceStakerTest {
   function testFuzz_TransfersStakeToTheExistingSurrogate(
     address _depositor,
-    uint96 _depositAmount,
-    uint96 _addAmount,
+    uint256 _depositAmount,
+    uint256 _addAmount,
     address _delegatee,
     address _beneficiary
   ) public {
@@ -1124,8 +1124,8 @@ contract StakeMore is GovernanceStakerTest {
 
   function testFuzz_AddsToExistingBeneficiaryEarningPower(
     address _depositor,
-    uint96 _depositAmount,
-    uint96 _addAmount,
+    uint256 _depositAmount,
+    uint256 _addAmount,
     address _delegatee,
     address _beneficiary
   ) public {
@@ -1146,8 +1146,8 @@ contract StakeMore is GovernanceStakerTest {
 
   function testFuzz_AddsToTheTotalStaked(
     address _depositor,
-    uint96 _depositAmount,
-    uint96 _addAmount,
+    uint256 _depositAmount,
+    uint256 _addAmount,
     address _delegatee,
     address _beneficiary
   ) public {
@@ -1168,8 +1168,8 @@ contract StakeMore is GovernanceStakerTest {
 
   function testFuzz_AddsToDepositorsTotalStaked(
     address _depositor,
-    uint96 _depositAmount,
-    uint96 _addAmount,
+    uint256 _depositAmount,
+    uint256 _addAmount,
     address _delegatee,
     address _beneficiary
   ) public {
@@ -1190,8 +1190,8 @@ contract StakeMore is GovernanceStakerTest {
 
   function testFuzz_AddsToTheDepositBalance(
     address _depositor,
-    uint96 _depositAmount,
-    uint96 _addAmount,
+    uint256 _depositAmount,
+    uint256 _addAmount,
     address _delegatee,
     address _beneficiary
   ) public {
@@ -1214,12 +1214,12 @@ contract StakeMore is GovernanceStakerTest {
 
   function testFuzz_EmitsAnEventWhenStakingMore(
     address _depositor,
-    uint96 _depositAmount,
-    uint96 _addAmount,
+    uint256 _depositAmount,
+    uint256 _addAmount,
     address _delegatee,
     address _beneficiary
   ) public {
-    uint96 _totalAdditionalStake;
+    uint256 _totalAdditionalStake;
     GovernanceStaker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _beneficiary);
@@ -1247,8 +1247,8 @@ contract StakeMore is GovernanceStakerTest {
   function testFuzz_RevertIf_TheCallerIsNotTheDepositor(
     address _depositor,
     address _notDepositor,
-    uint96 _depositAmount,
-    uint96 _addAmount,
+    uint256 _depositAmount,
+    uint256 _addAmount,
     address _delegatee,
     address _beneficiary
   ) public {
@@ -1278,7 +1278,7 @@ contract StakeMore is GovernanceStakerTest {
   function testFuzz_RevertIf_TheDepositIdentifierIsInvalid(
     address _depositor,
     GovernanceStaker.DepositIdentifier _depositId,
-    uint96 _addAmount
+    uint256 _addAmount
   ) public {
     vm.assume(_depositor != address(0));
     _addAmount = _boundToRealisticStake(_addAmount);
@@ -1301,8 +1301,8 @@ contract PermitAndStakeMore is GovernanceStakerTest {
 
   function testFuzz_PerformsTheApprovalByCallingPermitThenPerformsStakeMore(
     uint256 _depositorPrivateKey,
-    uint96 _initialDepositAmount,
-    uint96 _stakeMoreAmount,
+    uint256 _initialDepositAmount,
+    uint256 _stakeMoreAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _currentNonce,
@@ -1354,8 +1354,8 @@ contract PermitAndStakeMore is GovernanceStakerTest {
   }
 
   function testFuzz_SuccessfullyStakeMoreWhenApprovalExistsAndPermitSignatureIsInvalid(
-    uint96 _initialDepositAmount,
-    uint96 _stakeMoreAmount,
+    uint256 _initialDepositAmount,
+    uint256 _stakeMoreAmount,
     uint256 _approvalAmount,
     address _delegatee,
     address _beneficiary
@@ -1365,7 +1365,8 @@ contract PermitAndStakeMore is GovernanceStakerTest {
     GovernanceStaker.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _beneficiary);
-    _stakeMoreAmount = uint96(bound(_stakeMoreAmount, 0, type(uint96).max - _initialDepositAmount));
+    _stakeMoreAmount =
+      uint256(bound(_stakeMoreAmount, 0, type(uint256).max - _initialDepositAmount));
     _approvalAmount = bound(_approvalAmount, _stakeMoreAmount, type(uint256).max);
     _mintGovToken(_depositor, _stakeMoreAmount);
     vm.prank(_depositor);
@@ -1395,8 +1396,8 @@ contract PermitAndStakeMore is GovernanceStakerTest {
   function testFuzz_RevertIf_CallerIsNotTheDepositOwner(
     address _depositor,
     uint256 _notDepositorPrivateKey,
-    uint96 _initialDepositAmount,
-    uint96 _stakeMoreAmount,
+    uint256 _initialDepositAmount,
+    uint256 _stakeMoreAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _deadline
@@ -1444,7 +1445,7 @@ contract PermitAndStakeMore is GovernanceStakerTest {
   }
 
   function testFuzz_RevertIf_ThePermitSignatureIsInvalidAndTheApprovalIsInsufficient(
-    uint96 _initialDepositAmount,
+    uint256 _initialDepositAmount,
     address _delegatee,
     address _beneficiary
   ) public {
@@ -1453,7 +1454,7 @@ contract PermitAndStakeMore is GovernanceStakerTest {
     // We can't fuzz the these values because we need to pre-compute the invalid
     // recovered signer so we can expect it in the revert error message thrown
     (address _depositor, uint256 _depositorPrivateKey) = makeAddrAndKey("depositor");
-    uint96 _stakeMoreAmount = 1578e18;
+    uint256 _stakeMoreAmount = 1578e18;
     uint256 _deadline = 1e18 days;
     uint256 _wrongNonce = 1;
     uint256 _approvalAmount = _stakeMoreAmount - 1;
@@ -1500,8 +1501,8 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
   function testFuzz_StakeMoreOnBehalfOfDepositor(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _initialDepositAmount,
-    uint96 _stakeMoreAmount,
+    uint256 _initialDepositAmount,
+    uint256 _stakeMoreAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _currentNonce,
@@ -1557,8 +1558,8 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_WrongNonceIsUsed(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _initialDepositAmount,
-    uint96 _stakeMoreAmount,
+    uint256 _initialDepositAmount,
+    uint256 _stakeMoreAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _currentNonce,
@@ -1610,8 +1611,8 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_DeadlineExpired(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _initialDepositAmount,
-    uint96 _stakeMoreAmount,
+    uint256 _initialDepositAmount,
+    uint256 _stakeMoreAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _currentNonce,
@@ -1662,8 +1663,8 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
     address _sender,
     address _depositor,
     address _notDepositor,
-    uint96 _initialDepositAmount,
-    uint96 _stakeMoreAmount,
+    uint256 _initialDepositAmount,
+    uint256 _stakeMoreAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _currentNonce,
@@ -1698,8 +1699,8 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_InvalidSignatureIsPassed(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _initialDepositAmount,
-    uint96 _stakeMoreAmount,
+    uint256 _initialDepositAmount,
+    uint256 _stakeMoreAmount,
     address _delegatee,
     address _beneficiary,
     uint256 _currentNonce,
@@ -1744,7 +1745,7 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
     // Here we use `_randomSeed` as an arbitrary source of randomness to replace a legit parameter
     // with an attack-like one.
     if (_randomSeed % 4 == 0) {
-      _stakeMoreAmount = uint96(uint256(keccak256(abi.encode(_stakeMoreAmount))));
+      _stakeMoreAmount = uint256(uint256(keccak256(abi.encode(_stakeMoreAmount))));
     } else if (_randomSeed % 4 == 1) {
       _messageHash = _modifyMessage(_messageHash, uint256(keccak256(abi.encode(_randomSeed))));
     } else if (_randomSeed % 4 == 2) {
@@ -1762,7 +1763,7 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
 contract AlterDelegatee is GovernanceStakerTest {
   function testFuzz_AllowsStakerToUpdateTheirDelegatee(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _firstDelegatee,
     address _beneficiary,
     address _newDelegatee
@@ -1787,7 +1788,7 @@ contract AlterDelegatee is GovernanceStakerTest {
 
   function testFuzz_AllowsStakerToReiterateTheirDelegatee(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary
   ) public {
@@ -1811,7 +1812,7 @@ contract AlterDelegatee is GovernanceStakerTest {
 
   function testFuzz_EmitsAnEventWhenADelegateeIsChanged(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _firstDelegatee,
     address _beneficiary,
     address _newDelegatee
@@ -1832,7 +1833,7 @@ contract AlterDelegatee is GovernanceStakerTest {
   function testFuzz_RevertIf_TheCallerIsNotTheDepositor(
     address _depositor,
     address _notDepositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _firstDelegatee,
     address _beneficiary,
     address _newDelegatee
@@ -1877,7 +1878,7 @@ contract AlterDelegatee is GovernanceStakerTest {
 
   function testFuzz_RevertIf_DelegateeIsTheZeroAddress(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
@@ -1895,7 +1896,7 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
   function testFuzz_AlterDelegateeOnBehalfOfDepositor(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
     address _newDelegatee,
@@ -1944,7 +1945,7 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_WrongNonceIsUsed(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
     address _newDelegatee,
@@ -1987,7 +1988,7 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_DeadlineExpired(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
     address _newDelegatee,
@@ -2034,7 +2035,7 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
     address _sender,
     address _depositor,
     address _notDepositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _newDelegatee,
     address _beneficiary,
@@ -2068,7 +2069,7 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_InvalidSignatureIsPassed(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
     address _newDelegatee,
@@ -2124,7 +2125,7 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
 contract AlterBeneficiary is GovernanceStakerTest {
   function testFuzz_AllowsStakerToUpdateTheirBeneficiary(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _firstBeneficiary,
     address _newBeneficiary
@@ -2147,7 +2148,7 @@ contract AlterBeneficiary is GovernanceStakerTest {
 
   function testFuzz_AllowsStakerToReiterateTheirBeneficiary(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary
   ) public {
@@ -2168,7 +2169,7 @@ contract AlterBeneficiary is GovernanceStakerTest {
 
   function testFuzz_EmitsAnEventWhenBeneficiaryAltered(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _firstBeneficiary,
     address _newBeneficiary
@@ -2189,7 +2190,7 @@ contract AlterBeneficiary is GovernanceStakerTest {
   function testFuzz_RevertIf_TheCallerIsNotTheDepositor(
     address _depositor,
     address _notDepositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _firstBeneficiary,
     address _newBeneficiary
@@ -2235,7 +2236,7 @@ contract AlterBeneficiary is GovernanceStakerTest {
 
   function testFuzz_RevertIf_BeneficiaryIsTheZeroAddress(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
@@ -2253,7 +2254,7 @@ contract AlterBeneficiaryOnBehalf is GovernanceStakerTest {
   function testFuzz_AlterBeneficiaryOnBehalfOfDepositor(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
     address _newBeneficiary,
@@ -2304,7 +2305,7 @@ contract AlterBeneficiaryOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_WrongNonceIsUsed(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
     address _newBeneficiary,
@@ -2354,7 +2355,7 @@ contract AlterBeneficiaryOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_DeadlineExpired(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
     address _newBeneficiary,
@@ -2403,7 +2404,7 @@ contract AlterBeneficiaryOnBehalf is GovernanceStakerTest {
     address _sender,
     address _depositor,
     address _notDepositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
     address _newBeneficiary,
@@ -2437,7 +2438,7 @@ contract AlterBeneficiaryOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_InvalidSignatureIsPassed(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
     address _newBeneficiary,
@@ -2495,13 +2496,13 @@ contract AlterBeneficiaryOnBehalf is GovernanceStakerTest {
 contract Withdraw is GovernanceStakerTest {
   function testFuzz_AllowsDepositorToWithdrawStake(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
-    uint96 _withdrawalAmount
+    uint256 _withdrawalAmount
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
-    _withdrawalAmount = uint96(bound(_withdrawalAmount, 0, _depositAmount));
+    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount));
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId, _withdrawalAmount);
@@ -2516,13 +2517,13 @@ contract Withdraw is GovernanceStakerTest {
 
   function testFuzz_UpdatesTheTotalStakedWhenAnAccountWithdraws(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
-    uint96 _withdrawalAmount
+    uint256 _withdrawalAmount
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
-    _withdrawalAmount = uint96(bound(_withdrawalAmount, 0, _depositAmount));
+    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount));
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId, _withdrawalAmount);
@@ -2532,13 +2533,13 @@ contract Withdraw is GovernanceStakerTest {
 
   function testFuzz_UpdatesTheTotalStakedWhenTwoAccountsWithdraw(
     address _depositor1,
-    uint96 _depositAmount1,
+    uint256 _depositAmount1,
     address _delegatee1,
     address _depositor2,
-    uint96 _depositAmount2,
+    uint256 _depositAmount2,
     address _delegatee2,
-    uint96 _withdrawalAmount1,
-    uint96 _withdrawalAmount2
+    uint256 _withdrawalAmount1,
+    uint256 _withdrawalAmount2
   ) public {
     // Make two separate deposits
     GovernanceStaker.DepositIdentifier _depositId1;
@@ -2547,8 +2548,8 @@ contract Withdraw is GovernanceStakerTest {
     (_depositAmount2, _depositId2) = _boundMintAndStake(_depositor2, _depositAmount2, _delegatee2);
 
     // Calculate withdrawal amounts
-    _withdrawalAmount1 = uint96(bound(_withdrawalAmount1, 0, _depositAmount1));
-    _withdrawalAmount2 = uint96(bound(_withdrawalAmount2, 0, _depositAmount2));
+    _withdrawalAmount1 = uint256(bound(_withdrawalAmount1, 0, _depositAmount1));
+    _withdrawalAmount2 = uint256(bound(_withdrawalAmount2, 0, _depositAmount2));
 
     // Execute both withdrawals
     vm.prank(_depositor1);
@@ -2556,18 +2557,18 @@ contract Withdraw is GovernanceStakerTest {
     vm.prank(_depositor2);
     govStaker.withdraw(_depositId2, _withdrawalAmount2);
 
-    uint96 _remainingDeposits =
+    uint256 _remainingDeposits =
       _depositAmount1 + _depositAmount2 - _withdrawalAmount1 - _withdrawalAmount2;
     assertEq(govStaker.totalStaked(), _remainingDeposits);
   }
 
   function testFuzz_UpdatesAnAccountsTotalStakedWhenItWithdrawals(
     address _depositor,
-    uint96 _depositAmount1,
-    uint96 _depositAmount2,
+    uint256 _depositAmount1,
+    uint256 _depositAmount2,
     address _delegatee1,
     address _delegatee2,
-    uint96 _withdrawalAmount
+    uint256 _withdrawalAmount
   ) public {
     // Make two separate deposits
     GovernanceStaker.DepositIdentifier _depositId1;
@@ -2576,7 +2577,7 @@ contract Withdraw is GovernanceStakerTest {
     (_depositAmount2, _depositId2) = _boundMintAndStake(_depositor, _depositAmount2, _delegatee2);
 
     // Withdraw part of the first deposit
-    _withdrawalAmount = uint96(bound(_withdrawalAmount, 0, _depositAmount1));
+    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount1));
     vm.prank(_depositor);
     govStaker.withdraw(_depositId1, _withdrawalAmount);
 
@@ -2590,13 +2591,13 @@ contract Withdraw is GovernanceStakerTest {
 
   function testFuzz_RemovesEarningPowerFromADepositorWhoHadSelfAssignedIt(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
-    uint96 _withdrawalAmount
+    uint256 _withdrawalAmount
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
-    _withdrawalAmount = uint96(bound(_withdrawalAmount, 0, _depositAmount));
+    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount));
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId, _withdrawalAmount);
@@ -2606,15 +2607,15 @@ contract Withdraw is GovernanceStakerTest {
 
   function testFuzz_RemovesEarningPowerFromABeneficiary(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary,
-    uint96 _withdrawalAmount
+    uint256 _withdrawalAmount
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _beneficiary);
-    _withdrawalAmount = uint96(bound(_withdrawalAmount, 0, _depositAmount));
+    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount));
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId, _withdrawalAmount);
@@ -2625,22 +2626,22 @@ contract Withdraw is GovernanceStakerTest {
   function testFuzz_RemovesEarningPowerFromABeneficiaryAssignedByTwoDepositors(
     address _depositor1,
     address _depositor2,
-    uint96 _depositAmount1,
-    uint96 _depositAmount2,
+    uint256 _depositAmount1,
+    uint256 _depositAmount2,
     address _delegatee,
     address _beneficiary,
-    uint96 _withdrawalAmount1,
-    uint96 _withdrawalAmount2
+    uint256 _withdrawalAmount1,
+    uint256 _withdrawalAmount2
   ) public {
     GovernanceStaker.DepositIdentifier _depositId1;
     (_depositAmount1, _depositId1) =
       _boundMintAndStake(_depositor1, _depositAmount1, _delegatee, _beneficiary);
-    _withdrawalAmount1 = uint96(bound(_withdrawalAmount1, 0, _depositAmount1));
+    _withdrawalAmount1 = uint256(bound(_withdrawalAmount1, 0, _depositAmount1));
 
     GovernanceStaker.DepositIdentifier _depositId2;
     (_depositAmount2, _depositId2) =
       _boundMintAndStake(_depositor2, _depositAmount2, _delegatee, _beneficiary);
-    _withdrawalAmount2 = uint96(bound(_withdrawalAmount2, 0, _depositAmount2));
+    _withdrawalAmount2 = uint256(bound(_withdrawalAmount2, 0, _depositAmount2));
 
     vm.prank(_depositor1);
     govStaker.withdraw(_depositId1, _withdrawalAmount1);
@@ -2660,25 +2661,25 @@ contract Withdraw is GovernanceStakerTest {
 
   function testFuzz_RemovesEarningPowerFromDifferentBeneficiariesOfTheSameDepositor(
     address _depositor,
-    uint96 _depositAmount1,
-    uint96 _depositAmount2,
+    uint256 _depositAmount1,
+    uint256 _depositAmount2,
     address _delegatee,
     address _beneficiary1,
     address _beneficiary2,
-    uint96 _withdrawalAmount1,
-    uint96 _withdrawalAmount2
+    uint256 _withdrawalAmount1,
+    uint256 _withdrawalAmount2
   ) public {
     vm.assume(_beneficiary1 != _beneficiary2);
 
     GovernanceStaker.DepositIdentifier _depositId1;
     (_depositAmount1, _depositId1) =
       _boundMintAndStake(_depositor, _depositAmount1, _delegatee, _beneficiary1);
-    _withdrawalAmount1 = uint96(bound(_withdrawalAmount1, 0, _depositAmount1));
+    _withdrawalAmount1 = uint256(bound(_withdrawalAmount1, 0, _depositAmount1));
 
     GovernanceStaker.DepositIdentifier _depositId2;
     (_depositAmount2, _depositId2) =
       _boundMintAndStake(_depositor, _depositAmount2, _delegatee, _beneficiary2);
-    _withdrawalAmount2 = uint96(bound(_withdrawalAmount2, 0, _depositAmount2));
+    _withdrawalAmount2 = uint256(bound(_withdrawalAmount2, 0, _depositAmount2));
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId1, _withdrawalAmount1);
@@ -2696,25 +2697,25 @@ contract Withdraw is GovernanceStakerTest {
   function testFuzz_RemovesEarningPowerFromDifferentBeneficiariesAndDifferentDepositors(
     address _depositor1,
     address _depositor2,
-    uint96 _depositAmount1,
-    uint96 _depositAmount2,
+    uint256 _depositAmount1,
+    uint256 _depositAmount2,
     address _delegatee,
     address _beneficiary1,
     address _beneficiary2,
-    uint96 _withdrawalAmount1,
-    uint96 _withdrawalAmount2
+    uint256 _withdrawalAmount1,
+    uint256 _withdrawalAmount2
   ) public {
     vm.assume(_beneficiary1 != _beneficiary2);
 
     GovernanceStaker.DepositIdentifier _depositId1;
     (_depositAmount1, _depositId1) =
       _boundMintAndStake(_depositor1, _depositAmount1, _delegatee, _beneficiary1);
-    _withdrawalAmount1 = uint96(bound(_withdrawalAmount1, 0, _depositAmount1));
+    _withdrawalAmount1 = uint256(bound(_withdrawalAmount1, 0, _depositAmount1));
 
     GovernanceStaker.DepositIdentifier _depositId2;
     (_depositAmount2, _depositId2) =
       _boundMintAndStake(_depositor2, _depositAmount2, _delegatee, _beneficiary2);
-    _withdrawalAmount2 = uint96(bound(_withdrawalAmount2, 0, _depositAmount2));
+    _withdrawalAmount2 = uint256(bound(_withdrawalAmount2, 0, _depositAmount2));
 
     vm.prank(_depositor1);
     govStaker.withdraw(_depositId1, _withdrawalAmount1);
@@ -2731,13 +2732,13 @@ contract Withdraw is GovernanceStakerTest {
 
   function testFuzz_EmitsAnEventWhenThereIsAWithdrawal(
     address _depositor,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
-    uint96 _withdrawalAmount
+    uint256 _withdrawalAmount
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
-    _withdrawalAmount = uint96(bound(_withdrawalAmount, 0, _depositAmount));
+    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount));
 
     vm.expectEmit();
     emit GovernanceStaker.StakeWithdrawn(
@@ -2750,7 +2751,7 @@ contract Withdraw is GovernanceStakerTest {
 
   function testFuzz_RevertIf_TheWithdrawerIsNotTheDepositor(
     address _depositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _notDepositor
   ) public {
@@ -2771,13 +2772,13 @@ contract Withdraw is GovernanceStakerTest {
 
   function testFuzz_RevertIf_TheWithdrawalAmountIsGreaterThanTheBalance(
     address _depositor,
-    uint96 _amount,
-    uint96 _amountOver,
+    uint256 _amount,
+    uint256 _amountOver,
     address _delegatee
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee);
-    _amountOver = uint96(bound(_amountOver, 1, type(uint128).max));
+    _amountOver = uint256(bound(_amountOver, 1, type(uint128).max));
 
     vm.prank(_depositor);
     vm.expectRevert();
@@ -2791,10 +2792,10 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
   function testFuzz_WithdrawOnBehalfOfDepositor(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary,
-    uint96 _withdrawAmount,
+    uint256 _withdrawAmount,
     uint256 _currentNonce,
     uint256 _deadline
   ) public {
@@ -2807,7 +2808,7 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _beneficiary);
     GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
-    _withdrawAmount = uint96(bound(_withdrawAmount, 0, _depositAmount));
+    _withdrawAmount = uint256(bound(_withdrawAmount, 0, _depositAmount));
 
     stdstore.target(address(govStaker)).sig("nonces(address)").with_key(_depositor).checked_write(
       _currentNonce
@@ -2839,10 +2840,10 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_WrongNonceIsUsed(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary,
-    uint96 _withdrawAmount,
+    uint256 _withdrawAmount,
     uint256 _currentNonce,
     uint256 _suppliedNonce,
     uint256 _deadline
@@ -2885,10 +2886,10 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_DeadlineExpired(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary,
-    uint96 _withdrawAmount,
+    uint256 _withdrawAmount,
     uint256 _currentNonce,
     uint256 _deadline
   ) public {
@@ -2930,10 +2931,10 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
     address _sender,
     address _depositor,
     address _notDepositor,
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
-    uint96 _withdrawAmount,
+    uint256 _withdrawAmount,
     uint256 _deadline,
     bytes memory _signature
   ) public {
@@ -2962,10 +2963,10 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
   function testFuzz_RevertIf_InvalidSignatureIsPassed(
     uint256 _depositorPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _delegatee,
     address _beneficiary,
-    uint96 _withdrawAmount,
+    uint256 _withdrawAmount,
     uint256 _currentNonce,
     uint256 _randomSeed,
     uint256 _deadline
@@ -3001,7 +3002,7 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
     // Here we use `_randomSeed` as an arbitrary source of randomness to replace a legit parameter
     // with an attack-like one.
     if (_randomSeed % 4 == 0) {
-      _withdrawAmount = uint96(uint256(keccak256(abi.encode(_withdrawAmount))));
+      _withdrawAmount = uint256(uint256(keccak256(abi.encode(_withdrawAmount))));
     } else if (_randomSeed % 4 == 1) {
       _messageHash = _modifyMessage(_messageHash, uint256(keccak256(abi.encode(_randomSeed))));
     } else if (_randomSeed % 4 == 2) {
@@ -3191,10 +3192,10 @@ contract GovernanceStakerRewardsTest is GovernanceStakerTest {
     _boundedRewardAmount = bound(_rewardAmount, 200e6, 10_000_000e18);
   }
 
-  function _boundToRealisticStakeAndReward(uint96 _stakeAmount, uint256 _rewardAmount)
+  function _boundToRealisticStakeAndReward(uint256 _stakeAmount, uint256 _rewardAmount)
     public
     pure
-    returns (uint96 _boundedStakeAmount, uint256 _boundedRewardAmount)
+    returns (uint256 _boundedStakeAmount, uint256 _boundedRewardAmount)
   {
     _boundedStakeAmount = _boundToRealisticStake(_stakeAmount);
     _boundedRewardAmount = _boundToRealisticReward(_rewardAmount);
@@ -3258,7 +3259,7 @@ contract NotifyRewardAmount is GovernanceStakerRewardsTest {
   function testFuzz_UpdatesTheCheckpointedRewardPerTokenAccumulator(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -3474,10 +3475,10 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
   function testFuzz_ReturnsZeroIfThereHasNeverBeenAReward(
     address _depositor1,
     address _depositor2,
-    uint96 _stakeAmount1,
-    uint96 _stakeAmount2,
-    uint96 _withdrawAmount,
-    uint96 _stakeMoreAmount,
+    uint256 _stakeAmount1,
+    uint256 _stakeAmount2,
+    uint256 _withdrawAmount,
+    uint256 _stakeMoreAmount,
     uint256 _durationPercent1
   ) public {
     // We'll perform a few arbitrary actions, such as staking, withdrawing, and staking more.
@@ -3502,7 +3503,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
     _jumpAheadByPercentOfRewardDuration(_durationPercent2);
 
     // First depositor withdraws some stake
-    _withdrawAmount = uint96(bound(_withdrawAmount, 0, _stakeAmount1));
+    _withdrawAmount = uint256(bound(_withdrawAmount, 0, _stakeAmount1));
     vm.prank(_depositor1);
     govStaker.withdraw(_depositId1, _withdrawAmount);
     _jumpAheadByPercentOfRewardDuration(_durationPercent3);
@@ -3521,7 +3522,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
 
   function testFuzz_DoesNotChangeWhileNoTokensAreStaked(
     address _depositor,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent1,
     uint256 _durationPercent2,
@@ -3558,15 +3559,15 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
 
   function testFuzz_DoesNotChangeWhileNoRewardsAreBeingDistributed(
     address _depositor,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
-    uint96 _withdrawAmount,
+    uint256 _withdrawAmount,
     uint256 _durationPercent1,
     uint256 _durationPercent2,
     uint256 _durationPercent3
   ) public {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-    _withdrawAmount = uint96(_bound(_withdrawAmount, 0, _stakeAmount));
+    _withdrawAmount = uint256(_bound(_withdrawAmount, 0, _stakeAmount));
     _durationPercent1 = _bound(_durationPercent1, 0, 200);
     _durationPercent2 = _bound(_durationPercent2, 0, 200);
     _durationPercent3 = _bound(_durationPercent3, 0, 200);
@@ -3598,13 +3599,13 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
 
   function testFuzz_DoesNotChangeIfTimeDoesNotElapse(
     address _depositor,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
-    uint96 _withdrawAmount,
+    uint256 _withdrawAmount,
     uint256 _durationPercent1
   ) public {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-    _withdrawAmount = uint96(_bound(_withdrawAmount, 0, _stakeAmount));
+    _withdrawAmount = uint256(_bound(_withdrawAmount, 0, _stakeAmount));
     _durationPercent1 = _bound(_durationPercent1, 0, 200);
 
     // A user deposits staking tokens
@@ -3630,7 +3631,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
 
   function testFuzz_AccruesTheCorrectValueWhenADepositorStakesForSomePortionOfAReward(
     address _depositor,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -3651,7 +3652,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
 
   function testFuzz_AccruesTheCorrectValueWhenADepositorStakesAfterAReward(
     address _depositor,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -3674,7 +3675,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
 
   function testFuzz_AccruesTheCorrectValueWhenADepositorStakesForARewardDurationAndAnotherDepositorStakesForASecondRewardDuration(
     address _depositor,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -3702,7 +3703,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
 
   function testFuzz_AccruesTheCorrectValueWhenTwoDepositorsStakeAtDifferentTimesAndThereAreTwoRewards(
     address _depositor,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent1,
     uint256 _durationPercent2
@@ -3742,14 +3743,14 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
 
   function testFuzz_AccruesTheCorrectValueWhenADepositorStakesAndWithdrawsDuringARewardDuration(
     address _depositor,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
-    uint96 _withdrawalAmount,
+    uint256 _withdrawalAmount,
     uint256 _durationPercent1,
     uint256 _durationPercent2
   ) public {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-    _withdrawalAmount = uint96(_bound(_withdrawalAmount, 0, _stakeAmount - 1));
+    _withdrawalAmount = uint256(_bound(_withdrawalAmount, 0, _stakeAmount - 1));
     _durationPercent1 = _bound(_durationPercent1, 0, 100);
     _durationPercent2 = _bound(_durationPercent2, 0, 100 - _durationPercent1);
 
@@ -3778,8 +3779,8 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
   function testFuzz_AccruesTheCorrectValueWhenTwoDepositorsStakeDifferentAmountsAtDifferentTimesOverTwoRewards(
     address _depositor1,
     address _depositor2,
-    uint96 _stakeAmount1,
-    uint96 _stakeAmount2,
+    uint256 _stakeAmount1,
+    uint256 _stakeAmount2,
     uint256 _rewardAmount,
     uint256 _durationPercent1,
     uint256 _durationPercent2,
@@ -3831,7 +3832,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
 
   function testFuzz_AccruesTheCorrectValueWhenAnArbitraryNumberOfDepositorsStakeDifferentAmountsOverTheCourseOfARewardDuration(
     address _depositor,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -3848,7 +3849,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
     while (_totalDurationPercent < 100) {
       // On each iteration we derive new values
       _depositor = address(uint160(uint256(keccak256(abi.encode(_depositor)))));
-      _stakeAmount = uint96(uint256(keccak256(abi.encode(_stakeAmount))));
+      _stakeAmount = uint256(uint256(keccak256(abi.encode(_stakeAmount))));
       _stakeAmount = _boundToRealisticStake(_stakeAmount);
       _durationPercent = uint256(keccak256(abi.encode(_durationPercent)));
       // We make sure the duration jump on each iteration isn't so small that we slow the test
@@ -3881,7 +3882,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
   function testFuzz_CalculatesCorrectEarningsForASingleDepositorThatStakesForFullDuration(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
@@ -3901,7 +3902,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor,
     address _delegatee,
     address _beneficiary,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
@@ -3922,7 +3923,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _delegatee,
     address _beneficiary1,
     address _beneficiary2,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _percentDuration
   ) public {
@@ -3958,7 +3959,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
   function testFuzz_CalculatesCorrectEarningsForASingleUserThatDepositsStakeForPartialDuration(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -3981,7 +3982,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
   function testFuzz_CalculatesCorrectEarningsForASingleUserThatDepositsPartiallyThroughTheDuration(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
@@ -4003,7 +4004,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor,
     address _delegatee,
     address _beneficiary,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -4030,7 +4031,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor,
     address _delegatee,
     address _beneficiary,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     vm.assume(_beneficiary != address(0));
@@ -4054,7 +4055,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
   function testFuzz_CalculatesCorrectEarningsForASingleUserThatDepositsStakeForTheFullDurationWithNoNewRewards(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint16 _noRewardsSkip
   ) public {
@@ -4080,7 +4081,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
   function testFuzz_CalculatesCorrectEarningsForASingleUserThatDepositsStakeForTheFullDurationWithDelayedReward(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint16 _noRewardsSkip
   ) public {
@@ -4110,7 +4111,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _delegatee,
     address _beneficiary1,
     address _beneficiary2,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _percentDuration,
     uint16 _noRewardsSkip
@@ -4155,7 +4156,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
   function testFuzz_CalculatesCorrectEarningsForASingleUserThatDepositsStakeForTheFullDurationAndClaims(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -4193,7 +4194,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
   function testFuzz_CalculatesCorrectEarningsForASingleUserThatDepositsStakeForThePartialDurationAndClaims(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -4231,7 +4232,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor1,
     address _depositor2,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     vm.assume(_depositor1 != _depositor2);
@@ -4257,7 +4258,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor1,
     address _depositor2,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     vm.assume(_depositor1 != _depositor2);
@@ -4301,7 +4302,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor1,
     address _depositor2,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     vm.assume(_depositor1 != _depositor2);
@@ -4343,7 +4344,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor1,
     address _depositor2,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     vm.assume(_depositor1 != _depositor2);
@@ -4398,7 +4399,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor3,
     address _depositor4,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     vm.assume(
@@ -4440,7 +4441,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor3,
     address _depositor4,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     vm.assume(
@@ -4503,7 +4504,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor2,
     address _depositor3,
     address _depositor4,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     vm.assume(
@@ -4594,7 +4595,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor1,
     address _depositor2,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount
   ) public {
     vm.assume(_depositor1 != _depositor2);
@@ -4627,7 +4628,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
   function testFuzz_CalculatesCorrectEarningsWhenAUserDepositsAndThereAreTwoRewards(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount1,
     uint256 _rewardAmount2
   ) public {
@@ -4659,7 +4660,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor1,
     address _depositor2,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount1,
     uint256 _rewardAmount2
   ) public {
@@ -4708,8 +4709,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor1,
     address _depositor2,
     address _delegatee,
-    uint96 _stakeAmount1,
-    uint96 _stakeAmount2,
+    uint256 _stakeAmount1,
+    uint256 _stakeAmount2,
     uint256 _rewardAmount1,
     uint256 _rewardAmount2
   ) public {
@@ -4761,7 +4762,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
   function testFuzz_CalculatesCorrectEarningsWhenAUserDepositsAndThereAreThreeRewards(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount1,
     uint256 _rewardAmount2,
     uint256 _rewardAmount3
@@ -4803,7 +4804,7 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor1,
     address _depositor2,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount1,
     uint256 _rewardAmount2,
     uint256 _rewardAmount3
@@ -4867,8 +4868,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor1,
     address _depositor2,
     address _delegatee,
-    uint96 _stakeAmount1,
-    uint96 _stakeAmount2,
+    uint256 _stakeAmount1,
+    uint256 _stakeAmount2,
     uint256 _rewardAmount1,
     uint256 _rewardAmount2,
     uint256 _rewardAmount3
@@ -4930,8 +4931,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _depositor1,
     address _depositor2,
     address _delegatee,
-    uint96 _stakeAmount1,
-    uint96 _stakeAmount2,
+    uint256 _stakeAmount1,
+    uint256 _stakeAmount2,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -4966,8 +4967,8 @@ contract UnclaimedReward is GovernanceStakerRewardsTest {
     address _delegatee = makeAddr("Delegatee");
     address _attacker = makeAddr("Attacker");
 
-    uint96 _smallDepositAmount = 0.1e18;
-    uint96 _largeDepositAmount = 25_000_000e18;
+    uint256 _smallDepositAmount = 0.1e18;
+    uint256 _largeDepositAmount = 25_000_000e18;
     _mintGovToken(_depositor1, _smallDepositAmount);
     _mintGovToken(_depositor2, _smallDepositAmount);
     _mintGovToken(_depositor3, _largeDepositAmount);
@@ -5007,7 +5008,7 @@ contract ClaimReward is GovernanceStakerRewardsTest {
   function testFuzz_SendsRewardsEarnedToTheUser(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -5034,7 +5035,7 @@ contract ClaimReward is GovernanceStakerRewardsTest {
   function testFuzz_ReturnsClaimedRewardAmount(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -5061,7 +5062,7 @@ contract ClaimReward is GovernanceStakerRewardsTest {
   function testFuzz_ResetsTheRewardsEarnedByTheUser(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -5084,7 +5085,7 @@ contract ClaimReward is GovernanceStakerRewardsTest {
   function testFuzz_EmitsAnEventWhenRewardsAreClaimed(
     address _depositor,
     address _delegatee,
-    uint96 _stakeAmount,
+    uint256 _stakeAmount,
     uint256 _rewardAmount,
     uint256 _durationPercent
   ) public {
@@ -5114,7 +5115,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
   function testFuzz_ClaimRewardOnBehalfOfBeneficiary(
     uint256 _beneficiaryPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     uint256 _durationPercent,
     uint256 _rewardAmount,
     address _delegatee,
@@ -5164,7 +5165,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
   function testFuzz_ReturnsClaimedRewardAmount(
     uint256 _beneficiaryPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     uint256 _durationPercent,
     uint256 _rewardAmount,
     address _delegatee,
@@ -5214,7 +5215,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
   function testFuzz_RevertIf_WrongNonceIsUsed(
     uint256 _beneficiaryPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     uint256 _durationPercent,
     uint256 _rewardAmount,
     address _delegatee,
@@ -5261,7 +5262,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
   function testFuzz_RevertIf_DeadlineExpired(
     uint256 _beneficiaryPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     uint256 _durationPercent,
     uint256 _rewardAmount,
     address _delegatee,
@@ -5306,7 +5307,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
   function testFuzz_RevertIf_InvalidSignatureIsPassed(
     uint256 _beneficiaryPrivateKey,
     address _sender,
-    uint96 _depositAmount,
+    uint256 _depositAmount,
     address _depositor,
     address _delegatee,
     uint256 _currentNonce,
@@ -5370,42 +5371,42 @@ contract _FetchOrDeploySurrogate is GovernanceStakerRewardsTest {
 }
 
 contract Multicall is GovernanceStakerRewardsTest {
-  function _encodeStake(address _delegatee, uint96 _stakeAmount)
+  function _encodeStake(address _delegatee, uint256 _stakeAmount)
     internal
     pure
     returns (bytes memory)
   {
     return
-      abi.encodeWithSelector(bytes4(keccak256("stake(uint96,address)")), _stakeAmount, _delegatee);
+      abi.encodeWithSelector(bytes4(keccak256("stake(uint256,address)")), _stakeAmount, _delegatee);
   }
 
-  function _encodeStake(address _delegatee, uint96 _stakeAmount, address _beneficiary)
+  function _encodeStake(address _delegatee, uint256 _stakeAmount, address _beneficiary)
     internal
     pure
     returns (bytes memory)
   {
     return abi.encodeWithSelector(
-      bytes4(keccak256("stake(uint96,address,address)")), _stakeAmount, _delegatee, _beneficiary
+      bytes4(keccak256("stake(uint256,address,address)")), _stakeAmount, _delegatee, _beneficiary
     );
   }
 
-  function _encodeStakeMore(GovernanceStaker.DepositIdentifier _depositId, uint96 _stakeAmount)
+  function _encodeStakeMore(GovernanceStaker.DepositIdentifier _depositId, uint256 _stakeAmount)
     internal
     pure
     returns (bytes memory)
   {
     return abi.encodeWithSelector(
-      bytes4(keccak256("stakeMore(uint256,uint96)")), _depositId, _stakeAmount
+      bytes4(keccak256("stakeMore(uint256,uint256)")), _depositId, _stakeAmount
     );
   }
 
-  function _encodeWithdraw(GovernanceStaker.DepositIdentifier _depositId, uint96 _amount)
+  function _encodeWithdraw(GovernanceStaker.DepositIdentifier _depositId, uint256 _amount)
     internal
     pure
     returns (bytes memory)
   {
     return
-      abi.encodeWithSelector(bytes4(keccak256("withdraw(uint256,uint96)")), _depositId, _amount);
+      abi.encodeWithSelector(bytes4(keccak256("withdraw(uint256,uint256)")), _depositId, _amount);
   }
 
   function _encodeAlterBeneficiary(
@@ -5431,8 +5432,8 @@ contract Multicall is GovernanceStakerRewardsTest {
     address _depositor,
     address _delegatee1,
     address _delegatee2,
-    uint96 _stakeAmount1,
-    uint96 _stakeAmount2
+    uint256 _stakeAmount1,
+    uint256 _stakeAmount2
   ) public {
     _stakeAmount1 = _boundToRealisticStake(_stakeAmount1);
     _stakeAmount2 = _boundToRealisticStake(_stakeAmount2);
@@ -5456,8 +5457,8 @@ contract Multicall is GovernanceStakerRewardsTest {
     address _delegatee1,
     address _beneficiary0,
     address _beneficiary1,
-    uint96 _stakeAmount0,
-    uint96 _stakeAmount1,
+    uint256 _stakeAmount0,
+    uint256 _stakeAmount1,
     uint256 _timeElapsed
   ) public {
     _stakeAmount0 = _boundToRealisticStake(_stakeAmount0);
@@ -5487,7 +5488,7 @@ contract Multicall is GovernanceStakerRewardsTest {
     govStaker.multicall(_calls);
     vm.stopPrank();
 
-    (uint96 _amountResult,, address _delegateeResult, address _beneficiaryResult) =
+    (uint256 _amountResult,, address _delegateeResult, address _beneficiaryResult) =
       govStaker.deposits(_depositId);
     assertEq(govStaker.depositorTotalStaked(_depositor), _stakeAmount0 + _stakeAmount1);
     assertEq(_amountResult, _stakeAmount0 + _stakeAmount1);

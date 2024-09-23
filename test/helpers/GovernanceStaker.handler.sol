@@ -91,7 +91,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     ghost_rewardsNotified += _amount;
   }
 
-  function stake(uint96 _amount, address _delegatee, address _beneficiary)
+  function stake(uint256 _amount, address _delegatee, address _beneficiary)
     public
     countCall("stake")
     doCheckpoints
@@ -100,7 +100,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
 
     _beneficiaries.add(_beneficiary);
     _delegates.add(_delegatee);
-    _amount = uint96(_bound(_amount, 0, 100_000_000e18));
+    _amount = uint256(_bound(_amount, 0, 100_000_000e18));
 
     // assume user has stake amount
     _mintStakeToken(_currentActor, _amount);
@@ -117,7 +117,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     ghost_stakeSum += _amount;
   }
 
-  function validStakeMore(uint96 _amount, uint256 _actorSeed, uint256 _actorDepositSeed)
+  function validStakeMore(uint256 _amount, uint256 _actorSeed, uint256 _actorDepositSeed)
     public
     countCall("validStakeMore")
     doCheckpoints
@@ -127,8 +127,8 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     vm.assume(_depositIds[_currentActor].length > 0);
     GovernanceStaker.DepositIdentifier _depositId =
       GovernanceStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
-    (uint96 _balance,,,) = govStaker.deposits(_depositId);
-    _amount = uint96(_bound(_amount, 0, _balance));
+    (uint256 _balance,,,) = govStaker.deposits(_depositId);
+    _amount = uint256(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
     stakeToken.approve(address(govStaker), _amount);
     govStaker.stakeMore(_depositId, _amount);
@@ -136,7 +136,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     ghost_stakeSum += _amount;
   }
 
-  function validWithdraw(uint96 _amount, uint256 _actorSeed, uint256 _actorDepositSeed)
+  function validWithdraw(uint256 _amount, uint256 _actorSeed, uint256 _actorDepositSeed)
     public
     countCall("validWithdraw")
     doCheckpoints
@@ -146,8 +146,8 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     vm.assume(_depositIds[_currentActor].length > 0);
     GovernanceStaker.DepositIdentifier _depositId =
       GovernanceStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
-    (uint96 _balance,,,) = govStaker.deposits(_depositId);
-    _amount = uint96(_bound(_amount, 0, _balance));
+    (uint256 _balance,,,) = govStaker.deposits(_depositId);
+    _amount = uint256(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
     govStaker.withdraw(_depositId, _amount);
     vm.stopPrank();

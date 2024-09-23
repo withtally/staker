@@ -95,7 +95,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param delegatee The governance delegate who receives the voting weight for this deposit.
   /// @param beneficiary The address that accrues staking rewards earned by this deposit.
   struct Deposit {
-    uint96 balance;
+    uint256 balance;
     address owner;
     address delegatee;
     address beneficiary;
@@ -103,11 +103,11 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
 
   /// @notice Type hash used when encoding data for `stakeOnBehalf` calls.
   bytes32 public constant STAKE_TYPEHASH = keccak256(
-    "Stake(uint96 amount,address delegatee,address beneficiary,address depositor,uint256 nonce,uint256 deadline)"
+    "Stake(uint256 amount,address delegatee,address beneficiary,address depositor,uint256 nonce,uint256 deadline)"
   );
   /// @notice Type hash used when encoding data for `stakeMoreOnBehalf` calls.
   bytes32 public constant STAKE_MORE_TYPEHASH = keccak256(
-    "StakeMore(uint256 depositId,uint96 amount,address depositor,uint256 nonce,uint256 deadline)"
+    "StakeMore(uint256 depositId,uint256 amount,address depositor,uint256 nonce,uint256 deadline)"
   );
   /// @notice Type hash used when encoding data for `alterDelegateeOnBehalf` calls.
   bytes32 public constant ALTER_DELEGATEE_TYPEHASH = keccak256(
@@ -119,7 +119,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   );
   /// @notice Type hash used when encoding data for `withdrawOnBehalf` calls.
   bytes32 public constant WITHDRAW_TYPEHASH = keccak256(
-    "Withdraw(uint256 depositId,uint96 amount,address depositor,uint256 nonce,uint256 deadline)"
+    "Withdraw(uint256 depositId,uint256 amount,address depositor,uint256 nonce,uint256 deadline)"
   );
   /// @notice Type hash used when encoding data for `claimRewardOnBehalf` calls.
   bytes32 public constant CLAIM_REWARD_TYPEHASH =
@@ -259,7 +259,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @return _depositId The unique identifier for this deposit.
   /// @dev The delegatee may not be the zero address. The deposit will be owned by the message
   /// sender, and the beneficiary will also be the message sender.
-  function stake(uint96 _amount, address _delegatee)
+  function stake(uint256 _amount, address _delegatee)
     external
     returns (DepositIdentifier _depositId)
   {
@@ -274,7 +274,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @return _depositId Unique identifier for this deposit.
   /// @dev Neither the delegatee nor the beneficiary may be the zero address. The deposit will be
   /// owned by the message sender.
-  function stake(uint96 _amount, address _delegatee, address _beneficiary)
+  function stake(uint256 _amount, address _delegatee, address _beneficiary)
     external
     returns (DepositIdentifier _depositId)
   {
@@ -295,7 +295,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @dev Neither the delegatee nor the beneficiary may be the zero address. The deposit will be
   /// owned by the message sender.
   function permitAndStake(
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
     uint256 _deadline,
@@ -319,7 +319,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @return _depositId Unique identifier for this deposit.
   /// @dev Neither the delegatee nor the beneficiary may be the zero address.
   function stakeOnBehalf(
-    uint96 _amount,
+    uint256 _amount,
     address _delegatee,
     address _beneficiary,
     address _depositor,
@@ -353,7 +353,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _depositId Unique identifier of the deposit to which stake will be added.
   /// @param _amount Quantity of stake to be added.
   /// @dev The message sender must be the owner of the deposit.
-  function stakeMore(DepositIdentifier _depositId, uint96 _amount) external {
+  function stakeMore(DepositIdentifier _depositId, uint256 _amount) external {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
     _stakeMore(deposit, _depositId, _amount);
@@ -372,7 +372,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @dev The message sender must be the owner of the deposit.
   function permitAndStakeMore(
     DepositIdentifier _depositId,
-    uint96 _amount,
+    uint256 _amount,
     uint256 _deadline,
     uint8 _v,
     bytes32 _r,
@@ -395,7 +395,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _signature Signature of the user authorizing this stake.
   function stakeMoreOnBehalf(
     DepositIdentifier _depositId,
-    uint96 _amount,
+    uint256 _amount,
     address _depositor,
     uint256 _deadline,
     bytes memory _signature
@@ -523,7 +523,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _amount Quantity of staked token to withdraw.
   /// @dev The message sender must be the owner of the deposit. Stake is withdrawn to the message
   /// sender's account.
-  function withdraw(DepositIdentifier _depositId, uint96 _amount) external {
+  function withdraw(DepositIdentifier _depositId, uint256 _amount) external {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
     _withdraw(deposit, _depositId, _amount);
@@ -539,7 +539,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @dev Stake is withdrawn to the deposit owner's account.
   function withdrawOnBehalf(
     DepositIdentifier _depositId,
-    uint96 _amount,
+    uint256 _amount,
     address _depositor,
     uint256 _deadline,
     bytes memory _signature
@@ -697,7 +697,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Internal convenience methods which performs the staking operations.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public stake methods for additional documentation.
-  function _stake(address _depositor, uint96 _amount, address _delegatee, address _beneficiary)
+  function _stake(address _depositor, uint256 _amount, address _delegatee, address _beneficiary)
     internal
     returns (DepositIdentifier _depositId)
   {
@@ -728,7 +728,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Internal convenience method which adds more stake to an existing deposit.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public stakeMore methods for additional documentation.
-  function _stakeMore(Deposit storage deposit, DepositIdentifier _depositId, uint96 _amount)
+  function _stakeMore(Deposit storage deposit, DepositIdentifier _depositId, uint256 _amount)
     internal
   {
     _checkpointGlobalReward();
@@ -782,7 +782,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Internal convenience method which withdraws the stake from an existing deposit.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public withdraw methods for additional documentation.
-  function _withdraw(Deposit storage deposit, DepositIdentifier _depositId, uint96 _amount)
+  function _withdraw(Deposit storage deposit, DepositIdentifier _depositId, uint256 _amount)
     internal
   {
     _checkpointGlobalReward();
