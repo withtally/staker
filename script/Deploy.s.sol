@@ -10,6 +10,7 @@ import {DeployInput} from "script/DeployInput.sol";
 import {GovernanceStaker} from "src/GovernanceStaker.sol";
 import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {INotifiableRewardReceiver} from "src/interfaces/INotifiableRewardReceiver.sol";
+import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
 
 contract Deploy is Script, DeployInput {
   uint256 deployerPrivateKey;
@@ -27,6 +28,7 @@ contract Deploy is Script, DeployInput {
     GovernanceStaker govStaker = new GovernanceStaker(
       IERC20(PAYOUT_TOKEN_ADDRESS),
       IERC20Delegates(STAKE_TOKEN_ADDRESS),
+      IEarningPowerCalculator(address(0)),
       vm.addr(deployerPrivateKey)
     );
 

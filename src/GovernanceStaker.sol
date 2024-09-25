@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
 import {INotifiableRewardReceiver} from "src/interfaces/INotifiableRewardReceiver.sol";
+import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
 import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
@@ -165,6 +166,12 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Global amount currently staked across all deposits.
   uint256 public totalStaked;
 
+  /// @notice Global amount of earning power for all deposits.
+  uint256 public totalEarningPower;
+
+  /// @notice Contract that determines a deposit's earning power based on their delegatee.
+  IEarningPowerCalculator public earningPowerCalculator;
+
   /// @notice Tracks the total staked by a depositor across all unique deposits.
   mapping(address depositor => uint256 amount) public depositorTotalStaked;
 
@@ -193,13 +200,19 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
 
   /// @param _rewardToken ERC20 token in which rewards will be denominated.
   /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
+  /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
+  /// earning power for the staker system.
   /// @param _admin Address which will have permission to manage rewardNotifiers.
-  constructor(IERC20 _rewardToken, IERC20Delegates _stakeToken, address _admin)
-    EIP712("GovernanceStaker", "1")
-  {
+  constructor(
+    IERC20 _rewardToken,
+    IERC20Delegates _stakeToken,
+    IEarningPowerCalculator _earningPowerCalculator,
+    address _admin
+  ) EIP712("GovernanceStaker", "1") {
     REWARD_TOKEN = _rewardToken;
     STAKE_TOKEN = _stakeToken;
     _setAdmin(_admin);
+    earningPowerCalculator = _earningPowerCalculator;
   }
 
   /// @notice Set the admin address.
@@ -234,10 +247,10 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// This number should monotonically increase over time as more rewards are distributed.
   /// @return Live value of the global reward per token accumulator.
   function rewardPerTokenAccumulated() public view returns (uint256) {
-    if (totalStaked == 0) return rewardPerTokenAccumulatedCheckpoint;
+    if (totalEarningPower == 0) return rewardPerTokenAccumulatedCheckpoint;
 
     return rewardPerTokenAccumulatedCheckpoint
-      + (scaledRewardRate * (lastTimeRewardDistributed() - lastCheckpointTime)) / totalStaked;
+      + (scaledRewardRate * (lastTimeRewardDistributed() - lastCheckpointTime)) / totalEarningPower;
   }
 
   /// @notice Live value of the unclaimed rewards earned by a given deposit. It is the
@@ -718,14 +731,16 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     DelegationSurrogate _surrogate = _fetchOrDeploySurrogate(_delegatee);
     _depositId = _useDepositId();
 
+    uint256 _earningPower = earningPowerCalculator.getEarningPower(_amount, _depositor, _delegatee);
     totalStaked += _amount;
+    totalEarningPower += _earningPower;
     depositorTotalStaked[_depositor] += _amount;
     deposits[_depositId] = Deposit({
       balance: _amount,
       owner: _depositor,
       delegatee: _delegatee,
       beneficiary: _beneficiary,
-      earningPower: _amount,
+      earningPower: _earningPower,
       rewardPerTokenCheckpoint: rewardPerTokenAccumulatedCheckpoint,
       scaledUnclaimedRewardCheckpoint: 0
     });
@@ -746,10 +761,14 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
 
     DelegationSurrogate _surrogate = surrogates[deposit.delegatee];
 
+    uint256 _newBalance = deposit.balance + _amount;
+    uint256 _newEarningPower =
+      earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
+    totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
     totalStaked += _amount;
     depositorTotalStaked[deposit.owner] += _amount;
-    deposit.earningPower += _amount;
-    deposit.balance += _amount;
+    deposit.earningPower = _newEarningPower;
+    deposit.balance = _newBalance;
     _stakeTokenSafeTransferFrom(deposit.owner, address(_surrogate), _amount);
     emit StakeDeposited(deposit.owner, _depositId, _amount, deposit.balance);
   }
@@ -764,8 +783,12 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   ) internal {
     _revertIfAddressZero(_newDelegatee);
     DelegationSurrogate _oldSurrogate = surrogates[deposit.delegatee];
+    uint256 _newEarningPower =
+      earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee);
+    totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
     emit DelegateeAltered(_depositId, deposit.delegatee, _newDelegatee);
     deposit.delegatee = _newDelegatee;
+    deposit.earningPower = _newEarningPower;
     DelegationSurrogate _newSurrogate = _fetchOrDeploySurrogate(_newDelegatee);
     _stakeTokenSafeTransferFrom(address(_oldSurrogate), address(_newSurrogate), deposit.balance);
   }
@@ -780,6 +803,13 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   ) internal {
     _revertIfAddressZero(_newBeneficiary);
 
+    // Updating the earning power here is not strictly necessary, but if the user is touching their
+    // deposit anyway, it seems reasonable to make sure their earning power is up to date.
+    uint256 _newEarningPower =
+      earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
+    totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
+    deposit.earningPower = _newEarningPower;
+
     emit BeneficiaryAltered(_depositId, deposit.beneficiary, _newBeneficiary);
     deposit.beneficiary = _newBeneficiary;
   }
@@ -793,10 +823,16 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     _checkpointGlobalReward();
     _checkpointReward(deposit);
 
-    deposit.balance -= _amount; // overflow prevents withdrawing more than balance
+    // overflow prevents withdrawing more than balance
+    uint256 _newBalance = deposit.balance - _amount;
+    uint256 _newEarningPower =
+      earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
+
     totalStaked -= _amount;
+    totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
     depositorTotalStaked[deposit.owner] -= _amount;
-    deposit.earningPower -= _amount;
+    deposit.balance = _newBalance;
+    deposit.earningPower = _newEarningPower;
     _stakeTokenSafeTransferFrom(address(surrogates[deposit.delegatee]), deposit.owner, _amount);
     emit StakeWithdrawn(_depositId, _amount, deposit.balance);
   }
@@ -820,6 +856,11 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
       deposit.scaledUnclaimedRewardCheckpoint - (_reward * SCALE_FACTOR);
     emit RewardClaimed(_depositId, deposit.beneficiary, _reward);
 
+    uint256 _newEarningPower =
+      earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
+    totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
+    deposit.earningPower = _newEarningPower;
+
     SafeERC20.safeTransfer(REWARD_TOKEN, deposit.beneficiary, _reward);
     return _reward;
   }
@@ -839,6 +880,24 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   function _checkpointReward(Deposit storage deposit) internal {
     deposit.scaledUnclaimedRewardCheckpoint = _scaledUnclaimedReward(deposit);
     deposit.rewardPerTokenCheckpoint = rewardPerTokenAccumulatedCheckpoint;
+  }
+
+  /// @notice Internal helper method which calculates and returns an updated value for total
+  /// earning power based on the old and new earning power of a deposit which is being changed.
+  /// @param _depositOldEarningPower The earning power of the deposit before a change is applied.
+  /// @param _depositNewEarningPower The earning power of the deposit after a change is applied.
+  /// @return _newTotalEarningPower The new total earning power.
+  function _calculateTotalEarningPower(
+    uint256 _depositOldEarningPower,
+    uint256 _depositNewEarningPower
+  ) internal view returns (uint256 _newTotalEarningPower) {
+    if (_depositNewEarningPower >= _depositOldEarningPower) {
+      _newTotalEarningPower =
+        totalEarningPower + (_depositNewEarningPower - _depositOldEarningPower);
+    } else {
+      _newTotalEarningPower =
+        totalEarningPower - (_depositOldEarningPower - _depositNewEarningPower);
+    }
   }
 
   /// @notice Internal helper method which sets the admin address.
