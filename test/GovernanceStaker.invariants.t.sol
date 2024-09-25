@@ -4,16 +4,18 @@ pragma solidity ^0.8.23;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import {GovernanceStaker} from "src/GovernanceStaker.sol";
+import {GovernanceStaker, IEarningPowerCalculator} from "src/GovernanceStaker.sol";
 import {GovernanceStakerHandler} from "test/helpers/GovernanceStaker.handler.sol";
 import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
 import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
+import {MockFullEarningPowerCalculator} from "test/mocks/MockFullEarningPowerCalculator.sol";
 
 contract GovernanceStakerInvariants is Test {
   GovernanceStakerHandler public handler;
   GovernanceStaker public govStaker;
   ERC20Fake rewardToken;
   ERC20VotesMock govToken;
+  IEarningPowerCalculator earningPowerCalculator;
   address rewardsNotifier;
 
   function setUp() public {
@@ -25,7 +27,11 @@ contract GovernanceStakerInvariants is Test {
 
     rewardsNotifier = address(0xaffab1ebeef);
     vm.label(rewardsNotifier, "Rewards Notifier");
-    govStaker = new GovernanceStaker(rewardToken, govToken, rewardsNotifier);
+
+    earningPowerCalculator = new MockFullEarningPowerCalculator();
+    vm.label(address(earningPowerCalculator), "Full Earning Power Calculator");
+
+    govStaker = new GovernanceStaker(rewardToken, govToken, earningPowerCalculator, rewardsNotifier);
     handler = new GovernanceStakerHandler(govStaker);
 
     bytes4[] memory selectors = new bytes4[](7);

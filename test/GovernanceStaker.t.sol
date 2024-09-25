@@ -3,17 +3,24 @@ pragma solidity ^0.8.23;
 
 import {Vm, Test, stdStorage, StdStorage, console2} from "forge-std/Test.sol";
 import {
-  GovernanceStaker, DelegationSurrogate, IERC20, IERC20Delegates
+  GovernanceStaker,
+  DelegationSurrogate,
+  IERC20,
+  IERC20Delegates,
+  IEarningPowerCalculator
 } from "src/GovernanceStaker.sol";
 import {GovernanceStakerHarness} from "test/harnesses/GovernanceStakerHarness.sol";
 import {ERC20VotesMock, ERC20Permit} from "test/mocks/MockERC20Votes.sol";
 import {IERC20Errors} from "openzeppelin/interfaces/draft-IERC6093.sol";
 import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
+import {MockFullEarningPowerCalculator} from "test/mocks/MockFullEarningPowerCalculator.sol";
 import {PercentAssertions} from "test/helpers/PercentAssertions.sol";
 
 contract GovernanceStakerTest is Test, PercentAssertions {
   ERC20Fake rewardToken;
   ERC20VotesMock govToken;
+  IEarningPowerCalculator earningPowerCalculator;
+
   address admin;
   address rewardNotifier;
   GovernanceStakerHarness govStaker;
@@ -21,7 +28,7 @@ contract GovernanceStakerTest is Test, PercentAssertions {
   // console2.log(uint(_domainSeparatorV4()))
   bytes32 EIP712_DOMAIN_SEPARATOR = bytes32(
     uint256(
-      59_353_250_694_015_275_182_380_569_031_918_128_408_012_316_087_201_246_053_917_271_831_335_857_426_990
+      100_848_718_687_569_044_464_352_297_364_979_714_567_529_445_102_133_191_562_407_938_263_844_493_123_852
     )
   );
 
@@ -48,9 +55,12 @@ contract GovernanceStakerTest is Test, PercentAssertions {
     rewardNotifier = address(0xaffab1ebeef);
     vm.label(rewardNotifier, "Reward Notifier");
 
+    earningPowerCalculator = new MockFullEarningPowerCalculator();
+    vm.label(address(earningPowerCalculator), "Full Earning Power Calculator");
+
     admin = makeAddr("admin");
 
-    govStaker = new GovernanceStakerHarness(rewardToken, govToken, admin);
+    govStaker = new GovernanceStakerHarness(rewardToken, govToken, earningPowerCalculator, admin);
     vm.label(address(govStaker), "GovStaker");
 
     vm.prank(admin);
@@ -203,22 +213,29 @@ contract GovernanceStakerTest is Test, PercentAssertions {
 }
 
 contract Constructor is GovernanceStakerTest {
-  function test_SetsTheRewardTokenStakeTokenAndRewardNotifier() public view {
+  function test_SetsInitializationParameters() public view {
     assertEq(address(govStaker.REWARD_TOKEN()), address(rewardToken));
     assertEq(address(govStaker.STAKE_TOKEN()), address(govToken));
+    assertEq(address(govStaker.earningPowerCalculator()), address(earningPowerCalculator));
     assertEq(govStaker.admin(), admin);
   }
 
   function testFuzz_SetsTheRewardTokenStakeTokenAndOwnerToArbitraryAddresses(
     address _rewardToken,
     address _stakeToken,
+    address _earningPowerCalculator,
     address _admin
   ) public {
     vm.assume(_admin != address(0));
-    GovernanceStaker _govStaker =
-      new GovernanceStaker(IERC20(_rewardToken), IERC20Delegates(_stakeToken), _admin);
+    GovernanceStaker _govStaker = new GovernanceStaker(
+      IERC20(_rewardToken),
+      IERC20Delegates(_stakeToken),
+      IEarningPowerCalculator(_earningPowerCalculator),
+      _admin
+    );
     assertEq(address(_govStaker.REWARD_TOKEN()), address(_rewardToken));
     assertEq(address(_govStaker.STAKE_TOKEN()), address(_stakeToken));
+    assertEq(address(_govStaker.earningPowerCalculator()), address(_earningPowerCalculator));
     assertEq(_govStaker.admin(), _admin);
   }
 }
