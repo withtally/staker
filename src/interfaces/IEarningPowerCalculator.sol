@@ -12,5 +12,5 @@ interface IEarningPowerCalculator {
     address _staker,
     address _delegatee,
     uint256 _oldEarningPower
-  ) external view returns (uint256 _newEarningPower, bool _isQualifiedForUpdate);
+  ) external view returns (uint256 _newEarningPower, bool _isQualifiedForBump);
 }
