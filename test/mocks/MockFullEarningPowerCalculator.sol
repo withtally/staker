@@ -4,7 +4,6 @@ pragma solidity ^0.8.23;
 import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
 
 contract MockFullEarningPowerCalculator is IEarningPowerCalculator {
-
   struct StoredEarningPower {
     uint256 earningPower;
     bool isOverride;
@@ -34,10 +33,8 @@ contract MockFullEarningPowerCalculator is IEarningPowerCalculator {
   // Methods used for configuring the mock during testing.
 
   function __setEarningPowerForDelegatee(address _delegatee, uint256 _earningPower) external {
-    earningPowerOverrides[_delegatee] = StoredEarningPower({
-      earningPower: _earningPower,
-      isOverride: true
-    });
+    earningPowerOverrides[_delegatee] =
+      StoredEarningPower({earningPower: _earningPower, isOverride: true});
   }
 
   function __getEarningPower(uint256 _amountStaked, address _delegatee)
@@ -47,10 +44,7 @@ contract MockFullEarningPowerCalculator is IEarningPowerCalculator {
   {
     StoredEarningPower memory _storedEarningPower = earningPowerOverrides[_delegatee];
 
-    if (_storedEarningPower.isOverride) {
-      return _storedEarningPower.earningPower;
-    } else {
-      return _amountStaked;
-    }
+    if (_storedEarningPower.isOverride) return _storedEarningPower.earningPower;
+    else return _amountStaked;
   }
 }
