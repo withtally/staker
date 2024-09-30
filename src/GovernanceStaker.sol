@@ -716,7 +716,9 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     (uint256 _newEarningPower, bool _isQualifiedForBump) = earningPowerCalculator.getNewEarningPower(
       deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower
     );
-    if (!_isQualifiedForBump) revert GovernanceStaker__Unqualified();
+    if (!_isQualifiedForBump || _newEarningPower == deposit.earningPower) {
+      revert GovernanceStaker__Unqualified();
+    }
 
     if (_requestedTip > maxBumpTip) revert GovernanceStaker__InvalidTip();
 
