@@ -4,7 +4,13 @@ pragma solidity ^0.8.23;
 import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
 
 contract MockFullEarningPowerCalculator is IEarningPowerCalculator {
-  mapping(address delegatee => uint256 earningPower) public earningPowerOverrides;
+
+  struct StoredEarningPower {
+    uint256 earningPower;
+    bool isOverride;
+  }
+
+  mapping(address delegatee => StoredEarningPower earningPower) public earningPowerOverrides;
 
   // Methods implementing the IEarningPowerCalculator interface.
 
@@ -28,7 +34,10 @@ contract MockFullEarningPowerCalculator is IEarningPowerCalculator {
   // Methods used for configuring the mock during testing.
 
   function __setEarningPowerForDelegatee(address _delegatee, uint256 _earningPower) external {
-    earningPowerOverrides[_delegatee] = _earningPower;
+    earningPowerOverrides[_delegatee] = StoredEarningPower({
+      earningPower: _earningPower,
+      isOverride: true
+    });
   }
 
   function __getEarningPower(uint256 _amountStaked, address _delegatee)
@@ -36,9 +45,12 @@ contract MockFullEarningPowerCalculator is IEarningPowerCalculator {
     view
     returns (uint256 _earningPower)
   {
-    uint256 _override = earningPowerOverrides[_delegatee];
+    StoredEarningPower memory _storedEarningPower = earningPowerOverrides[_delegatee];
 
-    if (_override > 0) _earningPower = _override;
-    else _earningPower = _amountStaked;
+    if (_storedEarningPower.isOverride) {
+      return _storedEarningPower.earningPower;
+    } else {
+      return _amountStaked;
+    }
   }
 }
