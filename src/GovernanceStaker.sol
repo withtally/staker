@@ -713,14 +713,14 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
 
     uint256 _unclaimedRewards = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
 
+    if (_requestedTip > maxBumpTip) revert GovernanceStaker__InvalidTip();
+
     (uint256 _newEarningPower, bool _isQualifiedForBump) = earningPowerCalculator.getNewEarningPower(
       deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower
     );
     if (!_isQualifiedForBump || _newEarningPower == deposit.earningPower) {
       revert GovernanceStaker__Unqualified();
     }
-
-    if (_requestedTip > maxBumpTip) revert GovernanceStaker__InvalidTip();
 
     if (_newEarningPower > deposit.earningPower && _unclaimedRewards < _requestedTip) {
       revert GovernanceStaker__InsufficientUnclaimedRewards();

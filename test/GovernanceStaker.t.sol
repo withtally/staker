@@ -3416,6 +3416,45 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
       rewardToken.balanceOf(_tipReceiver) - _initialTipReceiverBalance;
     assertEq(_tipReceiverBalanceIncrease, _requestedTip);
   }
+  // 1. tip requested is greater than max tip
+  function testFuzz_RevertIf_RequestedTipIsGreaterThanTheMaxTip(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _newEarningPower
+  ) public {
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    // Reward amount must be less than the tip requested for this test.
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump, but also less than rewards for the sake of this test
+    _requestedTip = bound(_requestedTip, maxBumpTip + 1 , type(uint256).max);
+
+    // The staker's earning power increases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _newEarningPower
+    );
+    // Bump earning power is called
+	vm.expectRevert(GovernanceStaker.GovernanceStaker__InvalidTip.selector);
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+  }
+
+  // 2. Is not qualified
+  // 3. New earning power = existing earning power
+  // 4. Earning power increase with tip greater than unclaimed rewards
+  // 5. Earning power decrease with the unclaimed rewards minus the tip is greater than max
 }
 
 contract LastTimeRewardDistributed is GovernanceStakerRewardsTest {
