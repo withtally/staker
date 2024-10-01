@@ -3476,9 +3476,9 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     _requestedTip = bound(_requestedTip, 0, maxBumpTip);
 
     // The staker's earning power increases
-    earningPowerCalculator.__setEarningPowerForDelegatee(_delegatee, _newEarningPower);
+    earningPowerCalculator.__setEarningPowerAndIsQualifiedForDelegatee(_delegatee, _newEarningPower, false);
     // Bump earning power is called
-    vm.expectRevert(GovernanceStaker.GovernanceStaker__InvalidTip.selector);
+    vm.expectRevert(GovernanceStaker.GovernanceStaker__Unqualified.selector);
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
