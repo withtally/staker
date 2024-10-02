@@ -692,7 +692,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     emit RewardNotified(_amount, msg.sender);
   }
 
-  /// @notice A function that third-party should call to update a deposit's earning power. An
+  /// @notice A function that a third-party should call to update a deposit's earning power. An
   /// individuals earning power may change outside of how much stake their deposit adds to the
   /// staking pool, and this function is meant to incentivize third-parties to trigger these earning
   /// power updates by giving a portion of users unclaimed rewards to the third-party.
