@@ -692,20 +692,18 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     emit RewardNotified(_amount, msg.sender);
   }
 
+  /// @notice A function that third-party should call to update a deposit's earning power. An
+  /// individuals earning power may change outside of how much stake their deposit adds to the
+  /// staking pool, and this function is meant to incentivize third-parties to trigger these earning
+  /// power updates by giving a portion of users unclaimed rewards to the third-party.
+  /// @param _depositId The identifier for the deposit that needs an updated earning power.
+  /// @param _tipReceiver The receiver of the reward for updating a deposit's earning power.
+  /// @param _requestedTip The amount of tip requested by the third-party.
   function bumpEarningPower(
     DepositIdentifier _depositId,
     address _tipReceiver,
     uint256 _requestedTip
   ) external {
-    // `: Add validation for max tip
-    // 2 scenarios
-    // 1. Get the new earning power. Get new earning power, in addition to normal data, pass in
-    // current earning power
-    // 2. If earning power is going up
-    // 3. if earning power is going down, make sure the users deposit has already earned enough
-    // unclaimed rewards to pay an additional tip. A bumper will have the incentive to bump in the
-    // future.
-
     Deposit storage deposit = deposits[_depositId];
 
     _checkpointGlobalReward();

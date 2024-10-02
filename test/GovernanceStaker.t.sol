@@ -3193,7 +3193,6 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
   ) public {
     vm.assume(_tipReceiver != address(0));
     _stakeAmount = _boundToRealisticStake(_stakeAmount);
-    // Reward amount must be less than the tip requested for this test.
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _earningPowerIncrease = bound(_earningPowerIncrease, 1, type(uint128).max);
 

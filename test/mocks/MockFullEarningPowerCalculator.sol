@@ -13,7 +13,6 @@ contract MockFullEarningPowerCalculator is IEarningPowerCalculator {
   mapping(address delegatee => StoredEarningPower earningPower) public earningPowerOverrides;
 
   // Methods implementing the IEarningPowerCalculator interface.
-
   function getEarningPower(
     uint256 _amountStaked,
     address, // _staker
@@ -32,7 +31,6 @@ contract MockFullEarningPowerCalculator is IEarningPowerCalculator {
   }
 
   // Methods used for configuring the mock during testing.
-
   function __setEarningPowerForDelegatee(address _delegatee, uint256 _earningPower) external {
     earningPowerOverrides[_delegatee] =
       StoredEarningPower({earningPower: _earningPower, isQualified: true, isOverride: true});
