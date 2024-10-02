@@ -2,21 +2,15 @@
 pragma solidity ^0.8.23;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {BinaryEligibilityOracleEarningPowerCalculator as EarningPowerCalculator} from
-  "src/BinaryEligibilityOracleEarningPowerCalculator.sol";
+import {
+  BinaryEligibilityOracleEarningPowerCalculator as EarningPowerCalculator,
+  Ownable
+} from "src/BinaryEligibilityOracleEarningPowerCalculator.sol";
 
 contract EarningPowerCalculatorTest is Test {
-  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-  event DelegateeScoreUpdated(address indexed delegatee, uint256 oldScore, uint256 newScore);
-  event DelegateeScoreLockSet(address indexed delegatee, bool oldState, bool newState);
-  event ScoreOracleSet(address indexed oldScoreOracle, address indexed newScoreOracle);
-  event UpdateEligibilityDelaySet(uint256 oldDelay, uint256 newDelay);
-  event DelegateeScoreEligibilityThresholdSet(uint256 oldThreshold, uint256 newThreshold);
-
-  error OwnableUnauthorizedAccount(address account);
-
   address public owner;
   address public scoreOracle;
+  uint256 public staleOracleWindow;
   uint256 public delegateeScoreEligibilityThreshold;
   uint256 public updateEligibilityDelay;
   EarningPowerCalculator public calculator;
@@ -24,11 +18,16 @@ contract EarningPowerCalculatorTest is Test {
   function setUp() public {
     owner = makeAddr("owner");
     scoreOracle = makeAddr("scoreOracle");
+    staleOracleWindow = 7 days;
     delegateeScoreEligibilityThreshold = 50;
     updateEligibilityDelay = 7 days;
 
     calculator = new EarningPowerCalculator(
-      owner, scoreOracle, delegateeScoreEligibilityThreshold, updateEligibilityDelay
+      owner,
+      scoreOracle,
+      staleOracleWindow,
+      delegateeScoreEligibilityThreshold,
+      updateEligibilityDelay
     );
   }
 }
@@ -37,7 +36,7 @@ contract Constructor is EarningPowerCalculatorTest {
   function test_SetsOwnerAndContractParametersCorrectly() public view {
     assertEq(calculator.owner(), owner);
     assertEq(calculator.scoreOracle(), scoreOracle);
-    assertEq(calculator.delegateeScoreEligibilityThreshold(), delegateeScoreEligibilityThreshold);
+    assertEq(calculator.delegateeEligibilityThresholdScore(), delegateeScoreEligibilityThreshold);
     assertEq(calculator.updateEligibilityDelay(), updateEligibilityDelay);
   }
 
@@ -49,11 +48,15 @@ contract Constructor is EarningPowerCalculatorTest {
   ) public {
     vm.assume(_owner != address(0));
     EarningPowerCalculator _calculator = new EarningPowerCalculator(
-      _owner, _scoreOracle, _delegateeScoreEligibilityThreshold, _updateEligibilityDelay
+      _owner,
+      _scoreOracle,
+      staleOracleWindow,
+      _delegateeScoreEligibilityThreshold,
+      _updateEligibilityDelay
     );
     assertEq(_calculator.owner(), _owner);
     assertEq(_calculator.scoreOracle(), _scoreOracle);
-    assertEq(_calculator.delegateeScoreEligibilityThreshold(), _delegateeScoreEligibilityThreshold);
+    assertEq(_calculator.delegateeEligibilityThresholdScore(), _delegateeScoreEligibilityThreshold);
     assertEq(_calculator.updateEligibilityDelay(), _updateEligibilityDelay);
   }
 
@@ -66,22 +69,43 @@ contract Constructor is EarningPowerCalculatorTest {
     vm.assume(_owner != address(0));
 
     vm.expectEmit();
-    emit OwnershipTransferred(address(0), _owner);
+    emit Ownable.OwnershipTransferred(address(0), _owner);
     vm.expectEmit();
-    emit ScoreOracleSet(address(0), _scoreOracle);
+    emit EarningPowerCalculator.ScoreOracleSet(address(0), _scoreOracle);
     vm.expectEmit();
-    emit DelegateeScoreEligibilityThresholdSet(0, _delegateeScoreEligibilityThreshold);
+    emit EarningPowerCalculator.DelegateeEligibilityThresholdScoreSet(
+      0, _delegateeScoreEligibilityThreshold
+    );
     vm.expectEmit();
-    emit UpdateEligibilityDelaySet(0, _updateEligibilityDelay);
+    emit EarningPowerCalculator.UpdateEligibilityDelaySet(0, _updateEligibilityDelay);
 
-    EarningPowerCalculator _calculator = new EarningPowerCalculator(
-      _owner, _scoreOracle, _delegateeScoreEligibilityThreshold, _updateEligibilityDelay
+    new EarningPowerCalculator(
+      _owner,
+      _scoreOracle,
+      staleOracleWindow,
+      _delegateeScoreEligibilityThreshold,
+      _updateEligibilityDelay
+    );
+  }
+
+  function testFuzz_RevertIf_OwnerIsZeroAddress(
+    address _scoreOracle,
+    uint256 _delegateeScoreEligibilityThreshold,
+    uint256 _updateEligibilityDelay
+  ) public {
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
+    new EarningPowerCalculator(
+      address(0),
+      _scoreOracle,
+      staleOracleWindow,
+      _delegateeScoreEligibilityThreshold,
+      _updateEligibilityDelay
     );
   }
 }
 
 contract GetEarningPower is EarningPowerCalculatorTest {
-  function testFuzz_ReturnsAmountStakedAsEarningPowerWhenStaleOracleWindowHasPassed(
+  function testFuzz_EarningPowerIsAmountStakedAfterTheStaleOracleWindow(
     uint256 _amountStaked,
     address _staker,
     address _delegatee,
@@ -100,26 +124,26 @@ contract GetEarningPower is EarningPowerCalculatorTest {
     assertEq(calculator.getEarningPower(_amountStaked, _staker, _delegatee), _amountStaked);
   }
 
-  function testFuzz_ReturnsZeroEarningPowerWhenDelegateeScoreIsBelowEligibilityThreshold(
+  function testFuzz_EarningPowerIsZeroIfBelowEligibilityThreshold(
     uint256 _delegateeScore,
     uint256 _amountStaked,
     address _staker,
     address _delegatee
   ) public {
-    _delegateeScore = bound(_delegateeScore, 0, calculator.delegateeScoreEligibilityThreshold() - 1);
+    _delegateeScore = bound(_delegateeScore, 0, calculator.delegateeEligibilityThresholdScore() - 1);
     vm.prank(scoreOracle);
     calculator.updateDelegateeScore(_delegatee, _delegateeScore);
     assertEq(calculator.getEarningPower(_amountStaked, _staker, _delegatee), 0);
   }
 
-  function testFuzz_ReturnsAmountStakedAsEarningPowerWhenDelegateScoreIsAboveTheEligibilityThreshold(
+  function testFuzz_EarningPowerIsAmountStakedIfAboveEligibilityThreshold(
     uint256 _delegateeScore,
     uint256 _amountStaked,
     address _staker,
     address _delegatee
   ) public {
     _delegateeScore =
-      bound(_delegateeScore, calculator.delegateeScoreEligibilityThreshold() + 1, type(uint256).max);
+      bound(_delegateeScore, calculator.delegateeEligibilityThresholdScore() + 1, type(uint256).max);
     vm.prank(scoreOracle);
     calculator.updateDelegateeScore(_delegatee, _delegateeScore);
     assertEq(calculator.getEarningPower(_amountStaked, _staker, _delegatee), _amountStaked);
@@ -127,7 +151,7 @@ contract GetEarningPower is EarningPowerCalculatorTest {
 }
 
 contract GetNewEarningPower is EarningPowerCalculatorTest {
-  function testFuzz_ReturnsAmountStakedAndEligibleWhenStaleOracleWindowHasPassed(
+  function testFuzz_EarningPowerIsAmountStakedAfterStaleOracleWindow(
     uint256 _amountStaked,
     address _staker,
     address _delegatee,
@@ -150,12 +174,7 @@ contract GetNewEarningPower is EarningPowerCalculatorTest {
     assertEq(_isQualifiedForUpdate, true);
   }
 
-  // Test Case:
-  // 1. Score >= Threshold: Delegatee is Eligible for full earning power.
-  // 2. Score < Threshold: Updated delegatee score falls below threshold.
-  // 4. _updateEligibilityDelay is NOT reached.
-  // Result: We expect 0 earning power and false for _isQualifiedForUpdate.
-  function testFuzz_ReturnsZeroEarningPowerAndNotEligibleWhenDelegateScoreFallsBelowEligibilityThresholdButWithinTheUpdateEligibilityDelay(
+  function testFuzz_EarningPowerChangeIsNotQualifiedIfDuringUpdateEligibility(
     uint256 _amountStaked,
     address _staker,
     address _delegatee,
@@ -166,11 +185,11 @@ contract GetNewEarningPower is EarningPowerCalculatorTest {
   ) public {
     _delegateeScoreAboveThreshold = bound(
       _delegateeScoreAboveThreshold,
-      calculator.delegateeScoreEligibilityThreshold(),
+      calculator.delegateeEligibilityThresholdScore(),
       type(uint256).max
     );
     _newDelegateeScoreBelowThreshold = bound(
-      _newDelegateeScoreBelowThreshold, 0, calculator.delegateeScoreEligibilityThreshold() - 1
+      _newDelegateeScoreBelowThreshold, 0, calculator.delegateeEligibilityThresholdScore() - 1
     );
     // time shorter than the eligibility delay but at least 1 because vm.wrap can't take 0.
     _timeShorterThanUpdateEligibilityDelay =
@@ -183,17 +202,14 @@ contract GetNewEarningPower is EarningPowerCalculatorTest {
     calculator.updateDelegateeScore(_delegatee, _newDelegateeScoreBelowThreshold);
     vm.stopPrank();
 
-    vm.warp(
-      calculator.lastDelegateeEligibilityChangeTime(_delegatee)
-        + _timeShorterThanUpdateEligibilityDelay
-    );
+    vm.warp(calculator.timeOfIneligibility(_delegatee) + _timeShorterThanUpdateEligibilityDelay);
     (uint256 _earningPower, bool _isQualifiedForUpdate) =
       calculator.getNewEarningPower(_amountStaked, _staker, _delegatee, _oldEarningPower);
     assertEq(_earningPower, 0);
     assertEq(_isQualifiedForUpdate, false);
   }
 
-  function testFuzz_ReturnsZeroEarningPowerAndEligibleWhenDelegateScoreIsBelowEligibilityThresholdButOutsideTheUpdateEligibilityDelay(
+  function testFuzz_QualifiedNoEarningPowerAfterUpdateDelayAndDelegateeScoreDecrease(
     uint256 _amountStaked,
     address _staker,
     address _delegatee,
@@ -201,7 +217,7 @@ contract GetNewEarningPower is EarningPowerCalculatorTest {
     uint256 _delegateeScore,
     uint256 _timeLengthBetweenUpdateEligibilityDelayAndStaleOracleWindow
   ) public {
-    _delegateeScore = bound(_delegateeScore, 0, calculator.delegateeScoreEligibilityThreshold() - 1);
+    _delegateeScore = bound(_delegateeScore, 0, calculator.delegateeEligibilityThresholdScore() - 1);
     _timeLengthBetweenUpdateEligibilityDelayAndStaleOracleWindow = bound(
       _timeLengthBetweenUpdateEligibilityDelayAndStaleOracleWindow,
       calculator.updateEligibilityDelay(),
@@ -217,14 +233,7 @@ contract GetNewEarningPower is EarningPowerCalculatorTest {
     assertEq(_isQualifiedForUpdate, true);
   }
 
-  // Test Case:
-  // 1. Score >= Threshold: Delegatee is Eligible for full earning power.
-  // 2. Score < Threshold: Updated delegatee score falls below threshold.
-  // 3. Score < Threshold: Right before the updateEligibilityDelay is reached, updated delegatee
-  // score is still below threshold
-  // 4. _updateEligibilityDelay is reached.
-  // Result: We expect 0 earning power and true for _isQualifiedForUpdate.
-  function testFuzz_ReturnsZeroEarningPowerAndEligibleWhenDelegateScoreFallsBelowEligibilityThresholdButOutsideTheUpdateEligibilityDelayWithRecentBelowThresholdScoreUpdate(
+  function testFuzz_QualifiedNoEarningPowerAfterUpdateDelayAndLastScoreUpdateUnderThreshold(
     uint256 _amountStaked,
     address _staker,
     address _delegatee,
@@ -236,11 +245,11 @@ contract GetNewEarningPower is EarningPowerCalculatorTest {
     uint256 _timeBeforeEligibilityDelay
   ) public {
     _delegateeScore =
-      bound(_delegateeScore, calculator.delegateeScoreEligibilityThreshold(), type(uint256).max);
+      bound(_delegateeScore, calculator.delegateeEligibilityThresholdScore(), type(uint256).max);
     _newDelegateeScore =
-      bound(_newDelegateeScore, 0, calculator.delegateeScoreEligibilityThreshold() - 1);
+      bound(_newDelegateeScore, 0, calculator.delegateeEligibilityThresholdScore() - 1);
     _updatedDelegateeScore =
-      bound(_updatedDelegateeScore, 0, calculator.delegateeScoreEligibilityThreshold() - 1);
+      bound(_updatedDelegateeScore, 0, calculator.delegateeEligibilityThresholdScore() - 1);
 
     _timeBeforeEligibilityDelay =
       bound(_timeBeforeEligibilityDelay, 0, calculator.updateEligibilityDelay() - 1);
@@ -275,7 +284,7 @@ contract GetNewEarningPower is EarningPowerCalculatorTest {
     assertEq(_isQualifiedForUpdate, true);
   }
 
-  function testFuzz_ReturnsStakedAmountAsEarningPowerAndEligibleWhenDelegateScoreIsAboveEligibilityThresholdNotMatterTheTimeSinceLastDelegateeEligibilityChangeTime(
+  function testFuzz_QualifiedEarningPowerIsAmountStakedAfterUpdateDelayAndEligibleScore(
     uint256 _amountStaked,
     address _staker,
     address _delegatee,
@@ -284,7 +293,7 @@ contract GetNewEarningPower is EarningPowerCalculatorTest {
     uint256 _timeSinceLastDelegateeEligibilityChangeTime
   ) public {
     _delegateeScore =
-      bound(_delegateeScore, calculator.delegateeScoreEligibilityThreshold(), type(uint256).max);
+      bound(_delegateeScore, calculator.delegateeEligibilityThresholdScore(), type(uint256).max);
     _timeSinceLastDelegateeEligibilityChangeTime =
       bound(_timeSinceLastDelegateeEligibilityChangeTime, 0, type(uint256).max - block.timestamp);
     vm.prank(scoreOracle);
@@ -298,26 +307,83 @@ contract GetNewEarningPower is EarningPowerCalculatorTest {
   }
 }
 
-contract LastDelegateeEligibilityChangeTime is EarningPowerCalculatorTest {
-  // Score below the threshold => above threshold; lastDelegateeEligibilityChangeTime is updated;
-  function testFuzz_SetsLastDelegateeEligibilityChangeTimeWhenADelegateBecomesEligible(
-    address _delegatee,
-    uint256 _delegateeScoreAboveThreshold,
-    uint256 _randomTimestamp
-  ) public {
-    _delegateeScoreAboveThreshold = bound(
-      _delegateeScoreAboveThreshold,
-      calculator.delegateeScoreEligibilityThreshold(),
-      type(uint256).max
-    );
-    vm.warp(_randomTimestamp);
+contract UpdateDelegateeScore is EarningPowerCalculatorTest {
+  function testFuzz_UpdatesDelegateScore(address _delegatee, uint256 _newScore) public {
     vm.prank(scoreOracle);
-    calculator.updateDelegateeScore(_delegatee, _delegateeScoreAboveThreshold);
-    assertEq(calculator.lastDelegateeEligibilityChangeTime(_delegatee), _randomTimestamp);
+    calculator.updateDelegateeScore(_delegatee, _newScore);
+    assertEq(calculator.delegateeScores(_delegatee), _newScore);
+    assertEq(calculator.lastOracleUpdateTime(), block.timestamp);
+  }
+
+  function testFuzz_UpdatesExistingDelegateScore(
+    address _delegatee,
+    uint256 _firstScore,
+    uint256 _secondScore,
+    uint256 _timeInBetween
+  ) public {
+    vm.startPrank(scoreOracle);
+    calculator.updateDelegateeScore(_delegatee, _firstScore);
+    uint256 _initialScore = calculator.delegateeScores(_delegatee);
+    uint256 _expectedInitialUpdate = block.timestamp;
+    uint256 _initialScoreUpdate = calculator.lastOracleUpdateTime();
+
+    vm.warp(_timeInBetween);
+    calculator.updateDelegateeScore(_delegatee, _secondScore);
+    vm.stopPrank();
+
+    assertEq(_initialScore, _firstScore);
+    assertEq(_initialScoreUpdate, _expectedInitialUpdate);
+    assertEq(calculator.delegateeScores(_delegatee), _secondScore);
+    assertEq(calculator.lastOracleUpdateTime(), _timeInBetween);
+  }
+
+  function testFuzz_EmitsAnEventWhenDelegatesScoreIsUpdated(address _delegatee, uint256 _newScore)
+    public
+  {
+    vm.prank(scoreOracle);
+    vm.expectEmit();
+    emit EarningPowerCalculator.DelegateeScoreUpdated(_delegatee, 0, _newScore);
+    calculator.updateDelegateeScore(_delegatee, _newScore);
+  }
+
+  function testFuzz_RevertIf_CallerIsNotTheScoreOracle(
+    address _caller,
+    address _delegatee,
+    uint256 _newScore
+  ) public {
+    vm.assume(_caller != scoreOracle);
+    vm.prank(_caller);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        EarningPowerCalculator.BinaryEligibilityOracleEarningPowerCalculator__Unauthorized.selector,
+        bytes32("not oracle"),
+        _caller
+      )
+    );
+    calculator.updateDelegateeScore(_delegatee, _newScore);
+  }
+
+  function testFuzz_RevertIf_DelegateeScoreLocked(
+    address _delegatee,
+    uint256 _overrideScore,
+    uint256 _newScore
+  ) public {
+    vm.prank(owner);
+    calculator.overrideDelegateeScore(_delegatee, _overrideScore);
+    vm.prank(scoreOracle);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        EarningPowerCalculator
+          .BinaryEligibilityOracleEarningPowerCalculator__DelegateeScoreLocked
+          .selector,
+        _delegatee
+      )
+    );
+    calculator.updateDelegateeScore(_delegatee, _newScore);
   }
 
   // Score above the threshold => below threshold; lastDelegateeEligibilityChangeTime is updated;
-  function testFuzz_SetsLastDelegateeEligibilityChangeTimeWhenADelegateBecomesIneligible(
+  function testFuzz_CorrectlyUpdatesAfterDelegateeIsIneligible(
     address _delegatee,
     uint256 _delegateeScoreAboveThreshold,
     uint256 _delegateeScoreBelowThreshold,
@@ -325,11 +391,11 @@ contract LastDelegateeEligibilityChangeTime is EarningPowerCalculatorTest {
   ) public {
     _delegateeScoreAboveThreshold = bound(
       _delegateeScoreAboveThreshold,
-      calculator.delegateeScoreEligibilityThreshold(),
+      calculator.delegateeEligibilityThresholdScore(),
       type(uint256).max
     );
     _delegateeScoreBelowThreshold =
-      bound(_delegateeScoreBelowThreshold, 0, calculator.delegateeScoreEligibilityThreshold() - 1);
+      bound(_delegateeScoreBelowThreshold, 0, calculator.delegateeEligibilityThresholdScore() - 1);
 
     vm.prank(scoreOracle);
     calculator.updateDelegateeScore(_delegatee, _delegateeScoreAboveThreshold);
@@ -337,12 +403,30 @@ contract LastDelegateeEligibilityChangeTime is EarningPowerCalculatorTest {
     vm.warp(_randomTimestamp);
     vm.prank(scoreOracle);
     calculator.updateDelegateeScore(_delegatee, _delegateeScoreBelowThreshold);
-    assertEq(calculator.lastDelegateeEligibilityChangeTime(_delegatee), _randomTimestamp);
+    assertEq(calculator.timeOfIneligibility(_delegatee), _randomTimestamp);
+  }
+
+  // Score below the threshold => above threshold; lastDelegateeEligibilityChangeTime is not
+  // updated;
+  function testFuzz_DoesNotUpdatesAfterDelegateeIsEligible(
+    address _delegatee,
+    uint256 _delegateeScoreAboveThreshold,
+    uint256 _randomTimestamp
+  ) public {
+    _delegateeScoreAboveThreshold = bound(
+      _delegateeScoreAboveThreshold,
+      calculator.delegateeEligibilityThresholdScore(),
+      type(uint256).max
+    );
+    vm.warp(_randomTimestamp);
+    vm.prank(scoreOracle);
+    calculator.updateDelegateeScore(_delegatee, _delegateeScoreAboveThreshold);
+    assertEq(calculator.timeOfIneligibility(_delegatee), 0);
   }
 
   // Score >= threshold to score < threshold; lastDelegateeEligibilityChangeTime is not
   // updated.
-  function testFuzz_KeepsLastDelegateeEligibilityChangeTimeWhenAnIneligibleDelegateScoreIsUpdatedScoreBelowThreshold(
+  function testFuzz_DoesNotUpdateIfStillIneligible(
     address _delegatee,
     uint256 _delegateeScoreAboveThreshold,
     uint256 _delegateeScoreBelowThreshold,
@@ -352,13 +436,13 @@ contract LastDelegateeEligibilityChangeTime is EarningPowerCalculatorTest {
   ) public {
     _delegateeScoreAboveThreshold = bound(
       _delegateeScoreAboveThreshold,
-      calculator.delegateeScoreEligibilityThreshold(),
+      calculator.delegateeEligibilityThresholdScore(),
       type(uint256).max
     );
     _delegateeScoreBelowThreshold =
-      bound(_delegateeScoreBelowThreshold, 0, calculator.delegateeScoreEligibilityThreshold() - 1);
+      bound(_delegateeScoreBelowThreshold, 0, calculator.delegateeEligibilityThresholdScore() - 1);
     _updatedDelegateeScoreBelowThreshold = bound(
-      _updatedDelegateeScoreBelowThreshold, 0, calculator.delegateeScoreEligibilityThreshold() - 1
+      _updatedDelegateeScoreBelowThreshold, 0, calculator.delegateeEligibilityThresholdScore() - 1
     );
     vm.assume(_expectedTimestamp < _randomTimestamp);
 
@@ -376,77 +460,11 @@ contract LastDelegateeEligibilityChangeTime is EarningPowerCalculatorTest {
     calculator.updateDelegateeScore(_delegatee, _updatedDelegateeScoreBelowThreshold);
     vm.stopPrank();
 
-    assertEq(calculator.lastDelegateeEligibilityChangeTime(_delegatee), _expectedTimestamp);
+    assertEq(calculator.timeOfIneligibility(_delegatee), _expectedTimestamp);
   }
 }
 
-contract UpdateDelegateScore is EarningPowerCalculatorTest {
-  function testFuzz_UpdatesDelegateScore(address _delegatee, uint256 _newScore) public {
-    vm.prank(scoreOracle);
-    calculator.updateDelegateeScore(_delegatee, _newScore);
-    assertEq(calculator.delegateeScores(_delegatee), _newScore);
-    assertEq(calculator.lastOracleUpdateTime(), block.timestamp);
-  }
-
-  function testFuzz_UpdatesExistingDelegateScore(
-    address _delegatee,
-    uint256 _firstScore,
-    uint256 _secondScore,
-    uint256 _timeInBetween
-  ) public {
-    vm.startPrank(scoreOracle);
-    calculator.updateDelegateeScore(_delegatee, _firstScore);
-    assertEq(calculator.delegateeScores(_delegatee), _firstScore);
-    assertEq(calculator.lastOracleUpdateTime(), block.timestamp);
-
-    vm.warp(_timeInBetween);
-
-    calculator.updateDelegateeScore(_delegatee, _secondScore);
-    assertEq(calculator.delegateeScores(_delegatee), _secondScore);
-    assertEq(calculator.lastOracleUpdateTime(), _timeInBetween);
-    vm.stopPrank();
-  }
-
-  function testFuzz_EmitsAnEventWhenDelegatesScoreIsUpdated(address _delegatee, uint256 _newScore)
-    public
-  {
-    vm.prank(scoreOracle);
-    vm.expectEmit();
-    emit DelegateeScoreUpdated(_delegatee, 0, _newScore);
-    calculator.updateDelegateeScore(_delegatee, _newScore);
-  }
-
-  function testFuzz_RevertIf_CallerIsNotTheScoreOracle(
-    address _caller,
-    address _delegatee,
-    uint256 _newScore
-  ) public {
-    vm.assume(_caller != scoreOracle);
-    vm.prank(_caller);
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        EarningPowerCalculator.Unauthorized.selector, bytes32("not oracle"), _caller
-      )
-    );
-    calculator.updateDelegateeScore(_delegatee, _newScore);
-  }
-
-  function testFuzz_RevertIf_DelegateeScoreLocked(
-    address _delegatee,
-    uint256 _overrideScore,
-    uint256 _newScore
-  ) public {
-    vm.prank(owner);
-    calculator.overrideDelegateeScore(_delegatee, _overrideScore);
-    vm.prank(scoreOracle);
-    vm.expectRevert(
-      abi.encodeWithSelector(EarningPowerCalculator.DelegateeScoreLocked.selector, _delegatee)
-    );
-    calculator.updateDelegateeScore(_delegatee, _newScore);
-  }
-}
-
-contract OverrideDelegateScore is EarningPowerCalculatorTest {
+contract OverrideDelegateeScore is EarningPowerCalculatorTest {
   function testFuzz_OverrideDelegateScore(address _delegatee, uint256 _newScore, uint256 _timestamp)
     public
   {
@@ -454,7 +472,7 @@ contract OverrideDelegateScore is EarningPowerCalculatorTest {
     vm.prank(owner);
     calculator.overrideDelegateeScore(_delegatee, _newScore);
     assertEq(calculator.delegateeScores(_delegatee), _newScore);
-    assertEq(calculator.delegateeScoreLock(_delegatee), true);
+    assertEq(calculator.delegateeScoreLockStatus(_delegatee), true);
   }
 
   function testFuzz_EmitsEventWhenDelegateScoreIsOverridden(
@@ -465,9 +483,9 @@ contract OverrideDelegateScore is EarningPowerCalculatorTest {
     vm.warp(_timestamp);
     vm.prank(owner);
     vm.expectEmit();
-    emit DelegateeScoreUpdated(_delegatee, 0, _newScore);
+    emit EarningPowerCalculator.DelegateeScoreUpdated(_delegatee, 0, _newScore);
     vm.expectEmit();
-    emit DelegateeScoreLockSet(_delegatee, false, true);
+    emit EarningPowerCalculator.DelegateeScoreLockStatusSet(_delegatee, false, true);
     calculator.overrideDelegateeScore(_delegatee, _newScore);
   }
 
@@ -478,9 +496,9 @@ contract OverrideDelegateScore is EarningPowerCalculatorTest {
   ) public {
     vm.assume(_caller != owner);
     vm.prank(_caller);
-    vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _caller));
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _caller));
     calculator.overrideDelegateeScore(_delegatee, _newScore);
-    assertEq(calculator.delegateeScoreLock(_delegatee), false);
+    assertEq(calculator.delegateeScoreLockStatus(_delegatee), false);
   }
 }
 
@@ -488,7 +506,7 @@ contract SetDelegateeScoreLock is EarningPowerCalculatorTest {
   function testFuzz_LocksOrUnlocksADelegateeScore(address _delegatee, bool _isLocked) public {
     vm.prank(owner);
     calculator.setDelegateeScoreLock(_delegatee, _isLocked);
-    assertEq(calculator.delegateeScoreLock(_delegatee), _isLocked);
+    assertEq(calculator.delegateeScoreLockStatus(_delegatee), _isLocked);
   }
 
   function testFuzz_EmitsAnEventWhenDelegateScoreIsLockedOrUnlocked(
@@ -496,7 +514,9 @@ contract SetDelegateeScoreLock is EarningPowerCalculatorTest {
     bool _isLocked
   ) public {
     vm.expectEmit();
-    emit DelegateeScoreLockSet(_delegatee, calculator.delegateeScoreLock(_delegatee), _isLocked);
+    emit EarningPowerCalculator.DelegateeScoreLockStatusSet(
+      _delegatee, calculator.delegateeScoreLockStatus(_delegatee), _isLocked
+    );
     vm.prank(owner);
     calculator.setDelegateeScoreLock(_delegatee, _isLocked);
   }
@@ -506,7 +526,7 @@ contract SetDelegateeScoreLock is EarningPowerCalculatorTest {
   {
     vm.assume(_caller != owner);
     vm.prank(_caller);
-    vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _caller));
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _caller));
     calculator.setDelegateeScoreLock(_delegatee, _isLocked);
   }
 }
@@ -521,14 +541,14 @@ contract SetScoreOracle is EarningPowerCalculatorTest {
   function testFuzz_EmitsAnEventWhenScoreOracleIsUpdated(address _newScoreOracle) public {
     vm.prank(owner);
     vm.expectEmit();
-    emit ScoreOracleSet(scoreOracle, _newScoreOracle);
+    emit EarningPowerCalculator.ScoreOracleSet(scoreOracle, _newScoreOracle);
     calculator.setScoreOracle(_newScoreOracle);
   }
 
   function testFuzz_RevertIf_CallerIsNotOwner(address _caller, address _newScoreOracle) public {
     vm.assume(_caller != owner);
     vm.prank(_caller);
-    vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _caller));
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _caller));
     calculator.setScoreOracle(_newScoreOracle);
   }
 }
@@ -545,7 +565,9 @@ contract SetUpdateEligibilityDelay is EarningPowerCalculatorTest {
   ) public {
     vm.prank(owner);
     vm.expectEmit();
-    emit UpdateEligibilityDelaySet(updateEligibilityDelay, _newUpdateEligibilityDelay);
+    emit EarningPowerCalculator.UpdateEligibilityDelaySet(
+      updateEligibilityDelay, _newUpdateEligibilityDelay
+    );
     calculator.setUpdateEligibilityDelay(_newUpdateEligibilityDelay);
   }
 
@@ -554,18 +576,18 @@ contract SetUpdateEligibilityDelay is EarningPowerCalculatorTest {
   {
     vm.assume(_caller != owner);
     vm.prank(_caller);
-    vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _caller));
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _caller));
     calculator.setUpdateEligibilityDelay(_newUpdateEligibilityDelay);
   }
 }
 
-contract SetDelegateScoreEligibilityThreshold is EarningPowerCalculatorTest {
-  function testFuzz_SetsTheDelegateScoreEligibilityThreshold(
+contract SetDelegateeScoreEligibilityThreshold is EarningPowerCalculatorTest {
+  function testFuzz_CorrectlySetTheDelegateeScoreEligibilityThreshold(
     uint256 _newDelegateScoreEligibilityThreshold
   ) public {
     vm.prank(owner);
     calculator.setDelegateeScoreEligibilityThreshold(_newDelegateScoreEligibilityThreshold);
-    assertEq(calculator.delegateeScoreEligibilityThreshold(), _newDelegateScoreEligibilityThreshold);
+    assertEq(calculator.delegateeEligibilityThresholdScore(), _newDelegateScoreEligibilityThreshold);
   }
 
   function testFuzz_EmitsAnEventWhenDelegateScoreEligibilityThresholdIsUpdated(
@@ -573,7 +595,7 @@ contract SetDelegateScoreEligibilityThreshold is EarningPowerCalculatorTest {
   ) public {
     vm.prank(owner);
     vm.expectEmit();
-    emit DelegateeScoreEligibilityThresholdSet(
+    emit EarningPowerCalculator.DelegateeEligibilityThresholdScoreSet(
       delegateeScoreEligibilityThreshold, _newDelegateScoreEligibilityThreshold
     );
     calculator.setDelegateeScoreEligibilityThreshold(_newDelegateScoreEligibilityThreshold);
@@ -585,7 +607,7 @@ contract SetDelegateScoreEligibilityThreshold is EarningPowerCalculatorTest {
   ) public {
     vm.assume(_caller != owner);
     vm.prank(_caller);
-    vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _caller));
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _caller));
     calculator.setDelegateeScoreEligibilityThreshold(_newDelegateScoreEligibilityThreshold);
   }
 }
