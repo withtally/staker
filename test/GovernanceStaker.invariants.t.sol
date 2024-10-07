@@ -17,7 +17,7 @@ contract GovernanceStakerInvariants is Test {
   ERC20VotesMock govToken;
   IEarningPowerCalculator earningPowerCalculator;
   address rewardsNotifier;
-  uint256 maxBumpTip = 100_000e18;
+  uint256 maxBumpTip = 2e18;
 
   function setUp() public {
     rewardToken = new ERC20Fake();
