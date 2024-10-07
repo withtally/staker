@@ -3537,7 +3537,7 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
 
-  function testFuzz_RevertIf_UnclaimedRewardsAreInsufficientToLeaveAnAdditionalMaxcBumpTipWhenEarningPowerIsBeingBumpedDown(
+  function testFuzz_RevertIf_UnclaimedRewardsAreInsufficientToLeaveAnAdditionalMaxBumpTipWhenEarningPowerIsBeingBumpedDown(
     address _depositor,
     address _delegatee,
     uint256 _stakeAmount,
@@ -3572,7 +3572,7 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
 
-  function testFuzz_RevertIf_NewEarningPowerIsLessAndRequestedTipIsGreaterThanUnclaimedRewards(
+  function testFuzz_RevertIf_UnclaimedRewardsAreLessThanTheRequestedTipWhenEarningPowerIsBeingBumpedDown(
     address _depositor,
     address _delegatee,
     uint256 _stakeAmount,
