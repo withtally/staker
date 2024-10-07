@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {Vm, Test, stdStorage, StdStorage, console2} from "forge-std/Test.sol";
+import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
 import {
   GovernanceStaker,
   DelegationSurrogate,
@@ -19,7 +19,7 @@ import {PercentAssertions} from "test/helpers/PercentAssertions.sol";
 contract GovernanceStakerTest is Test, PercentAssertions {
   ERC20Fake rewardToken;
   ERC20VotesMock govToken;
-  IEarningPowerCalculator earningPowerCalculator;
+  MockFullEarningPowerCalculator earningPowerCalculator;
 
   address admin;
   address rewardNotifier;
@@ -31,6 +31,7 @@ contract GovernanceStakerTest is Test, PercentAssertions {
       100_848_718_687_569_044_464_352_297_364_979_714_567_529_445_102_133_191_562_407_938_263_844_493_123_852
     )
   );
+  uint256 maxBumpTip = 1e18;
 
   bytes32 constant PERMIT_TYPEHASH =
     keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
@@ -60,7 +61,8 @@ contract GovernanceStakerTest is Test, PercentAssertions {
 
     admin = makeAddr("admin");
 
-    govStaker = new GovernanceStakerHarness(rewardToken, govToken, earningPowerCalculator, admin);
+    govStaker =
+      new GovernanceStakerHarness(rewardToken, govToken, earningPowerCalculator, maxBumpTip, admin);
     vm.label(address(govStaker), "GovStaker");
 
     vm.prank(admin);
@@ -68,6 +70,10 @@ contract GovernanceStakerTest is Test, PercentAssertions {
 
     // Convenience for use in tests
     SCALE_FACTOR = govStaker.SCALE_FACTOR();
+  }
+
+  function _min(uint256 _leftValue, uint256 _rightValue) internal pure returns (uint256) {
+    return _leftValue > _rightValue ? _rightValue : _leftValue;
   }
 
   function _jumpAhead(uint256 _seconds) public {
@@ -224,6 +230,7 @@ contract Constructor is GovernanceStakerTest {
     address _rewardToken,
     address _stakeToken,
     address _earningPowerCalculator,
+    uint256 _maxBumpTip,
     address _admin
   ) public {
     vm.assume(_admin != address(0));
@@ -231,11 +238,13 @@ contract Constructor is GovernanceStakerTest {
       IERC20(_rewardToken),
       IERC20Delegates(_stakeToken),
       IEarningPowerCalculator(_earningPowerCalculator),
+      _maxBumpTip,
       _admin
     );
     assertEq(address(_govStaker.REWARD_TOKEN()), address(_rewardToken));
     assertEq(address(_govStaker.STAKE_TOKEN()), address(_stakeToken));
     assertEq(address(_govStaker.earningPowerCalculator()), address(_earningPowerCalculator));
+    assertEq(_govStaker.maxBumpTip(), _maxBumpTip);
     assertEq(_govStaker.admin(), _admin);
   }
 }
@@ -2942,7 +2951,23 @@ contract GovernanceStakerRewardsTest is GovernanceStakerTest {
     console2.log("-----------------------------------------------");
   }
 
-  function __dumpDebugDepositorRewards(address _depositor) public view {}
+  function __dumpDebugDeposit(GovernanceStaker.DepositIdentifier _depositId) public view {
+    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    console2.log("deposit balance");
+    console2.log(_deposit.balance);
+    console2.log("deposit owner");
+    console2.log(_deposit.owner);
+    console2.log("deposit beneficiary");
+    console2.log(_deposit.beneficiary);
+    console2.log("deposit earningPower");
+    console2.log(_deposit.earningPower);
+    console2.log("deposit reward per token checkpoint");
+    console2.log(_deposit.rewardPerTokenCheckpoint);
+    console2.log("deposit scaled unclaimed reward checkpoint");
+    console2.log(_deposit.scaledUnclaimedRewardCheckpoint);
+    console2.log("deposit unclaimed rewards");
+    console2.log(govStaker.unclaimedReward(_depositId));
+  }
 
   function _jumpAheadByPercentOfRewardDuration(uint256 _percent) public {
     uint256 _seconds = (_percent * govStaker.REWARD_DURATION()) / 100;
@@ -3152,6 +3177,433 @@ contract NotifyRewardAmount is GovernanceStakerRewardsTest {
     vm.expectRevert(GovernanceStaker.GovernanceStaker__InsufficientRewardBalance.selector);
     govStaker.notifyRewardAmount(_amount);
     vm.stopPrank();
+  }
+}
+
+contract BumpEarningPower is GovernanceStakerRewardsTest {
+  function testFuzz_BumpsTheDepositsEarningPowerUp(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerIncrease
+  ) public {
+    vm.assume(_tipReceiver != address(0));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _earningPowerIncrease = bound(_earningPowerIncrease, 1, type(uint128).max);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump, but also less than rewards for the sake of this test
+    _requestedTip = bound(_requestedTip, 0, _min(maxBumpTip, govStaker.unclaimedReward(_depositId)));
+
+    // The staker's earning power increases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount + _earningPowerIncrease
+    );
+    // Bump earning power is called
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+
+    (,,,, uint256 _newEarningPower,,) = govStaker.deposits(_depositId);
+    assertEq(_newEarningPower, _stakeAmount + _earningPowerIncrease);
+  }
+
+  function testFuzz_BumpsTheGlobalTotalEarningPowerUp(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerIncrease
+  ) public {
+    vm.assume(_tipReceiver != address(0));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _earningPowerIncrease = bound(_earningPowerIncrease, 1, type(uint128).max);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump, but also less than rewards for the sake of this test
+    _requestedTip = bound(_requestedTip, 0, _min(maxBumpTip, govStaker.unclaimedReward(_depositId)));
+
+    // The staker's earning power increases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount + _earningPowerIncrease
+    );
+    // Bump earning power is called
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+
+    assertEq(govStaker.totalEarningPower(), _stakeAmount + _earningPowerIncrease);
+  }
+
+  function testFuzz_TransfersTipTokensToTheTipReceiverWhenEarningPowerIsBumpedUp(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerIncrease
+  ) public {
+    vm.assume(_tipReceiver != address(0) && _tipReceiver != address(govStaker));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    uint256 _initialTipReceiverBalance = rewardToken.balanceOf(_tipReceiver);
+    _earningPowerIncrease = bound(_earningPowerIncrease, 1, type(uint128).max);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump, but also less than rewards for the sake of this test
+    _requestedTip = bound(_requestedTip, 0, _min(maxBumpTip, govStaker.unclaimedReward(_depositId)));
+
+    // The staker's earning power increases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount + _earningPowerIncrease
+    );
+    // Bump earning power is called
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+
+    uint256 _tipReceiverBalanceIncrease =
+      rewardToken.balanceOf(_tipReceiver) - _initialTipReceiverBalance;
+    assertEq(_tipReceiverBalanceIncrease, _requestedTip);
+  }
+
+  function testFuzz_BumpsTheDepositsEarningPowerDown(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerDecrease
+  ) public {
+    vm.assume(_tipReceiver != address(0));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = bound(_rewardAmount, maxBumpTip + 1, 10_000_000e18);
+    // Initial earning power for the mock calculator is equal to the amount staked
+    _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump, but also less than rewards for the sake of this test
+    _requestedTip =
+      bound(_requestedTip, 0, _min(maxBumpTip, govStaker.unclaimedReward(_depositId) - maxBumpTip));
+
+    // The staker's earning power decreases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount - _earningPowerDecrease
+    );
+    // Bump earning power is called
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+
+    (,,,, uint256 _newEarningPower,,) = govStaker.deposits(_depositId);
+    assertEq(_newEarningPower, _stakeAmount - _earningPowerDecrease);
+  }
+
+  function testFuzz_BumpsTheGlobalTotalEarningPowerDown(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerDecrease
+  ) public {
+    vm.assume(_tipReceiver != address(0));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = bound(_rewardAmount, maxBumpTip + 1, 10_000_000e18);
+    _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump, but also less than rewards for the sake of this test
+    _requestedTip =
+      bound(_requestedTip, 0, _min(maxBumpTip, govStaker.unclaimedReward(_depositId) - maxBumpTip));
+
+    // The staker's earning power increases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount - _earningPowerDecrease
+    );
+    // Bump earning power is called
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+
+    assertEq(govStaker.totalEarningPower(), _stakeAmount - _earningPowerDecrease);
+  }
+
+  function testFuzz_TransfersTipTokensToTheTipReceiverWhenEarningPowerIsBumpedDown(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerDecrease
+  ) public {
+    vm.assume(_tipReceiver != address(0) && _tipReceiver != address(govStaker));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = bound(_rewardAmount, maxBumpTip + 1, 10_000_000e18);
+    _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
+    uint256 _initialTipReceiverBalance = rewardToken.balanceOf(_tipReceiver);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump, but also less than rewards for the sake of this test
+    _requestedTip =
+      bound(_requestedTip, 0, _min(maxBumpTip, govStaker.unclaimedReward(_depositId) - maxBumpTip));
+
+    // The staker's earning power decreases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount - _earningPowerDecrease
+    );
+    // Bump earning power is called
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+
+    uint256 _tipReceiverBalanceIncrease =
+      rewardToken.balanceOf(_tipReceiver) - _initialTipReceiverBalance;
+    assertEq(_tipReceiverBalanceIncrease, _requestedTip);
+  }
+
+  function testFuzz_RevertIf_RequestedTipIsGreaterThanTheMaxTip(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _newEarningPower
+  ) public {
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be greater than the max bump
+    _requestedTip = bound(_requestedTip, maxBumpTip + 1, type(uint256).max);
+
+    // The staker's earning power changes
+    earningPowerCalculator.__setEarningPowerForDelegatee(_delegatee, _newEarningPower);
+    // Bump earning power is called
+    vm.expectRevert(GovernanceStaker.GovernanceStaker__InvalidTip.selector);
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+  }
+
+  function testFuzz_RevertIf_IsNotAQualifiedEarningPowerUpdate(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _newEarningPower
+  ) public {
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump
+    _requestedTip = bound(_requestedTip, 0, maxBumpTip);
+
+    // The staker's earning power changes
+    earningPowerCalculator.__setEarningPowerAndIsQualifiedForDelegatee(
+      _delegatee, _newEarningPower, false
+    );
+    // Bump earning power is called
+    vm.expectRevert(GovernanceStaker.GovernanceStaker__Unqualified.selector);
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+  }
+
+  function testFuzz_RevertIf_NewEarningPowerIsTheCurrentEarningPower(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip
+  ) public {
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump
+    _requestedTip = bound(_requestedTip, 0, maxBumpTip);
+
+    // The staker's earning power changes
+    earningPowerCalculator.__setEarningPowerForDelegatee(_delegatee, _stakeAmount);
+    // Bump earning power is called
+    vm.expectRevert(GovernanceStaker.GovernanceStaker__Unqualified.selector);
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+  }
+
+  function testFuzz_RevertIf_UnclaimedRewardsAreLessThanTheRequestedTipWhenEarningPowerIsBeingBumpedUp(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerIncrease
+  ) public {
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _earningPowerIncrease = _boundToRealisticStake(_earningPowerIncrease);
+    _rewardAmount = bound(_rewardAmount, 200e6, maxBumpTip - 1);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    vm.prank(_depositor);
+    _requestedTip = bound(_requestedTip, govStaker.unclaimedReward(_depositId) + 1, maxBumpTip);
+
+    // The staker's earning power increases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount + _earningPowerIncrease
+    );
+    // // Bump earning power is called
+    vm.expectRevert(GovernanceStaker.GovernanceStaker__InsufficientUnclaimedRewards.selector);
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+  }
+
+  function testFuzz_RevertIf_UnclaimedRewardsAreInsufficientToLeaveAnAdditionalMaxBumpTipWhenEarningPowerIsBeingBumpedDown(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerDecrease
+  ) public {
+    vm.assume(_tipReceiver != address(0));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = bound(_rewardAmount, 200e6, maxBumpTip - 1);
+    _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the unclaimed reward
+    _requestedTip = bound(_requestedTip, 0, govStaker.unclaimedReward(_depositId));
+
+    // The staker's earning power decreases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount - _earningPowerDecrease
+    );
+    // Bump earning power is called
+    vm.expectRevert(GovernanceStaker.GovernanceStaker__InsufficientUnclaimedRewards.selector);
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+  }
+
+  function testFuzz_RevertIf_UnclaimedRewardsAreLessThanTheRequestedTipWhenEarningPowerIsBeingBumpedDown(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerDecrease
+  ) public {
+    vm.assume(_tipReceiver != address(0));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = bound(_rewardAmount, 200e6, maxBumpTip);
+    _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    _requestedTip = bound(_requestedTip, govStaker.unclaimedReward(_depositId) + 1, maxBumpTip);
+
+    // The staker's earning power decreases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount - _earningPowerDecrease
+    );
+    // Bump earning power is called
+    vm.prank(_bumpCaller);
+    vm.expectRevert(stdError.arithmeticError);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
 }
 

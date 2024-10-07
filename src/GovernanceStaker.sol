@@ -64,6 +64,9 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Emitted when the admin address is set.
   event AdminSet(address indexed oldAdmin, address indexed newAdmin);
 
+  /// @notice Emitted when the max bump tip is modified.
+  event MaxBumpTipSet(uint256 oldMaxBumpTip, uint256 newMaxBumpTip);
+
   /// @notice Emitted when a reward notifier address is enabled or disabled.
   event RewardNotifierSet(address indexed account, bool isEnabled);
 
@@ -83,14 +86,24 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// duration.
   error GovernanceStaker__InsufficientRewardBalance();
 
+  /// @notice Thrown if the unclaimed rewards are insufficient to cover a bumpers requested tip or
+  /// in the case of an earning power decrease the tip of a subsequent earning power increase.
+  error GovernanceStaker__InsufficientUnclaimedRewards();
+
   /// @notice Thrown if a caller attempts to specify address zero for certain designated addresses.
   error GovernanceStaker__InvalidAddress();
+
+  /// @notice Thrown if a bumper's requested tip is invalid.
+  error GovernanceStaker__InvalidTip();
 
   /// @notice Thrown when an onBehalf method is called with a deadline that has expired.
   error GovernanceStaker__ExpiredDeadline();
 
   /// @notice Thrown if a caller supplies an invalid signature to a method that requires one.
   error GovernanceStaker__InvalidSignature();
+
+  /// @notice Thrown if an earning power update is unqualified to be bumped.
+  error GovernanceStaker__Unqualified();
 
   /// @notice Metadata associated with a discrete staking deposit.
   /// @param balance The deposit's staked balance.
@@ -163,6 +176,9 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Permissioned actor that can enable/disable `rewardNotifier` addresses.
   address public admin;
 
+  /// @notice Maximum tip a bumper can request.
+  uint256 public maxBumpTip;
+
   /// @notice Global amount currently staked across all deposits.
   uint256 public totalStaked;
 
@@ -207,11 +223,13 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     IERC20 _rewardToken,
     IERC20Delegates _stakeToken,
     IEarningPowerCalculator _earningPowerCalculator,
+    uint256 _maxBumpTip,
     address _admin
   ) EIP712("GovernanceStaker", "1") {
     REWARD_TOKEN = _rewardToken;
     STAKE_TOKEN = _stakeToken;
     _setAdmin(_admin);
+    _setMaxBumpTip(_maxBumpTip);
     earningPowerCalculator = _earningPowerCalculator;
   }
 
@@ -221,6 +239,14 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   function setAdmin(address _newAdmin) external {
     _revertIfNotAdmin();
     _setAdmin(_newAdmin);
+  }
+
+  /// @notice Set the max bump tip.
+  /// @param _newMaxBumpTip Value of the new max bump tip.
+  /// @dev Caller must be the current admin.
+  function setMaxBumpTip(uint256 _newMaxBumpTip) external {
+    _revertIfNotAdmin();
+    _setMaxBumpTip(_newMaxBumpTip);
   }
 
   /// @notice Enables or disables a reward notifier address.
@@ -665,6 +691,53 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     emit RewardNotified(_amount, msg.sender);
   }
 
+  /// @notice A function that a bumper can call to update a deposit's earning power when a
+  /// qualifying change in the earning power is returned by the earning power calculator. A
+  /// deposit's earning power may change as determined by the algorithm of the current earning power
+  /// calculator. In order to incentivize bumpers to trigger these updates a portion of deposit's
+  /// unclaimed rewards are sent to the bumper.
+  /// @param _depositId The identifier for the deposit that needs an updated earning power.
+  /// @param _tipReceiver The receiver of the reward for updating a deposit's earning power.
+  /// @param _requestedTip The amount of tip requested by the third-party.
+  function bumpEarningPower(
+    DepositIdentifier _depositId,
+    address _tipReceiver,
+    uint256 _requestedTip
+  ) external {
+    if (_requestedTip > maxBumpTip) revert GovernanceStaker__InvalidTip();
+
+    Deposit storage deposit = deposits[_depositId];
+
+    _checkpointGlobalReward();
+    _checkpointReward(deposit);
+
+    uint256 _unclaimedRewards = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
+
+    (uint256 _newEarningPower, bool _isQualifiedForBump) = earningPowerCalculator.getNewEarningPower(
+      deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower
+    );
+    if (!_isQualifiedForBump || _newEarningPower == deposit.earningPower) {
+      revert GovernanceStaker__Unqualified();
+    }
+
+    if (_newEarningPower > deposit.earningPower && _unclaimedRewards < _requestedTip) {
+      revert GovernanceStaker__InsufficientUnclaimedRewards();
+    }
+
+    // Note: underflow causes a revert if the requested  tip is more than unclaimed rewards
+    if (_newEarningPower < deposit.earningPower && (_unclaimedRewards - _requestedTip) < maxBumpTip)
+    {
+      revert GovernanceStaker__InsufficientUnclaimedRewards();
+    }
+
+    // Update global earning power & deposit earning power based on this bump
+    totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
+    deposit.earningPower = _newEarningPower;
+
+    // Send tip to the receiver
+    SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _requestedTip);
+  }
+
   /// @notice Live value of the unclaimed rewards earned by a given deposit with the
   /// scale factor included. Used internally for calculating reward checkpoints while minimizing
   /// precision loss.
@@ -906,6 +979,13 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     _revertIfAddressZero(_newAdmin);
     emit AdminSet(admin, _newAdmin);
     admin = _newAdmin;
+  }
+
+  /// @notice Internal helper method which sets the max bump tip.
+  /// @param _newMaxTip Value of the new max bump tip.
+  function _setMaxBumpTip(uint256 _newMaxTip) internal {
+    emit MaxBumpTipSet(maxBumpTip, _newMaxTip);
+    maxBumpTip = _newMaxTip;
   }
 
   /// @notice Internal helper method which reverts GovernanceStaker__Unauthorized if the message

@@ -29,6 +29,7 @@ contract Deploy is Script, DeployInput {
       IERC20(PAYOUT_TOKEN_ADDRESS),
       IERC20Delegates(STAKE_TOKEN_ADDRESS),
       IEarningPowerCalculator(address(0)),
+      MAX_BUMP_TIP,
       vm.addr(deployerPrivateKey)
     );
 

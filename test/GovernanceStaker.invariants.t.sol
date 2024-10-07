@@ -17,6 +17,7 @@ contract GovernanceStakerInvariants is Test {
   ERC20VotesMock govToken;
   IEarningPowerCalculator earningPowerCalculator;
   address rewardsNotifier;
+  uint256 maxBumpTip = 2e18;
 
   function setUp() public {
     rewardToken = new ERC20Fake();
@@ -31,7 +32,9 @@ contract GovernanceStakerInvariants is Test {
     earningPowerCalculator = new MockFullEarningPowerCalculator();
     vm.label(address(earningPowerCalculator), "Full Earning Power Calculator");
 
-    govStaker = new GovernanceStaker(rewardToken, govToken, earningPowerCalculator, rewardsNotifier);
+    govStaker = new GovernanceStaker(
+      rewardToken, govToken, earningPowerCalculator, maxBumpTip, rewardsNotifier
+    );
     handler = new GovernanceStakerHandler(govStaker);
 
     bytes4[] memory selectors = new bytes4[](7);

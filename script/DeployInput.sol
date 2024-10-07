@@ -8,4 +8,5 @@ contract DeployInput {
   address constant PAYOUT_TOKEN_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // WETH
   uint256 constant PAYOUT_AMOUNT = 10e18; // 10 (WETH)
   address constant STAKE_TOKEN_ADDRESS = 0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984; // UNI
+  uint256 constant MAX_BUMP_TIP = 100_000e18; // TODO this should be updated before deployment
 }

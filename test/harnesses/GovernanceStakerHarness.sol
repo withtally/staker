@@ -14,8 +14,9 @@ contract GovernanceStakerHarness is GovernanceStaker {
     IERC20 _rewardsToken,
     IERC20Delegates _stakeToken,
     IEarningPowerCalculator _earningPowerCalculator,
+    uint256 _maxBumpTip,
     address _admin
-  ) GovernanceStaker(_rewardsToken, _stakeToken, _earningPowerCalculator, _admin) {}
+  ) GovernanceStaker(_rewardsToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin) {}
 
   function exposed_useDepositId() external returns (DepositIdentifier _depositId) {
     _depositId = _useDepositId();
