@@ -691,10 +691,11 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     emit RewardNotified(_amount, msg.sender);
   }
 
-  /// @notice A function that a third-party should call to update a deposit's earning power. An
-  /// individuals earning power may change outside of how much stake their deposit adds to the
-  /// staking pool, and this function is meant to incentivize third-parties to trigger these earning
-  /// power updates by giving a portion of users unclaimed rewards to the third-party.
+  /// @notice A function that a bumper can call to update a deposit's earning power when a
+  /// qualifying change in the earning power is returned by the earning power calculator. A
+  /// deposit's earning power may change as determined by the algorithm of the current earning power
+  /// calculator. In order to incentivize bumpers to trigger these updates a portion of deposit's
+  /// unclaimed rewards are sent to the bumper.
   /// @param _depositId The identifier for the deposit that needs an updated earning power.
   /// @param _tipReceiver The receiver of the reward for updating a deposit's earning power.
   /// @param _requestedTip The amount of tip requested by the third-party.
