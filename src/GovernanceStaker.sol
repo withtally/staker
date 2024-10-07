@@ -103,7 +103,6 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   error GovernanceStaker__InvalidSignature();
 
   /// @notice Thrown if an earning power update is unqualified to be bumped.
-  /// TODO: Should this include any arguments
   error GovernanceStaker__Unqualified();
 
   /// @notice Metadata associated with a discrete staking deposit.
