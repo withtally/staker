@@ -703,14 +703,14 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     address _tipReceiver,
     uint256 _requestedTip
   ) external {
+    if (_requestedTip > maxBumpTip) revert GovernanceStaker__InvalidTip();
+
     Deposit storage deposit = deposits[_depositId];
 
     _checkpointGlobalReward();
     _checkpointReward(deposit);
 
     uint256 _unclaimedRewards = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
-
-    if (_requestedTip > maxBumpTip) revert GovernanceStaker__InvalidTip();
 
     (uint256 _newEarningPower, bool _isQualifiedForBump) = earningPowerCalculator.getNewEarningPower(
       deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower
