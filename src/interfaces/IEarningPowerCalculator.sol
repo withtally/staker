@@ -18,8 +18,6 @@ interface IEarningPowerCalculator {
   /// @param _delegatee The address of the delegatee.
   /// @param _oldEarningPower The previous earning power value.
   /// @return _newEarningPower The newly calculated earning power.
-  /// @return _isQualifiedForUpdate Indicating if the new earning power qualifies for an
-  /// update.
   function getNewEarningPower(
     uint256 _amountStaked,
     address _staker,
