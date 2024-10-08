@@ -2844,6 +2844,46 @@ contract SetRewardNotifier is GovernanceStakerTest {
   }
 }
 
+contract DomainSeperator is GovernanceStakerTest {
+  function _buildDomainSeperator(string memory _name, string memory _version, address _contract)
+    internal
+    view
+    returns (bytes32)
+  {
+    bytes32 _typeHash = keccak256(
+      "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
+    return keccak256(
+      abi.encode(
+        _typeHash, keccak256(bytes(_name)), keccak256(bytes(_version)), block.chainid, _contract
+      )
+    );
+  }
+
+  function testFuzz_CorrectlyBuildTheGovernorDomainSeperator(
+    address _rewardToken,
+    address _stakeToken,
+    address _earningPowerCalculator,
+    uint256 _maxBumpTip,
+    address _admin,
+    string memory _name
+  ) public {
+    vm.assume(_admin != address(0));
+    GovernanceStaker _govStaker = new GovernanceStaker(
+      IERC20(_rewardToken),
+      IERC20Delegates(_stakeToken),
+      IEarningPowerCalculator(_earningPowerCalculator),
+      _maxBumpTip,
+      _admin,
+      _name
+    );
+
+    bytes32 _seperator = _govStaker.domainSeperator();
+    bytes32 _expectedSeperator = _buildDomainSeperator(_name, "1", address(_govStaker));
+    assertEq(_seperator, _expectedSeperator);
+  }
+}
+
 contract SetAdmin is GovernanceStakerTest {
   function testFuzz_AllowsAdminToSetAdmin(address _newAdmin) public {
     vm.assume(_newAdmin != address(0));
