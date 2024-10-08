@@ -383,7 +383,7 @@ contract UpdateDelegateeScore is EarningPowerCalculatorTest {
   }
 
   // Score above the threshold => below threshold; lastDelegateeEligibilityChangeTime is updated;
-  function testFuzz_CorrectlyUpdatesAfterDelegateeIsIneligible(
+  function testFuzz_UpdatesTimeOfIneligibilityWhenDelegateeScoreDropsBelowThreshold(
     address _delegatee,
     uint256 _delegateeScoreAboveThreshold,
     uint256 _delegateeScoreBelowThreshold,
@@ -408,7 +408,7 @@ contract UpdateDelegateeScore is EarningPowerCalculatorTest {
 
   // Score below the threshold => above threshold; lastDelegateeEligibilityChangeTime is not
   // updated;
-  function testFuzz_DoesNotUpdatesAfterDelegateeIsEligible(
+  function testFuzz_ReturnsCorrectTimeOfIneligibilityWhenDelegateeBecomesEligible(
     address _delegatee,
     uint256 _delegateeScoreAboveThreshold,
     uint256 _randomTimestamp
@@ -424,9 +424,7 @@ contract UpdateDelegateeScore is EarningPowerCalculatorTest {
     assertEq(calculator.timeOfIneligibility(_delegatee), 0);
   }
 
-  // Score >= threshold to score < threshold; lastDelegateeEligibilityChangeTime is not
-  // updated.
-  function testFuzz_DoesNotUpdateIfStillIneligible(
+  function testFuzz_ReturnsCorrectTimeOfIneligibilityWhenAnIneligibleDelegateeScoreIsUpdatedWithAScoreBelowThreshold(
     address _delegatee,
     uint256 _delegateeScoreAboveThreshold,
     uint256 _delegateeScoreBelowThreshold,
