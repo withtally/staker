@@ -444,7 +444,6 @@ contract UpdateDelegateeScore is EarningPowerCalculatorTest {
     _updatedDelegateeScoreBelowThreshold = bound(
       _updatedDelegateeScoreBelowThreshold, 0, calculator.delegateeEligibilityThresholdScore() - 1
     );
-    vm.assume(_expectedTimestamp < _randomTimestamp);
 
     vm.startPrank(scoreOracle);
     calculator.updateDelegateeScore(_delegatee, _delegateeScoreAboveThreshold);

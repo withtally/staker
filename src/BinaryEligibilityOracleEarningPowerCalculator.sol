@@ -66,10 +66,9 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// @notice Mapping to store delegatee scores.
   mapping(address delegatee => uint256 delegateeScore) public delegateeScores;
 
-  /// @notice Mapping to store the last score update timestamp where a delegatee's eligibility
-  /// changed.
-  /// @dev Key is the delegatee's address, value is the block.timestamp of the last eligibility
-  /// update.
+  /// @notice Mapping to store the last score update timestamp where a delegatee became ineligible.
+  /// @dev Key is the delegatee's address, value is the block.timestamp of when a delegatee's score
+  /// went below the `delegateeEligibilityThresholdScore`.
   mapping(address delegatee => uint256 timestamp) public timeOfIneligibility;
 
   /// @notice Mapping to store the lock status of delegate scores.
