@@ -233,7 +233,7 @@ contract Constructor is GovernanceStakerTest {
     uint256 _maxBumpTip,
     address _admin
   ) public {
-    vm.assume(_admin != address(0));
+    vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     GovernanceStaker _govStaker = new GovernanceStaker(
       IERC20(_rewardToken),
       IERC20Delegates(_stakeToken),
@@ -2878,6 +2878,54 @@ contract SetAdmin is GovernanceStakerTest {
     vm.prank(admin);
     vm.expectRevert(GovernanceStaker.GovernanceStaker__InvalidAddress.selector);
     govStaker.setAdmin(address(0));
+  }
+}
+
+contract SetEarningPowerCalculator is GovernanceStakerTest {
+  function testFuzz_AllowsAdminToSetEarningPowerCalculator(address _newEarningPowerCalculator)
+    public
+  {
+    vm.assume(_newEarningPowerCalculator != address(0));
+
+    vm.prank(admin);
+    govStaker.setEarningPowerCalculator(_newEarningPowerCalculator);
+
+    assertEq(address(govStaker.earningPowerCalculator()), _newEarningPowerCalculator);
+  }
+
+  function testFuzz_EmitsEventWhenEarningPowerCalculatorIsSet(address _newEarningPowerCalculator)
+    public
+  {
+    vm.assume(_newEarningPowerCalculator != address(0));
+
+    vm.expectEmit();
+    emit GovernanceStaker.EarningPowerCalculatorSet(
+      address(govStaker.earningPowerCalculator()), _newEarningPowerCalculator
+    );
+
+    vm.prank(admin);
+    govStaker.setEarningPowerCalculator(_newEarningPowerCalculator);
+  }
+
+  function testFuzz_RevertIf_TheCallerIsNotTheAdmin(
+    address _notAdmin,
+    address _newEarningPowerCalculator
+  ) public {
+    vm.assume(_notAdmin != govStaker.admin());
+
+    vm.prank(_notAdmin);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        GovernanceStaker.GovernanceStaker__Unauthorized.selector, bytes32("not admin"), _notAdmin
+      )
+    );
+    govStaker.setEarningPowerCalculator(_newEarningPowerCalculator);
+  }
+
+  function test_RevertIf_NewEarningPowerCalculatorAddressIsZeroAddress() public {
+    vm.prank(admin);
+    vm.expectRevert(GovernanceStaker.GovernanceStaker__InvalidAddress.selector);
+    govStaker.setEarningPowerCalculator(address(0));
   }
 }
 
