@@ -17,11 +17,13 @@ interface IEarningPowerCalculator {
   /// @param _staker The address of the staker.
   /// @param _delegatee The address of the delegatee.
   /// @param _oldEarningPower The previous earning power value.
-  /// @return _newEarningPower The newly calculated earning power.
+  /// @return The newly calculated earning power.
+  /// @return Indicating if the new earning power qualifies for an
+  /// update.
   function getNewEarningPower(
     uint256 _amountStaked,
     address _staker,
     address _delegatee,
     uint256 _oldEarningPower
-  ) external view returns (uint256 _newEarningPower, bool _isQualifiedForUpdate);
+  ) external view returns (uint256, bool);
 }
