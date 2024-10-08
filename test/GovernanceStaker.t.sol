@@ -61,8 +61,9 @@ contract GovernanceStakerTest is Test, PercentAssertions {
 
     admin = makeAddr("admin");
 
-    govStaker =
-      new GovernanceStakerHarness(rewardToken, govToken, earningPowerCalculator, maxBumpTip, admin);
+    govStaker = new GovernanceStakerHarness(
+      rewardToken, govToken, earningPowerCalculator, maxBumpTip, admin, "GovernanceStaker"
+    );
     vm.label(address(govStaker), "GovStaker");
 
     vm.prank(admin);
@@ -231,7 +232,8 @@ contract Constructor is GovernanceStakerTest {
     address _stakeToken,
     address _earningPowerCalculator,
     uint256 _maxBumpTip,
-    address _admin
+    address _admin,
+    string memory _name
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     GovernanceStaker _govStaker = new GovernanceStaker(
@@ -239,7 +241,8 @@ contract Constructor is GovernanceStakerTest {
       IERC20Delegates(_stakeToken),
       IEarningPowerCalculator(_earningPowerCalculator),
       _maxBumpTip,
-      _admin
+      _admin,
+      _name
     );
     assertEq(address(_govStaker.REWARD_TOKEN()), address(_rewardToken));
     assertEq(address(_govStaker.STAKE_TOKEN()), address(_stakeToken));
