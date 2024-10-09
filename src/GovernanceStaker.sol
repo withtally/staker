@@ -622,10 +622,10 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @return Amount of reward tokens claimed.
   function claimReward(DepositIdentifier _depositId) external returns (uint256) {
     Deposit storage deposit = deposits[_depositId];
-    if (deposit.beneficiary != msg.sender) {
-      revert GovernanceStaker__Unauthorized("not beneficiary", msg.sender);
+    if (deposit.beneficiary != msg.sender && deposit.owner != msg.sender) {
+      revert GovernanceStaker__Unauthorized("not beneficiary or owner", msg.sender);
     }
-    return _claimReward(_depositId, deposit);
+    return _claimReward(_depositId, deposit, msg.sender);
   }
 
   /// @notice Claim reward tokens earned by a given deposit, using a signature to validate the
@@ -642,16 +642,18 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   ) external returns (uint256) {
     _revertIfPastDeadline(_deadline);
     Deposit storage deposit = deposits[_depositId];
-    _revertIfSignatureIsNotValidNow(
-      deposit.beneficiary,
-      _hashTypedDataV4(
-        keccak256(
-          abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, _useNonce(deposit.beneficiary), _deadline)
-        )
-      ),
-      _signature
+    bytes32 _hash = _hashTypedDataV4(
+      keccak256(
+        abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, _useNonce(deposit.beneficiary), _deadline)
+      )
     );
-    return _claimReward(_depositId, deposit);
+    bool _isValidBeneficiaryClaim =
+      SignatureChecker.isValidSignatureNow(deposit.beneficiary, _hash, _signature);
+    if (_isValidBeneficiaryClaim) return _claimReward(_depositId, deposit, deposit.beneficiary);
+
+    bool _isValidOwnerClaim = SignatureChecker.isValidSignatureNow(deposit.owner, _hash, _signature);
+    if (!_isValidOwnerClaim) revert GovernanceStaker__InvalidSignature();
+    return _claimReward(_depositId, deposit, deposit.owner);
   }
 
   /// @notice Called by an authorized rewards notifier to alert the staking contract that a new
@@ -925,7 +927,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @return Amount of reward tokens claimed.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public claimReward methods for additional documentation.
-  function _claimReward(DepositIdentifier _depositId, Deposit storage deposit)
+  function _claimReward(DepositIdentifier _depositId, Deposit storage deposit, address _claimer)
     internal
     returns (uint256)
   {
@@ -938,14 +940,14 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     // retain sub-wei dust that would be left due to the precision loss
     deposit.scaledUnclaimedRewardCheckpoint =
       deposit.scaledUnclaimedRewardCheckpoint - (_reward * SCALE_FACTOR);
-    emit RewardClaimed(_depositId, deposit.beneficiary, _reward);
+    emit RewardClaimed(_depositId, _claimer, _reward);
 
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
     totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
     deposit.earningPower = _newEarningPower;
 
-    SafeERC20.safeTransfer(REWARD_TOKEN, deposit.beneficiary, _reward);
+    SafeERC20.safeTransfer(REWARD_TOKEN, _claimer, _reward);
     return _reward;
   }
 
