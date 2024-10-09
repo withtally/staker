@@ -1293,8 +1293,7 @@ contract PermitAndStakeMore is GovernanceStakerTest {
     GovernanceStaker.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _beneficiary);
-    _stakeMoreAmount =
-      bound(_stakeMoreAmount, 0, type(uint256).max - _initialDepositAmount);
+    _stakeMoreAmount = bound(_stakeMoreAmount, 0, type(uint256).max - _initialDepositAmount);
     _approvalAmount = bound(_approvalAmount, _stakeMoreAmount, type(uint256).max);
     _mintGovToken(_depositor, _stakeMoreAmount);
     vm.prank(_depositor);
