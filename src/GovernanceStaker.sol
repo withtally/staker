@@ -642,16 +642,20 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   ) external returns (uint256) {
     _revertIfPastDeadline(_deadline);
     Deposit storage deposit = deposits[_depositId];
-    bytes32 _hash = _hashTypedDataV4(
+    bytes32 _beneficiaryHash = _hashTypedDataV4(
       keccak256(
         abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, _useNonce(deposit.beneficiary), _deadline)
       )
     );
     bool _isValidBeneficiaryClaim =
-      SignatureChecker.isValidSignatureNow(deposit.beneficiary, _hash, _signature);
+      SignatureChecker.isValidSignatureNow(deposit.beneficiary, _beneficiaryHash, _signature);
     if (_isValidBeneficiaryClaim) return _claimReward(_depositId, deposit, deposit.beneficiary);
 
-    bool _isValidOwnerClaim = SignatureChecker.isValidSignatureNow(deposit.owner, _hash, _signature);
+    bytes32 _ownerHash = _hashTypedDataV4(
+      keccak256(abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, _useNonce(deposit.owner), _deadline))
+    );
+    bool _isValidOwnerClaim =
+      SignatureChecker.isValidSignatureNow(deposit.owner, _ownerHash, _signature);
     if (!_isValidOwnerClaim) revert GovernanceStaker__InvalidSignature();
     return _claimReward(_depositId, deposit, deposit.owner);
   }
