@@ -64,6 +64,11 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Emitted when the admin address is set.
   event AdminSet(address indexed oldAdmin, address indexed newAdmin);
 
+  /// @notice Emitted when the earning power calculator address is set.
+  event EarningPowerCalculatorSet(
+    address indexed oldEarningPowerCalculator, address indexed newEarningPowerCalculator
+  );
+
   /// @notice Emitted when the max bump tip is modified.
   event MaxBumpTipSet(uint256 oldMaxBumpTip, uint256 newMaxBumpTip);
 
@@ -230,7 +235,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     STAKE_TOKEN = _stakeToken;
     _setAdmin(_admin);
     _setMaxBumpTip(_maxBumpTip);
-    earningPowerCalculator = _earningPowerCalculator;
+    _setEarningPowerCalculator(address(_earningPowerCalculator));
   }
 
   /// @notice Set the admin address.
@@ -239,6 +244,12 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   function setAdmin(address _newAdmin) external {
     _revertIfNotAdmin();
     _setAdmin(_newAdmin);
+  }
+
+  /// @notice Set the earning power calculator address.
+  function setEarningPowerCalculator(address _newEarningPowerCalculator) external {
+    _revertIfNotAdmin();
+    _setEarningPowerCalculator(_newEarningPowerCalculator);
   }
 
   /// @notice Set the max bump tip.
@@ -979,6 +990,13 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     _revertIfAddressZero(_newAdmin);
     emit AdminSet(admin, _newAdmin);
     admin = _newAdmin;
+  }
+
+  /// @notice Internal helper method which sets the earning power calculator address.
+  function _setEarningPowerCalculator(address _newEarningPowerCalculator) internal {
+    _revertIfAddressZero(_newEarningPowerCalculator);
+    emit EarningPowerCalculatorSet(address(earningPowerCalculator), _newEarningPowerCalculator);
+    earningPowerCalculator = IEarningPowerCalculator(_newEarningPowerCalculator);
   }
 
   /// @notice Internal helper method which sets the max bump tip.
