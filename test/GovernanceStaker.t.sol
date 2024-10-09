@@ -81,7 +81,7 @@ contract GovernanceStakerTest is Test, PercentAssertions {
   }
 
   function _boundMintAmount(uint256 _amount) internal pure returns (uint256) {
-    return uint256(bound(_amount, 0, 100_000_000e18));
+    return bound(_amount, 0, 100_000_000e18);
   }
 
   function _mintGovToken(address _to, uint256 _amount) internal {
@@ -94,7 +94,7 @@ contract GovernanceStakerTest is Test, PercentAssertions {
     pure
     returns (uint256 _boundedStakeAmount)
   {
-    _boundedStakeAmount = uint256(bound(_stakeAmount, 0.1e18, 25_000_000e18));
+    _boundedStakeAmount = bound(_stakeAmount, 0.1e18, 25_000_000e18);
   }
 
   // Remember each depositor and surrogate (as they're deployed) and ensure that there is
@@ -255,7 +255,7 @@ contract Stake is GovernanceStakerTest {
     uint256 _amount,
     address _delegatee
   ) public {
-    _amount = uint256(bound(_amount, 1, type(uint256).max));
+    _amount = bound(_amount, 1, type(uint256).max);
     _mintGovToken(_depositor, _amount);
     _stake(_depositor, _amount, _delegatee);
 
@@ -271,7 +271,7 @@ contract Stake is GovernanceStakerTest {
     uint256 _amount,
     address _delegatee
   ) public {
-    _amount = uint256(bound(_amount, 1, type(uint256).max));
+    _amount = bound(_amount, 1, type(uint256).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -298,7 +298,7 @@ contract Stake is GovernanceStakerTest {
     uint256 _amount,
     address _delegatee
   ) public {
-    _amount = uint256(bound(_amount, 1, type(uint256).max));
+    _amount = bound(_amount, 1, type(uint256).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -324,7 +324,7 @@ contract Stake is GovernanceStakerTest {
     uint256 _amount,
     address _delegatee
   ) public {
-    _amount = uint256(bound(_amount, 1, type(uint256).max));
+    _amount = bound(_amount, 1, type(uint256).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -351,7 +351,7 @@ contract Stake is GovernanceStakerTest {
     address _delegatee,
     address _beneficiary
   ) public {
-    _amount = uint256(bound(_amount, 1, type(uint256).max));
+    _amount = bound(_amount, 1, type(uint256).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -379,7 +379,7 @@ contract Stake is GovernanceStakerTest {
     address _delegatee,
     address _beneficiary
   ) public {
-    _amount = uint256(bound(_amount, 1, type(uint256).max));
+    _amount = bound(_amount, 1, type(uint256).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -406,7 +406,7 @@ contract Stake is GovernanceStakerTest {
     address _delegatee,
     address _beneficiary
   ) public {
-    _amount = uint256(bound(_amount, 1, type(uint256).max));
+    _amount = bound(_amount, 1, type(uint256).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -659,7 +659,7 @@ contract Stake is GovernanceStakerTest {
     // that the DepositIdentifier is never reused.
     for (uint256 _i; _i < 100; _i++) {
       // Perform the stake and save the deposit identifier
-      _amount = uint256(_bound(_amount, 0, 100_000_000_000e18));
+      _amount = _bound(_amount, 0, 100_000_000_000e18);
       _mintGovToken(_depositor, _amount);
       _depositId = _stake(_depositor, _amount, _delegatee);
 
@@ -670,7 +670,7 @@ contract Stake is GovernanceStakerTest {
 
       // Assign new inputs for the next deposit by hashing the last inputs
       _depositor = address(uint160(uint256(keccak256(abi.encode(_depositor)))));
-      _amount = uint256(uint256(keccak256(abi.encode(_amount))));
+      _amount = uint256(keccak256(abi.encode(_amount)));
       _delegatee = address(uint160(uint256(keccak256(abi.encode(_delegatee)))));
     }
   }
@@ -1026,7 +1026,7 @@ contract StakeOnBehalf is GovernanceStakerTest {
     // Here we use `_randomSeed` as an arbitrary source of randomness to replace a legit parameter
     // with an attack-like one.
     if (_randomSeed % 6 == 0) {
-      _depositAmount = uint256(uint256(keccak256(abi.encode(_depositAmount))));
+      _depositAmount = uint256(keccak256(abi.encode(_depositAmount)));
     } else if (_randomSeed % 6 == 1) {
       _delegatee = address(uint160(uint256(keccak256(abi.encode(_delegatee)))));
     } else if (_randomSeed % 6 == 2) {
@@ -1294,7 +1294,7 @@ contract PermitAndStakeMore is GovernanceStakerTest {
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _beneficiary);
     _stakeMoreAmount =
-      uint256(bound(_stakeMoreAmount, 0, type(uint256).max - _initialDepositAmount));
+      bound(_stakeMoreAmount, 0, type(uint256).max - _initialDepositAmount);
     _approvalAmount = bound(_approvalAmount, _stakeMoreAmount, type(uint256).max);
     _mintGovToken(_depositor, _stakeMoreAmount);
     vm.prank(_depositor);
@@ -1673,7 +1673,7 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
     // Here we use `_randomSeed` as an arbitrary source of randomness to replace a legit parameter
     // with an attack-like one.
     if (_randomSeed % 4 == 0) {
-      _stakeMoreAmount = uint256(uint256(keccak256(abi.encode(_stakeMoreAmount))));
+      _stakeMoreAmount = uint256(keccak256(abi.encode(_stakeMoreAmount)));
     } else if (_randomSeed % 4 == 1) {
       _messageHash = _modifyMessage(_messageHash, uint256(keccak256(abi.encode(_randomSeed))));
     } else if (_randomSeed % 4 == 2) {
@@ -2427,7 +2427,7 @@ contract Withdraw is GovernanceStakerTest {
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
-    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount));
+    _withdrawalAmount = bound(_withdrawalAmount, 0, _depositAmount);
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId, _withdrawalAmount);
@@ -2448,7 +2448,7 @@ contract Withdraw is GovernanceStakerTest {
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
-    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount));
+    _withdrawalAmount = bound(_withdrawalAmount, 0, _depositAmount);
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId, _withdrawalAmount);
@@ -2473,8 +2473,8 @@ contract Withdraw is GovernanceStakerTest {
     (_depositAmount2, _depositId2) = _boundMintAndStake(_depositor2, _depositAmount2, _delegatee2);
 
     // Calculate withdrawal amounts
-    _withdrawalAmount1 = uint256(bound(_withdrawalAmount1, 0, _depositAmount1));
-    _withdrawalAmount2 = uint256(bound(_withdrawalAmount2, 0, _depositAmount2));
+    _withdrawalAmount1 = bound(_withdrawalAmount1, 0, _depositAmount1);
+    _withdrawalAmount2 = bound(_withdrawalAmount2, 0, _depositAmount2);
 
     // Execute both withdrawals
     vm.prank(_depositor1);
@@ -2502,7 +2502,7 @@ contract Withdraw is GovernanceStakerTest {
     (_depositAmount2, _depositId2) = _boundMintAndStake(_depositor, _depositAmount2, _delegatee2);
 
     // Withdraw part of the first deposit
-    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount1));
+    _withdrawalAmount = bound(_withdrawalAmount, 0, _depositAmount1);
     vm.prank(_depositor);
     govStaker.withdraw(_depositId1, _withdrawalAmount);
 
@@ -2522,7 +2522,7 @@ contract Withdraw is GovernanceStakerTest {
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
-    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount));
+    _withdrawalAmount = bound(_withdrawalAmount, 0, _depositAmount);
 
     vm.expectEmit();
     emit GovernanceStaker.StakeWithdrawn(
@@ -2562,7 +2562,7 @@ contract Withdraw is GovernanceStakerTest {
   ) public {
     GovernanceStaker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee);
-    _amountOver = uint256(bound(_amountOver, 1, type(uint128).max));
+    _amountOver = bound(_amountOver, 1, type(uint128).max);
 
     vm.prank(_depositor);
     vm.expectRevert();
@@ -2592,7 +2592,7 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _beneficiary);
     GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
-    _withdrawAmount = uint256(bound(_withdrawAmount, 0, _depositAmount));
+    _withdrawAmount = bound(_withdrawAmount, 0, _depositAmount);
 
     stdstore.target(address(govStaker)).sig("nonces(address)").with_key(_depositor).checked_write(
       _currentNonce
@@ -2786,7 +2786,7 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
     // Here we use `_randomSeed` as an arbitrary source of randomness to replace a legit parameter
     // with an attack-like one.
     if (_randomSeed % 4 == 0) {
-      _withdrawAmount = uint256(uint256(keccak256(abi.encode(_withdrawAmount))));
+      _withdrawAmount = uint256(keccak256(abi.encode(_withdrawAmount)));
     } else if (_randomSeed % 4 == 1) {
       _messageHash = _modifyMessage(_messageHash, uint256(keccak256(abi.encode(_randomSeed))));
     } else if (_randomSeed % 4 == 2) {
@@ -3768,7 +3768,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
     _jumpAheadByPercentOfRewardDuration(_durationPercent2);
 
     // First depositor withdraws some stake
-    _withdrawAmount = uint256(bound(_withdrawAmount, 0, _stakeAmount1));
+    _withdrawAmount = bound(_withdrawAmount, 0, _stakeAmount1);
     vm.prank(_depositor1);
     govStaker.withdraw(_depositId1, _withdrawAmount);
     _jumpAheadByPercentOfRewardDuration(_durationPercent3);
@@ -3832,7 +3832,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
     uint256 _durationPercent3
   ) public {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-    _withdrawAmount = uint256(_bound(_withdrawAmount, 0, _stakeAmount));
+    _withdrawAmount = _bound(_withdrawAmount, 0, _stakeAmount);
     _durationPercent1 = _bound(_durationPercent1, 0, 200);
     _durationPercent2 = _bound(_durationPercent2, 0, 200);
     _durationPercent3 = _bound(_durationPercent3, 0, 200);
@@ -3870,7 +3870,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
     uint256 _durationPercent1
   ) public {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-    _withdrawAmount = uint256(_bound(_withdrawAmount, 0, _stakeAmount));
+    _withdrawAmount = _bound(_withdrawAmount, 0, _stakeAmount);
     _durationPercent1 = _bound(_durationPercent1, 0, 200);
 
     // A user deposits staking tokens
@@ -4015,7 +4015,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
     uint256 _durationPercent2
   ) public {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
-    _withdrawalAmount = uint256(_bound(_withdrawalAmount, 0, _stakeAmount - 1));
+    _withdrawalAmount = _bound(_withdrawalAmount, 0, _stakeAmount - 1);
     _durationPercent1 = _bound(_durationPercent1, 0, 100);
     _durationPercent2 = _bound(_durationPercent2, 0, 100 - _durationPercent1);
 
@@ -4114,7 +4114,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
     while (_totalDurationPercent < 100) {
       // On each iteration we derive new values
       _depositor = address(uint160(uint256(keccak256(abi.encode(_depositor)))));
-      _stakeAmount = uint256(uint256(keccak256(abi.encode(_stakeAmount))));
+      _stakeAmount = uint256(keccak256(abi.encode(_stakeAmount)));
       _stakeAmount = _boundToRealisticStake(_stakeAmount);
       _durationPercent = uint256(keccak256(abi.encode(_durationPercent)));
       // We make sure the duration jump on each iteration isn't so small that we slow the test
