@@ -602,6 +602,47 @@ contract Stake is GovernanceStakerTest {
     assertEq(govStaker.depositorTotalStaked(_depositor2), _amount2);
   }
 
+  function testFuzz_UpdatesAnAccountsTotalEarningPower(
+    address _depositor,
+    uint256 _amount1,
+    uint256 _amount2,
+    address _delegatee1,
+    address _delegatee2
+  ) public {
+    _amount1 = _boundMintAmount(_amount1);
+    _amount2 = _boundMintAmount(_amount2);
+    _mintGovToken(_depositor, _amount1 + _amount2);
+
+    // First stake + check total
+    _stake(_depositor, _amount1, _delegatee1);
+    assertEq(govStaker.depositorTotalEarningPower(_depositor), _amount1);
+
+    // Second stake + check total
+    _stake(_depositor, _amount2, _delegatee2);
+    assertEq(govStaker.depositorTotalEarningPower(_depositor), _amount1 + _amount2);
+  }
+
+  function testFuzz_UpdatesDifferentAccountsTotalEarningPowerIndependently(
+    address _depositor1,
+    uint256 _amount1,
+    address _depositor2,
+    uint256 _amount2,
+    address _delegatee1,
+    address _delegatee2
+  ) public {
+    vm.assume(_depositor1 != _depositor2);
+    _amount1 = _boundMintAmount(_amount1);
+    _amount2 = _boundMintAmount(_amount2);
+    _mintGovToken(_depositor1, _amount1);
+    _mintGovToken(_depositor2, _amount2);
+
+    _stake(_depositor1, _amount1, _delegatee1);
+    assertEq(govStaker.depositorTotalEarningPower(_depositor1), _amount1);
+
+    _stake(_depositor2, _amount2, _delegatee2);
+    assertEq(govStaker.depositorTotalEarningPower(_depositor2), _amount2);
+  }
+
   function testFuzz_TracksTheBalanceForASpecificDeposit(
     address _depositor,
     uint256 _amount,
@@ -824,6 +865,7 @@ contract PermitAndStake is GovernanceStakerTest {
     vm.prank(_depositor);
     govStaker.permitAndStake(_depositAmount, _delegatee, _beneficiary, block.timestamp, _v, _r, _s);
     assertEq(govStaker.depositorTotalStaked(_depositor), _depositAmount);
+    assertEq(govStaker.depositorTotalEarningPower(_depositor), _depositAmount);
   }
 
   function testFuzz_RevertIf_ThePermitSignatureIsInvalidAndTheApprovalIsInsufficient(
@@ -1155,6 +1197,28 @@ contract StakeMore is GovernanceStakerTest {
     assertEq(govStaker.depositorTotalStaked(_depositor), _depositAmount + _addAmount);
   }
 
+  function testFuzz_AddsToDepositorsTotalEarningPower(
+    address _depositor,
+    uint256 _depositAmount,
+    uint256 _addAmount,
+    address _delegatee,
+    address _beneficiary
+  ) public {
+    GovernanceStaker.DepositIdentifier _depositId;
+    (_depositAmount, _depositId) =
+      _boundMintAndStake(_depositor, _depositAmount, _delegatee, _beneficiary);
+
+    _addAmount = _boundToRealisticStake(_addAmount);
+    _mintGovToken(_depositor, _addAmount);
+
+    vm.startPrank(_depositor);
+    govToken.approve(address(govStaker), _addAmount);
+    govStaker.stakeMore(_depositId, _addAmount);
+    vm.stopPrank();
+
+    assertEq(govStaker.depositorTotalEarningPower(_depositor), _depositAmount + _addAmount);
+  }
+
   function testFuzz_AddsToTheDepositBalance(
     address _depositor,
     uint256 _depositAmount,
@@ -1357,6 +1421,9 @@ contract PermitAndStakeMore is GovernanceStakerTest {
     vm.prank(_depositor);
     govStaker.permitAndStakeMore(_depositId, _stakeMoreAmount, block.timestamp, _v, _r, _s);
     assertEq(govStaker.depositorTotalStaked(_depositor), _initialDepositAmount + _stakeMoreAmount);
+    assertEq(
+      govStaker.depositorTotalEarningPower(_depositor), _initialDepositAmount + _stakeMoreAmount
+    );
   }
 
   function testFuzz_RevertIf_CallerIsNotTheDepositOwner(
@@ -1796,6 +1863,80 @@ contract AlterDelegatee is GovernanceStakerTest {
     govStaker.alterDelegatee(_depositId, _newDelegatee);
   }
 
+  function testFuzz_UpdatesDepositsEarningPower(
+    address _depositor,
+    uint256 _depositAmount,
+    address _firstDelegatee,
+    address _beneficiary,
+    address _newDelegatee,
+    uint256 _newEarningPower
+  ) public {
+    vm.assume(_newDelegatee != address(0) && _newDelegatee != _firstDelegatee);
+
+    GovernanceStaker.DepositIdentifier _depositId;
+    (_depositAmount, _depositId) =
+      _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _beneficiary);
+
+    earningPowerCalculator.__setEarningPowerAndIsQualifiedForDelegatee(
+      _newDelegatee, _newEarningPower, true
+    );
+
+    vm.prank(_depositor);
+    govStaker.alterDelegatee(_depositId, _newDelegatee);
+
+    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
+
+    assertEq(_deposit.earningPower, _newEarningPower);
+  }
+
+  function testFuzz_UpdatesGlobalTotalEarningPower(
+    address _depositor,
+    uint256 _depositAmount,
+    address _firstDelegatee,
+    address _beneficiary,
+    address _newDelegatee,
+    uint256 _newEarningPower
+  ) public {
+    vm.assume(_newDelegatee != address(0) && _newDelegatee != _firstDelegatee);
+
+    GovernanceStaker.DepositIdentifier _depositId;
+    (_depositAmount, _depositId) =
+      _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _beneficiary);
+
+    earningPowerCalculator.__setEarningPowerAndIsQualifiedForDelegatee(
+      _newDelegatee, _newEarningPower, true
+    );
+
+    vm.prank(_depositor);
+    govStaker.alterDelegatee(_depositId, _newDelegatee);
+
+    assertEq(govStaker.totalEarningPower(), _newEarningPower);
+  }
+
+  function testFuzz_UpdatesDepositorsTotalEarningPower(
+    address _depositor,
+    uint256 _depositAmount,
+    address _firstDelegatee,
+    address _beneficiary,
+    address _newDelegatee,
+    uint256 _newEarningPower
+  ) public {
+    vm.assume(_newDelegatee != address(0) && _newDelegatee != _firstDelegatee);
+
+    GovernanceStaker.DepositIdentifier _depositId;
+    (_depositAmount, _depositId) =
+      _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _beneficiary);
+
+    earningPowerCalculator.__setEarningPowerAndIsQualifiedForDelegatee(
+      _newDelegatee, _newEarningPower, true
+    );
+
+    vm.prank(_depositor);
+    govStaker.alterDelegatee(_depositId, _newDelegatee);
+
+    assertEq(govStaker.depositorTotalEarningPower(_depositor), _newEarningPower);
+  }
+
   function testFuzz_RevertIf_TheCallerIsNotTheDepositor(
     address _depositor,
     address _notDepositor,
@@ -2148,6 +2289,80 @@ contract AlterBeneficiary is GovernanceStakerTest {
 
     vm.prank(_depositor);
     govStaker.alterBeneficiary(_depositId, _newBeneficiary);
+  }
+
+  function testFuzz_UpdatesDepositsEarningPower(
+    address _depositor,
+    uint256 _depositAmount,
+    address _delegatee,
+    address _firstBeneficiary,
+    address _newBeneficiary,
+    uint256 _newEarningPower
+  ) public {
+    vm.assume(_newBeneficiary != address(0) && _newBeneficiary != _firstBeneficiary);
+
+    GovernanceStaker.DepositIdentifier _depositId;
+    (_depositAmount, _depositId) =
+      _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstBeneficiary);
+
+    earningPowerCalculator.__setEarningPowerAndIsQualifiedForDelegatee(
+      _delegatee, _newEarningPower, true
+    );
+
+    vm.prank(_depositor);
+    govStaker.alterBeneficiary(_depositId, _newBeneficiary);
+
+    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
+
+    assertEq(_deposit.earningPower, _newEarningPower);
+  }
+
+  function testFuzz_UpdatesGlobalTotalEarningPower(
+    address _depositor,
+    uint256 _depositAmount,
+    address _delegatee,
+    address _firstBeneficiary,
+    address _newBeneficiary,
+    uint256 _newEarningPower
+  ) public {
+    vm.assume(_newBeneficiary != address(0) && _newBeneficiary != _firstBeneficiary);
+
+    GovernanceStaker.DepositIdentifier _depositId;
+    (_depositAmount, _depositId) =
+      _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstBeneficiary);
+
+    earningPowerCalculator.__setEarningPowerAndIsQualifiedForDelegatee(
+      _delegatee, _newEarningPower, true
+    );
+
+    vm.prank(_depositor);
+    govStaker.alterBeneficiary(_depositId, _newBeneficiary);
+
+    assertEq(govStaker.totalEarningPower(), _newEarningPower);
+  }
+
+  function testFuzz_UpdatesDepositorsTotalEarningPower(
+    address _depositor,
+    uint256 _depositAmount,
+    address _delegatee,
+    address _firstBeneficiary,
+    address _newBeneficiary,
+    uint256 _newEarningPower
+  ) public {
+    vm.assume(_newBeneficiary != address(0) && _newBeneficiary != _firstBeneficiary);
+
+    GovernanceStaker.DepositIdentifier _depositId;
+    (_depositAmount, _depositId) =
+      _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstBeneficiary);
+
+    earningPowerCalculator.__setEarningPowerAndIsQualifiedForDelegatee(
+      _delegatee, _newEarningPower, true
+    );
+
+    vm.prank(_depositor);
+    govStaker.alterBeneficiary(_depositId, _newBeneficiary);
+
+    assertEq(govStaker.totalEarningPower(), _newEarningPower);
   }
 
   function testFuzz_RevertIf_TheCallerIsNotTheDepositor(
@@ -2550,6 +2765,33 @@ contract Withdraw is GovernanceStakerTest {
       _depositAmount1 + _depositAmount2 - _withdrawalAmount
     );
     assertEq(govStaker.totalStaked(), _depositAmount1 + _depositAmount2 - _withdrawalAmount);
+  }
+
+  function testFuzz_UpdatesAnAccountsTotalEarningPowerWhenItWithdrawals(
+    address _depositor,
+    uint256 _depositAmount1,
+    uint256 _depositAmount2,
+    address _delegatee1,
+    address _delegatee2,
+    uint256 _withdrawalAmount
+  ) public {
+    // Make two separate deposits
+    GovernanceStaker.DepositIdentifier _depositId1;
+    (_depositAmount1, _depositId1) = _boundMintAndStake(_depositor, _depositAmount1, _delegatee1);
+    GovernanceStaker.DepositIdentifier _depositId2;
+    (_depositAmount2, _depositId2) = _boundMintAndStake(_depositor, _depositAmount2, _delegatee2);
+
+    // Withdraw part of the first deposit
+    _withdrawalAmount = uint256(bound(_withdrawalAmount, 0, _depositAmount1));
+    vm.prank(_depositor);
+    govStaker.withdraw(_depositId1, _withdrawalAmount);
+
+    // Ensure the account's total balance + global balance accounting have been updated
+    assertEq(
+      govStaker.depositorTotalEarningPower(_depositor),
+      _depositAmount1 + _depositAmount2 - _withdrawalAmount
+    );
+    assertEq(govStaker.totalEarningPower(), _depositAmount1 + _depositAmount2 - _withdrawalAmount);
   }
 
   function testFuzz_EmitsAnEventWhenThereIsAWithdrawal(
@@ -3380,6 +3622,42 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     assertEq(govStaker.totalEarningPower(), _stakeAmount + _earningPowerIncrease);
   }
 
+  function testFuzz_BumpsTheDepositorsTotalEarningPowerUp(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerIncrease
+  ) public {
+    vm.assume(_tipReceiver != address(0));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _earningPowerIncrease = bound(_earningPowerIncrease, 1, type(uint128).max);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump, but also less than rewards for the sake of this test
+    _requestedTip = bound(_requestedTip, 0, _min(maxBumpTip, govStaker.unclaimedReward(_depositId)));
+
+    // The staker's earning power increases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount + _earningPowerIncrease
+    );
+    // Bump earning power is called
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+
+    assertEq(govStaker.depositorTotalEarningPower(_depositor), _stakeAmount + _earningPowerIncrease);
+  }
+
   function testFuzz_TransfersTipTokensToTheTipReceiverWhenEarningPowerIsBumpedUp(
     address _depositor,
     address _delegatee,
@@ -3493,6 +3771,43 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
 
     assertEq(govStaker.totalEarningPower(), _stakeAmount - _earningPowerDecrease);
+  }
+
+  function testFuzz_BumpsTheDepositorsTotalEarningPowerDown(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerDecrease
+  ) public {
+    vm.assume(_tipReceiver != address(0));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = bound(_rewardAmount, maxBumpTip + 1, 10_000_000e18);
+    _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump, but also less than rewards for the sake of this test
+    _requestedTip =
+      bound(_requestedTip, 0, _min(maxBumpTip, govStaker.unclaimedReward(_depositId) - maxBumpTip));
+
+    // The staker's earning power increases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount - _earningPowerDecrease
+    );
+    // Bump earning power is called
+    vm.prank(_bumpCaller);
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+
+    assertEq(govStaker.depositorTotalEarningPower(_depositor), _stakeAmount - _earningPowerDecrease);
   }
 
   function testFuzz_TransfersTipTokensToTheTipReceiverWhenEarningPowerIsBumpedDown(
@@ -5124,6 +5439,98 @@ contract ClaimReward is GovernanceStakerRewardsTest {
     assertEq(govStaker.unclaimedReward(_depositId), 0);
   }
 
+  function testFuzz_UpdatesDepositsEarningPower(
+    address _depositor,
+    address _delegatee,
+    address _beneficiary,
+    uint256 _rewardAmount,
+    uint256 _stakeAmount,
+    uint256 _newEarningPower
+  ) public {
+    vm.assume(_depositor != address(govStaker));
+    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
+    vm.assume(_stakeAmount != _newEarningPower);
+
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(100);
+
+    earningPowerCalculator.__setEarningPowerAndIsQualifiedForDelegatee(
+      _delegatee, _newEarningPower, true
+    );
+
+    vm.prank(_depositor);
+    govStaker.claimReward(_depositId);
+
+    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
+
+    assertEq(_deposit.earningPower, _newEarningPower);
+  }
+
+  function testFuzz_UpdatesGlobalTotalEarningPower(
+    address _depositor,
+    address _delegatee,
+    address _beneficiary,
+    uint256 _rewardAmount,
+    uint256 _stakeAmount,
+    uint256 _newEarningPower
+  ) public {
+    vm.assume(_depositor != address(govStaker));
+    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
+    vm.assume(_stakeAmount != _newEarningPower);
+
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(100);
+
+    earningPowerCalculator.__setEarningPowerAndIsQualifiedForDelegatee(
+      _delegatee, _newEarningPower, true
+    );
+
+    vm.prank(_depositor);
+    govStaker.claimReward(_depositId);
+
+    assertEq(govStaker.totalEarningPower(), _newEarningPower);
+  }
+
+  function testFuzz_UpdatesDepositorsTotalEarningPower(
+    address _depositor,
+    address _delegatee,
+    address _beneficiary,
+    uint256 _rewardAmount,
+    uint256 _stakeAmount,
+    uint256 _newEarningPower
+  ) public {
+    vm.assume(_depositor != address(govStaker));
+    (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
+
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
+    vm.assume(_stakeAmount != _newEarningPower);
+
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(100);
+
+    earningPowerCalculator.__setEarningPowerAndIsQualifiedForDelegatee(
+      _delegatee, _newEarningPower, true
+    );
+
+    vm.prank(_depositor);
+    govStaker.claimReward(_depositId);
+
+    assertEq(govStaker.depositorTotalEarningPower(_depositor), _newEarningPower);
+  }
+
   function testFuzz_EmitsAnEventWhenRewardsAreClaimedByDepositor(
     address _depositor,
     address _beneficiary,
@@ -5692,6 +6099,7 @@ contract Multicall is GovernanceStakerRewardsTest {
     (uint256 _amountResult,, address _delegateeResult, address _beneficiaryResult,,,) =
       govStaker.deposits(_depositId);
     assertEq(govStaker.depositorTotalStaked(_depositor), _stakeAmount0 + _stakeAmount1);
+    assertEq(govStaker.depositorTotalEarningPower(_depositor), _stakeAmount0 + _stakeAmount1);
     assertEq(_amountResult, _stakeAmount0 + _stakeAmount1);
     assertEq(_delegateeResult, _delegatee1);
     assertEq(_beneficiaryResult, _beneficiary1);
