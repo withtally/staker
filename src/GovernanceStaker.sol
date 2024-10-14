@@ -29,7 +29,7 @@ import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 /// received, the reward duration restarts, and the rate at which rewards are streamed is updated
 /// to include the newly received rewards along with any remaining rewards that have finished
 /// streaming since the last time a reward was received.
-contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
+abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   type DepositIdentifier is uint256;
 
   /// @notice Emitted when stake is deposited by a depositor, either to a new deposit or one that
@@ -232,9 +232,8 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     IERC20Delegates _stakeToken,
     IEarningPowerCalculator _earningPowerCalculator,
     uint256 _maxBumpTip,
-    address _admin,
-    string memory _name
-  ) EIP712(_name, "1") {
+    address _admin
+  ) {
     REWARD_TOKEN = _rewardToken;
     STAKE_TOKEN = _stakeToken;
     _setAdmin(_admin);
@@ -249,13 +248,13 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Set the admin address.
   /// @param _newAdmin Address of the new admin.
   /// @dev Caller must be the current admin.
-  function setAdmin(address _newAdmin) external {
+  function setAdmin(address _newAdmin) external virtual {
     _revertIfNotAdmin();
     _setAdmin(_newAdmin);
   }
 
   /// @notice Set the earning power calculator address.
-  function setEarningPowerCalculator(address _newEarningPowerCalculator) external {
+  function setEarningPowerCalculator(address _newEarningPowerCalculator) external virtual {
     _revertIfNotAdmin();
     _setEarningPowerCalculator(_newEarningPowerCalculator);
   }
@@ -263,7 +262,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Set the max bump tip.
   /// @param _newMaxBumpTip Value of the new max bump tip.
   /// @dev Caller must be the current admin.
-  function setMaxBumpTip(uint256 _newMaxBumpTip) external {
+  function setMaxBumpTip(uint256 _newMaxBumpTip) external virtual {
     _revertIfNotAdmin();
     _setMaxBumpTip(_newMaxBumpTip);
   }
@@ -272,7 +271,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _rewardNotifier Address of the reward notifier.
   /// @param _isEnabled `true` to enable the `_rewardNotifier`, or `false` to disable.
   /// @dev Caller must be the current admin.
-  function setRewardNotifier(address _rewardNotifier, bool _isEnabled) external {
+  function setRewardNotifier(address _rewardNotifier, bool _isEnabled) external virtual {
     _revertIfNotAdmin();
     isRewardNotifier[_rewardNotifier] = _isEnabled;
     emit RewardNotifierSet(_rewardNotifier, _isEnabled);
@@ -282,7 +281,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// either the current timestamp (because rewards are still actively being streamed) or the time
   /// at which the reward duration ended (because all rewards to date have already been streamed).
   /// @return Timestamp representing the last time at which rewards have been distributed.
-  function lastTimeRewardDistributed() public view returns (uint256) {
+  function lastTimeRewardDistributed() public view virtual returns (uint256) {
     if (rewardEndTime <= block.timestamp) return rewardEndTime;
     else return block.timestamp;
   }
@@ -291,7 +290,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// checkpoint value with the live calculation of the value that has accumulated in the interim.
   /// This number should monotonically increase over time as more rewards are distributed.
   /// @return Live value of the global reward per token accumulator.
-  function rewardPerTokenAccumulated() public view returns (uint256) {
+  function rewardPerTokenAccumulated() public view virtual returns (uint256) {
     if (totalEarningPower == 0) return rewardPerTokenAccumulatedCheckpoint;
 
     return rewardPerTokenAccumulatedCheckpoint
@@ -309,7 +308,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// returns the value after it has been scaled down to the reward token's raw decimal amount.
   /// @param _depositId Identifier of the deposit in question.
   /// @return Live value of the unclaimed rewards earned by a given deposit.
-  function unclaimedReward(DepositIdentifier _depositId) external view returns (uint256) {
+  function unclaimedReward(DepositIdentifier _depositId) external view virtual returns (uint256) {
     return _scaledUnclaimedReward(deposits[_depositId]) / SCALE_FACTOR;
   }
 
@@ -322,6 +321,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// sender, and the beneficiary will also be the message sender.
   function stake(uint256 _amount, address _delegatee)
     external
+    virtual
     returns (DepositIdentifier _depositId)
   {
     _depositId = _stake(msg.sender, _amount, _delegatee, msg.sender);
@@ -337,6 +337,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// owned by the message sender.
   function stake(uint256 _amount, address _delegatee, address _beneficiary)
     external
+    virtual
     returns (DepositIdentifier _depositId)
   {
     _depositId = _stake(msg.sender, _amount, _delegatee, _beneficiary);
@@ -363,7 +364,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     uint8 _v,
     bytes32 _r,
     bytes32 _s
-  ) external returns (DepositIdentifier _depositId) {
+  ) external virtual returns (DepositIdentifier _depositId) {
     try STAKE_TOKEN.permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s) {} catch {}
     _depositId = _stake(msg.sender, _amount, _delegatee, _beneficiary);
   }
@@ -386,7 +387,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     address _depositor,
     uint256 _deadline,
     bytes memory _signature
-  ) external returns (DepositIdentifier _depositId) {
+  ) external virtual returns (DepositIdentifier _depositId) {
     _revertIfPastDeadline(_deadline);
     _revertIfSignatureIsNotValidNow(
       _depositor,
@@ -414,7 +415,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _depositId Unique identifier of the deposit to which stake will be added.
   /// @param _amount Quantity of stake to be added.
   /// @dev The message sender must be the owner of the deposit.
-  function stakeMore(DepositIdentifier _depositId, uint256 _amount) external {
+  function stakeMore(DepositIdentifier _depositId, uint256 _amount) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
     _stakeMore(deposit, _depositId, _amount);
@@ -438,7 +439,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     uint8 _v,
     bytes32 _r,
     bytes32 _s
-  ) external {
+  ) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
 
@@ -460,7 +461,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     address _depositor,
     uint256 _deadline,
     bytes memory _signature
-  ) external {
+  ) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, _depositor);
     _revertIfPastDeadline(_deadline);
@@ -485,7 +486,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _newDelegatee Address of the new governance delegate.
   /// @dev The new delegatee may not be the zero address. The message sender must be the owner of
   /// the deposit.
-  function alterDelegatee(DepositIdentifier _depositId, address _newDelegatee) external {
+  function alterDelegatee(DepositIdentifier _depositId, address _newDelegatee) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
     _alterDelegatee(deposit, _depositId, _newDelegatee);
@@ -505,7 +506,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     address _depositor,
     uint256 _deadline,
     bytes memory _signature
-  ) external {
+  ) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, _depositor);
     _revertIfPastDeadline(_deadline);
@@ -535,7 +536,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _newBeneficiary Address of the new beneficiary.
   /// @dev The new beneficiary may not be the zero address. The message sender must be the owner of
   /// the deposit.
-  function alterBeneficiary(DepositIdentifier _depositId, address _newBeneficiary) external {
+  function alterBeneficiary(DepositIdentifier _depositId, address _newBeneficiary) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
     _alterBeneficiary(deposit, _depositId, _newBeneficiary);
@@ -556,7 +557,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     address _depositor,
     uint256 _deadline,
     bytes memory _signature
-  ) external {
+  ) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, _depositor);
     _revertIfPastDeadline(_deadline);
@@ -585,7 +586,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _amount Quantity of staked token to withdraw.
   /// @dev The message sender must be the owner of the deposit. Stake is withdrawn to the message
   /// sender's account.
-  function withdraw(DepositIdentifier _depositId, uint256 _amount) external {
+  function withdraw(DepositIdentifier _depositId, uint256 _amount) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
     _withdraw(deposit, _depositId, _amount);
@@ -605,7 +606,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     address _depositor,
     uint256 _deadline,
     bytes memory _signature
-  ) external {
+  ) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, _depositor);
     _revertIfPastDeadline(_deadline);
@@ -628,7 +629,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// address of the deposit. Tokens are sent to the beneficiary address.
   /// @param _depositId Identifier of the deposit from which accrued rewards will be claimed.
   /// @return Amount of reward tokens claimed.
-  function claimReward(DepositIdentifier _depositId) external returns (uint256) {
+  function claimReward(DepositIdentifier _depositId) external virtual returns (uint256) {
     Deposit storage deposit = deposits[_depositId];
     if (deposit.beneficiary != msg.sender && deposit.owner != msg.sender) {
       revert GovernanceStaker__Unauthorized("not beneficiary or owner", msg.sender);
@@ -647,7 +648,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     DepositIdentifier _depositId,
     uint256 _deadline,
     bytes memory _signature
-  ) external returns (uint256) {
+  ) external virtual returns (uint256) {
     _revertIfPastDeadline(_deadline);
     Deposit storage deposit = deposits[_depositId];
     bytes32 _beneficiaryHash = _hashTypedDataV4(
@@ -683,7 +684,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   ///    distributed, creating a shortfall for those claiming their rewards after others. It is
   ///    required that a notifier contract always transfers the `_amount` to this contract before
   ///    calling this method.
-  function notifyRewardAmount(uint256 _amount) external {
+  function notifyRewardAmount(uint256 _amount) external virtual {
     if (!isRewardNotifier[msg.sender]) {
       revert GovernanceStaker__Unauthorized("not notifier", msg.sender);
     }
@@ -728,7 +729,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     DepositIdentifier _depositId,
     address _tipReceiver,
     uint256 _requestedTip
-  ) external {
+  ) external virtual {
     if (_requestedTip > maxBumpTip) revert GovernanceStaker__InvalidTip();
 
     Deposit storage deposit = deposits[_depositId];
@@ -773,14 +774,14 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @return Live value of the unclaimed rewards earned by a given deposit with the
   /// scale factor included.
   /// @dev See documentation for the public, non-scaled `unclaimedReward` method for more details.
-  function _scaledUnclaimedReward(Deposit storage deposit) internal view returns (uint256) {
+  function _scaledUnclaimedReward(Deposit storage deposit) internal view virtual returns (uint256) {
     return deposit.scaledUnclaimedRewardCheckpoint
       + (deposit.earningPower * (rewardPerTokenAccumulated() - deposit.rewardPerTokenCheckpoint));
   }
 
   /// @notice Allows an address to increment their nonce and therefore invalidate any pending signed
   /// actions.
-  function invalidateNonce() external {
+  function invalidateNonce() external virtual {
     _useNonce(msg.sender);
   }
 
@@ -790,6 +791,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @return _surrogate The address of the surrogate contract for the delegatee.
   function _fetchOrDeploySurrogate(address _delegatee)
     internal
+    virtual
     returns (DelegationSurrogate _surrogate)
   {
     _surrogate = surrogates[_delegatee];
@@ -806,14 +808,14 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _from Source account from which stake token is to be transferred.
   /// @param _to Destination account of the stake token which is to be transferred.
   /// @param _value Quantity of stake token which is to be transferred.
-  function _stakeTokenSafeTransferFrom(address _from, address _to, uint256 _value) internal {
+  function _stakeTokenSafeTransferFrom(address _from, address _to, uint256 _value) internal virtual {
     SafeERC20.safeTransferFrom(IERC20(address(STAKE_TOKEN)), _from, _to, _value);
   }
 
   /// @notice Internal method which generates and returns a unique, previously unused deposit
   /// identifier.
   /// @return _depositId Previously unused deposit identifier.
-  function _useDepositId() internal returns (DepositIdentifier _depositId) {
+  function _useDepositId() internal virtual returns (DepositIdentifier _depositId) {
     _depositId = nextDepositId;
     nextDepositId = DepositIdentifier.wrap(DepositIdentifier.unwrap(_depositId) + 1);
   }
@@ -823,6 +825,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @dev See public stake methods for additional documentation.
   function _stake(address _depositor, uint256 _amount, address _delegatee, address _beneficiary)
     internal
+    virtual
     returns (DepositIdentifier _depositId)
   {
     _revertIfAddressZero(_delegatee);
@@ -858,6 +861,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @dev See public stakeMore methods for additional documentation.
   function _stakeMore(Deposit storage deposit, DepositIdentifier _depositId, uint256 _amount)
     internal
+    virtual
   {
     _checkpointGlobalReward();
     _checkpointReward(deposit);
@@ -887,7 +891,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     Deposit storage deposit,
     DepositIdentifier _depositId,
     address _newDelegatee
-  ) internal {
+  ) internal virtual {
     _revertIfAddressZero(_newDelegatee);
     DelegationSurrogate _oldSurrogate = surrogates[deposit.delegatee];
     uint256 _newEarningPower =
@@ -912,7 +916,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     Deposit storage deposit,
     DepositIdentifier _depositId,
     address _newBeneficiary
-  ) internal {
+  ) internal virtual {
     _revertIfAddressZero(_newBeneficiary);
 
     // Updating the earning power here is not strictly necessary, but if the user is touching their
@@ -936,6 +940,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @dev See public withdraw methods for additional documentation.
   function _withdraw(Deposit storage deposit, DepositIdentifier _depositId, uint256 _amount)
     internal
+    virtual
   {
     _checkpointGlobalReward();
     _checkpointReward(deposit);
@@ -965,6 +970,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @dev See public claimReward methods for additional documentation.
   function _claimReward(DepositIdentifier _depositId, Deposit storage deposit, address _claimer)
     internal
+    virtual
     returns (uint256)
   {
     _checkpointGlobalReward();
@@ -992,7 +998,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   }
 
   /// @notice Checkpoints the global reward per token accumulator.
-  function _checkpointGlobalReward() internal {
+  function _checkpointGlobalReward() internal virtual {
     rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
     lastCheckpointTime = lastTimeRewardDistributed();
   }
@@ -1003,7 +1009,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @dev This is a sensitive internal helper method that must only be called after global rewards
   /// accumulator has been checkpointed. It assumes the global `rewardPerTokenCheckpoint` is up to
   /// date.
-  function _checkpointReward(Deposit storage deposit) internal {
+  function _checkpointReward(Deposit storage deposit) internal virtual {
     deposit.scaledUnclaimedRewardCheckpoint = _scaledUnclaimedReward(deposit);
     deposit.rewardPerTokenCheckpoint = rewardPerTokenAccumulatedCheckpoint;
   }
@@ -1026,14 +1032,14 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
 
   /// @notice Internal helper method which sets the admin address.
   /// @param _newAdmin Address of the new admin.
-  function _setAdmin(address _newAdmin) internal {
+  function _setAdmin(address _newAdmin) internal virtual {
     _revertIfAddressZero(_newAdmin);
     emit AdminSet(admin, _newAdmin);
     admin = _newAdmin;
   }
 
   /// @notice Internal helper method which sets the earning power calculator address.
-  function _setEarningPowerCalculator(address _newEarningPowerCalculator) internal {
+  function _setEarningPowerCalculator(address _newEarningPowerCalculator) internal virtual {
     _revertIfAddressZero(_newEarningPowerCalculator);
     emit EarningPowerCalculatorSet(address(earningPowerCalculator), _newEarningPowerCalculator);
     earningPowerCalculator = IEarningPowerCalculator(_newEarningPowerCalculator);
@@ -1041,14 +1047,14 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
 
   /// @notice Internal helper method which sets the max bump tip.
   /// @param _newMaxTip Value of the new max bump tip.
-  function _setMaxBumpTip(uint256 _newMaxTip) internal {
+  function _setMaxBumpTip(uint256 _newMaxTip) internal virtual {
     emit MaxBumpTipSet(maxBumpTip, _newMaxTip);
     maxBumpTip = _newMaxTip;
   }
 
   /// @notice Internal helper method which reverts GovernanceStaker__Unauthorized if the message
   /// sender is not the admin.
-  function _revertIfNotAdmin() internal view {
+  function _revertIfNotAdmin() internal view virtual {
     if (msg.sender != admin) revert GovernanceStaker__Unauthorized("not admin", msg.sender);
   }
 
@@ -1057,7 +1063,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// not the true owner of the deposit.
   /// @param deposit Deposit to validate.
   /// @param owner Alleged owner of deposit.
-  function _revertIfNotDepositOwner(Deposit storage deposit, address owner) internal view {
+  function _revertIfNotDepositOwner(Deposit storage deposit, address owner) internal view virtual {
     if (owner != deposit.owner) revert GovernanceStaker__Unauthorized("not owner", owner);
   }
 
@@ -1068,7 +1074,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     if (_account == address(0)) revert GovernanceStaker__InvalidAddress();
   }
 
-  function _revertIfPastDeadline(uint256 _deadline) internal view {
+  function _revertIfPastDeadline(uint256 _deadline) internal view virtual {
     if (block.timestamp > _deadline) revert GovernanceStaker__ExpiredDeadline();
   }
 
@@ -1080,6 +1086,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   function _revertIfSignatureIsNotValidNow(address _signer, bytes32 _hash, bytes memory _signature)
     internal
     view
+    virtual
   {
     bool _isValid = SignatureChecker.isValidSignatureNow(_signer, _hash, _signature);
     if (!_isValid) revert GovernanceStaker__InvalidSignature();
