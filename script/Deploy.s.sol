@@ -32,7 +32,7 @@ contract Deploy is Script, DeployInput {
       IEarningPowerCalculator(address(0)),
       MAX_BUMP_TIP,
       vm.addr(deployerPrivateKey),
-      "GovernanceStaker"
+      "GovernanceStakerHarness"
     );
 
     // Change GovernanceStaker admin from `msg.sender` to the Governor timelock

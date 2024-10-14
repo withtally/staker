@@ -6,6 +6,7 @@ import {GovernanceStaker} from "src/GovernanceStaker.sol";
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
 
@@ -18,7 +19,8 @@ contract GovernanceStakerHarness is GovernanceStaker {
     address _admin,
     string memory _name
   )
-    GovernanceStaker(_rewardsToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin, _name)
+    GovernanceStaker(_rewardsToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin)
+    EIP712(_name, "1")
   {}
 
   function exposed_useDepositId() external returns (DepositIdentifier _depositId) {

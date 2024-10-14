@@ -19,7 +19,7 @@ contract GovernanceStakerInvariants is Test {
   IEarningPowerCalculator earningPowerCalculator;
   address rewardsNotifier;
   uint256 maxBumpTip = 2e18;
-  string STAKER_NAME = "GovernanceStaker";
+  string STAKER_NAME = "GovernanceStakerHarness";
 
   function setUp() public {
     rewardToken = new ERC20Fake();

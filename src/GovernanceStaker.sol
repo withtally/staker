@@ -229,9 +229,8 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     IERC20Delegates _stakeToken,
     IEarningPowerCalculator _earningPowerCalculator,
     uint256 _maxBumpTip,
-    address _admin,
-    string memory _name
-  ) EIP712(_name, "1") {
+    address _admin
+  ) {
     REWARD_TOKEN = _rewardToken;
     STAKE_TOKEN = _stakeToken;
     _setAdmin(_admin);
