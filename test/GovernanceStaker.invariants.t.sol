@@ -4,21 +4,22 @@ pragma solidity ^0.8.23;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import {GovernanceStaker, IEarningPowerCalculator} from "src/GovernanceStaker.sol";
+import {IEarningPowerCalculator} from "src/GovernanceStaker.sol";
 import {GovernanceStakerHandler} from "test/helpers/GovernanceStaker.handler.sol";
+import {GovernanceStakerHarness} from "test/harnesses/GovernanceStakerHarness.sol";
 import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
 import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
 import {MockFullEarningPowerCalculator} from "test/mocks/MockFullEarningPowerCalculator.sol";
 
 contract GovernanceStakerInvariants is Test {
   GovernanceStakerHandler public handler;
-  GovernanceStaker public govStaker;
+  GovernanceStakerHarness public govStaker;
   ERC20Fake rewardToken;
   ERC20VotesMock govToken;
   IEarningPowerCalculator earningPowerCalculator;
   address rewardsNotifier;
   uint256 maxBumpTip = 2e18;
-  string STAKER_NAME = "GovernanceStaker";
+  string STAKER_NAME = "GovernanceStakerHarness";
 
   function setUp() public {
     rewardToken = new ERC20Fake();
@@ -33,7 +34,7 @@ contract GovernanceStakerInvariants is Test {
     earningPowerCalculator = new MockFullEarningPowerCalculator();
     vm.label(address(earningPowerCalculator), "Full Earning Power Calculator");
 
-    govStaker = new GovernanceStaker(
+    govStaker = new GovernanceStakerHarness(
       rewardToken, govToken, earningPowerCalculator, maxBumpTip, rewardsNotifier, STAKER_NAME
     );
     handler = new GovernanceStakerHandler(govStaker);

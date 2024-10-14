@@ -236,7 +236,7 @@ contract Constructor is GovernanceStakerTest {
     string memory _name
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
-    GovernanceStaker _govStaker = new GovernanceStaker(
+    GovernanceStakerHarness _govStaker = new GovernanceStakerHarness(
       IERC20(_rewardToken),
       IERC20Delegates(_stakeToken),
       IEarningPowerCalculator(_earningPowerCalculator),
@@ -3147,7 +3147,7 @@ contract Domain_Seperator is GovernanceStakerTest {
     string memory _name
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
-    GovernanceStaker _govStaker = new GovernanceStaker(
+    GovernanceStakerHarness _govStaker = new GovernanceStakerHarness(
       IERC20(_rewardToken),
       IERC20Delegates(_stakeToken),
       IEarningPowerCalculator(_earningPowerCalculator),
