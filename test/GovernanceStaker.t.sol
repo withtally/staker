@@ -266,6 +266,28 @@ contract Stake is GovernanceStakerTest {
     assertEq(govToken.balanceOf(_depositor), 0);
   }
 
+    function testFuzz_SetsDepositorAsBeneficiaryWhenStakingWithoutASpecifiedBeneficiary(
+    address _depositor,
+    uint256 _amount,
+    address _delegatee
+  ) public {
+    _amount = uint256(bound(_amount, 1, type(uint256).max));
+    _mintGovToken(_depositor, _amount);
+
+    vm.assume(_delegatee != address(0));
+    
+    vm.startPrank(_depositor);
+    govToken.approve(address(govStaker), _amount);
+    
+    GovernanceStaker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
+    
+    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    assertEq(_deposit.balance, _amount);
+    assertEq(_deposit.owner, _depositor);
+    assertEq(_deposit.delegatee, _delegatee);
+    assertEq(_deposit.beneficiary, _depositor);
+  }
+
   function testFuzz_EmitsAStakingDepositEventWhenStakingWithoutASpecifiedBeneficiary(
     address _depositor,
     uint256 _amount,
@@ -343,6 +365,29 @@ contract Stake is GovernanceStakerTest {
 
     govStaker.stake(_amount, _delegatee);
     vm.stopPrank();
+  }
+
+  function testFuzz_SetsBeneficiaryCorrectlyWhenStakingWithASpecifiedBeneficiary(
+    address _depositor,
+    uint256 _amount,
+    address _delegatee,
+    address _beneficiary
+  ) public {
+    _amount = uint256(bound(_amount, 1, type(uint256).max));
+    _mintGovToken(_depositor, _amount);
+
+    vm.assume(_delegatee != address(0) && _beneficiary != address(0));
+
+    vm.startPrank(_depositor);
+    govToken.approve(address(govStaker), _amount);
+    
+    GovernanceStaker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee, _beneficiary);
+    
+    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    assertEq(_deposit.balance, _amount);
+    assertEq(_deposit.owner, _depositor);
+    assertEq(_deposit.delegatee, _delegatee);
+    assertEq(_deposit.beneficiary, _beneficiary);
   }
 
   function testFuzz_EmitsAStakingDepositEventWhenStakingWithASpecifiedBeneficiary(
