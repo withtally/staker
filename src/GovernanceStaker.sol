@@ -29,7 +29,7 @@ import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 /// received, the reward duration restarts, and the rate at which rewards are streamed is updated
 /// to include the newly received rewards along with any remaining rewards that have finished
 /// streaming since the last time a reward was received.
-contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
+abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
   type DepositIdentifier is uint256;
 
   /// @notice Emitted when stake is deposited by a depositor, either to a new deposit or one that
