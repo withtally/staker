@@ -266,7 +266,7 @@ contract Stake is GovernanceStakerTest {
     assertEq(govToken.balanceOf(_depositor), 0);
   }
 
-    function testFuzz_SetsDepositorAsBeneficiaryWhenStakingWithoutASpecifiedBeneficiary(
+  function testFuzz_SetsDepositorAsBeneficiaryWhenStakingWithoutASpecifiedBeneficiary(
     address _depositor,
     uint256 _amount,
     address _delegatee
@@ -275,12 +275,12 @@ contract Stake is GovernanceStakerTest {
     _mintGovToken(_depositor, _amount);
 
     vm.assume(_delegatee != address(0));
-    
+
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
-    
+
     GovernanceStaker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
-    
+
     GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.balance, _amount);
     assertEq(_deposit.owner, _depositor);
@@ -380,9 +380,10 @@ contract Stake is GovernanceStakerTest {
 
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
-    
-    GovernanceStaker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee, _beneficiary);
-    
+
+    GovernanceStaker.DepositIdentifier _depositId =
+      _stake(_depositor, _amount, _delegatee, _beneficiary);
+
     GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.balance, _amount);
     assertEq(_deposit.owner, _depositor);
