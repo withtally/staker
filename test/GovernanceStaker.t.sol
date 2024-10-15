@@ -2844,7 +2844,7 @@ contract SetRewardNotifier is GovernanceStakerTest {
   }
 }
 
-contract DomainSeperator is GovernanceStakerTest {
+contract Domain_Seperator is GovernanceStakerTest {
   function _buildDomainSeperator(string memory _name, string memory _version, address _contract)
     internal
     view
@@ -2860,7 +2860,7 @@ contract DomainSeperator is GovernanceStakerTest {
     );
   }
 
-  function testFuzz_CorrectlyBuildTheGovernorDomainSeperator(
+  function testFuzz_CorrectlyReturnsTheDomainSeperator(
     address _rewardToken,
     address _stakeToken,
     address _earningPowerCalculator,
@@ -2868,7 +2868,7 @@ contract DomainSeperator is GovernanceStakerTest {
     address _admin,
     string memory _name
   ) public {
-    vm.assume(_admin != address(0));
+    vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     GovernanceStaker _govStaker = new GovernanceStaker(
       IERC20(_rewardToken),
       IERC20Delegates(_stakeToken),
@@ -2878,7 +2878,7 @@ contract DomainSeperator is GovernanceStakerTest {
       _name
     );
 
-    bytes32 _seperator = _govStaker.domainSeperator();
+    bytes32 _seperator = _govStaker.DOMAIN_SEPERATOR();
     bytes32 _expectedSeperator = _buildDomainSeperator(_name, "1", address(_govStaker));
     assertEq(_seperator, _expectedSeperator);
   }

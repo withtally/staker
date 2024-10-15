@@ -239,7 +239,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     _setEarningPowerCalculator(address(_earningPowerCalculator));
   }
 
-  function domainSeperator() external view returns (bytes32) {
+  function DOMAIN_SEPERATOR() external view returns (bytes32) {
     return _domainSeparatorV4();
   }
 
