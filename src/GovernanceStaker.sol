@@ -229,13 +229,18 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     IERC20Delegates _stakeToken,
     IEarningPowerCalculator _earningPowerCalculator,
     uint256 _maxBumpTip,
-    address _admin
-  ) EIP712("GovernanceStaker", "1") {
+    address _admin,
+    string memory _name
+  ) EIP712(_name, "1") {
     REWARD_TOKEN = _rewardToken;
     STAKE_TOKEN = _stakeToken;
     _setAdmin(_admin);
     _setMaxBumpTip(_maxBumpTip);
     _setEarningPowerCalculator(address(_earningPowerCalculator));
+  }
+
+  function DOMAIN_SEPERATOR() external view returns (bytes32) {
+    return _domainSeparatorV4();
   }
 
   /// @notice Set the admin address.

@@ -61,8 +61,9 @@ contract GovernanceStakerTest is Test, PercentAssertions {
 
     admin = makeAddr("admin");
 
-    govStaker =
-      new GovernanceStakerHarness(rewardToken, govToken, earningPowerCalculator, maxBumpTip, admin);
+    govStaker = new GovernanceStakerHarness(
+      rewardToken, govToken, earningPowerCalculator, maxBumpTip, admin, "GovernanceStaker"
+    );
     vm.label(address(govStaker), "GovStaker");
 
     vm.prank(admin);
@@ -231,7 +232,8 @@ contract Constructor is GovernanceStakerTest {
     address _stakeToken,
     address _earningPowerCalculator,
     uint256 _maxBumpTip,
-    address _admin
+    address _admin,
+    string memory _name
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     GovernanceStaker _govStaker = new GovernanceStaker(
@@ -239,7 +241,8 @@ contract Constructor is GovernanceStakerTest {
       IERC20Delegates(_stakeToken),
       IEarningPowerCalculator(_earningPowerCalculator),
       _maxBumpTip,
-      _admin
+      _admin,
+      _name
     );
     assertEq(address(_govStaker.REWARD_TOKEN()), address(_rewardToken));
     assertEq(address(_govStaker.STAKE_TOKEN()), address(_stakeToken));
@@ -2838,6 +2841,46 @@ contract SetRewardNotifier is GovernanceStakerTest {
       )
     );
     govStaker.setRewardNotifier(_newRewardNotifier, _isEnabled);
+  }
+}
+
+contract Domain_Seperator is GovernanceStakerTest {
+  function _buildDomainSeperator(string memory _name, string memory _version, address _contract)
+    internal
+    view
+    returns (bytes32)
+  {
+    bytes32 _typeHash = keccak256(
+      "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
+    return keccak256(
+      abi.encode(
+        _typeHash, keccak256(bytes(_name)), keccak256(bytes(_version)), block.chainid, _contract
+      )
+    );
+  }
+
+  function testFuzz_CorrectlyReturnsTheDomainSeperator(
+    address _rewardToken,
+    address _stakeToken,
+    address _earningPowerCalculator,
+    uint256 _maxBumpTip,
+    address _admin,
+    string memory _name
+  ) public {
+    vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
+    GovernanceStaker _govStaker = new GovernanceStaker(
+      IERC20(_rewardToken),
+      IERC20Delegates(_stakeToken),
+      IEarningPowerCalculator(_earningPowerCalculator),
+      _maxBumpTip,
+      _admin,
+      _name
+    );
+
+    bytes32 _seperator = _govStaker.DOMAIN_SEPERATOR();
+    bytes32 _expectedSeperator = _buildDomainSeperator(_name, "1", address(_govStaker));
+    assertEq(_seperator, _expectedSeperator);
   }
 }
 

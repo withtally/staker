@@ -30,7 +30,8 @@ contract Deploy is Script, DeployInput {
       IERC20Delegates(STAKE_TOKEN_ADDRESS),
       IEarningPowerCalculator(address(0)),
       MAX_BUMP_TIP,
-      vm.addr(deployerPrivateKey)
+      vm.addr(deployerPrivateKey),
+      "GovernanceStaker"
     );
 
     // Change GovernanceStaker admin from `msg.sender` to the Governor timelock
