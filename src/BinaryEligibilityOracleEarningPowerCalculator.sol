@@ -25,6 +25,18 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// @param newScoreOracle The address of the new `scoreOracle`.
   event ScoreOracleSet(address indexed oldScoreOracle, address indexed newScoreOracle);
 
+  /// @notice Emitted when the oracle pause guardian address is updated.
+  /// @param oldOraclePauseGuardian The address of the previous oracle pause guardian.
+  /// @param newOraclePauseGuardian The address of the new oracle pause guardian.
+  event OraclePauseGuardianSet(
+    address indexed oldOraclePauseGuardian, address indexed newOraclePauseGuardian
+  );
+
+  /// @notice Emitted when the oracle pause state is updated.
+  /// @param oldStatus The previous pause state of the oracle.
+  /// @param newStatus The new pause state of the oracle.
+  event OraclePausedStatusUpdated(bool oldStatus, bool newStatus);
+
   /// @notice Emitted when the update eligibility delay is changed.
   /// @param oldDelay The previous update eligibility delay value.
   /// @param newDelay The new update eligibility delay value.
@@ -39,6 +51,10 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// function.
   error BinaryEligibilityOracleEarningPowerCalculator__Unauthorized(bytes32 reason, address caller);
 
+  /// @notice Error thrown when an attempt is made to update the score of a delegate when the oracle
+  /// is paused by the oraclePauseGuardian.
+  error BinaryEligibilityOracleEarningPowerCalculator__DisallowedWhilePaused();
+
   /// @notice Error thrown when an attempt is made to update the score of a locked delegatee score.
   error BinaryEligibilityOracleEarningPowerCalculator__DelegateeScoreLocked(address delegatee);
 
@@ -48,6 +64,15 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
 
   /// @notice The address with the authority to update delegatee scores.
   address public scoreOracle;
+
+  /// @notice The address of a caller that can prevent the oracle from updating delegate scores.
+  address public oraclePauseGuardian;
+
+  /// @notice A flag indicating whether the oracle's ability to update delegate scores is paused.
+  /// @dev When set to true, the `updateDelegateScore` function will not execute, preventing score
+  /// updates.
+  /// @dev This can be used as a safety measure in case of oracle malfunction or other emergencies.
+  bool public isOraclePaused;
 
   /// @notice The timestamp of the last delegatee score update.
   uint256 public lastOracleUpdateTime;
@@ -85,11 +110,13 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     address _owner,
     address _scoreOracle,
     uint256 _staleOracleWindow,
+    address _oraclePauseGuardian,
     uint256 _delegateeScoreEligibilityThreshold,
     uint256 _updateEligibilityDelay
   ) Ownable(_owner) {
     _setScoreOracle(_scoreOracle);
     STALE_ORACLE_WINDOW = _staleOracleWindow;
+    _setOraclePauseGuardian(_oraclePauseGuardian);
     _setDelegateeScoreEligibilityThreshold(_delegateeScoreEligibilityThreshold);
     _setUpdateEligibilityDelay(_updateEligibilityDelay);
   }
@@ -160,6 +187,9 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     if (delegateeScoreLockStatus[_delegatee]) {
       revert BinaryEligibilityOracleEarningPowerCalculator__DelegateeScoreLocked(_delegatee);
     }
+    if (isOraclePaused) {
+      revert BinaryEligibilityOracleEarningPowerCalculator__DisallowedWhilePaused();
+    }
     _updateDelegateeScore(_delegatee, _newScore);
     lastOracleUpdateTime = block.timestamp;
   }
@@ -225,6 +255,40 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     // Record the time if the new score crosses the eligibility threshold.
     if (_previouslyEligible && !_newlyEligible) timeOfIneligibility[_delegatee] = block.timestamp;
     delegateeScores[_delegatee] = _newScore;
+  }
+
+  /// @notice Sets the pause state of the oracle.
+  /// @dev This function can only be called by the oraclePauseGuardian.
+  /// @dev When the oracle is paused, delegate scores cannot be updated via updateDelegateScore.
+  /// @param _pauseOracle The new pause state to set for the oracle.
+  function setOracleState(bool _pauseOracle) public {
+    if (msg.sender != oraclePauseGuardian) {
+      revert BinaryEligibilityOracleEarningPowerCalculator__Unauthorized(
+        "not oracle pause guardian", msg.sender
+      );
+    }
+    emit OraclePausedStatusUpdated(isOraclePaused, _pauseOracle);
+    isOraclePaused = _pauseOracle;
+  }
+
+  /// @notice Sets a new address as the Oracle Pause Guardian.
+  /// @dev This function can only be called by the contract owner.
+  /// @dev The Oracle Pause Guardian has the authority to pause the oracle's ability to update
+  /// delegate scores.
+  /// @param _newOraclePauseGuardian The address of the new Oracle Pause Guardian to be set.
+  function setOraclePauseGuardian(address _newOraclePauseGuardian) public {
+    _checkOwner();
+    _setOraclePauseGuardian(_newOraclePauseGuardian);
+  }
+
+  /// @notice Internal function to set a new oracle pause guardian address.
+  /// @dev This function updates the oraclePauseGuardian address and emits an event.
+  /// @dev The oracle pause guardian has the authority to pause the oracle's ability to update
+  /// delegate scores.
+  /// @param _newOraclePauseGuardian The address of the new oracle pause guardian.
+  function _setOraclePauseGuardian(address _newOraclePauseGuardian) internal {
+    emit OraclePauseGuardianSet(oraclePauseGuardian, _newOraclePauseGuardian);
+    oraclePauseGuardian = _newOraclePauseGuardian;
   }
 
   /// @notice Internal function to set or remove the lock on a delegatee's score.

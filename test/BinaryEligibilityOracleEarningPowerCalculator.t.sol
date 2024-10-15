@@ -11,6 +11,7 @@ contract EarningPowerCalculatorTest is Test {
   address public owner;
   address public scoreOracle;
   uint256 public staleOracleWindow;
+  address public oraclePauseGuardian;
   uint256 public delegateeScoreEligibilityThreshold;
   uint256 public updateEligibilityDelay;
   EarningPowerCalculator public calculator;
@@ -19,6 +20,7 @@ contract EarningPowerCalculatorTest is Test {
     owner = makeAddr("owner");
     scoreOracle = makeAddr("scoreOracle");
     staleOracleWindow = 7 days;
+    oraclePauseGuardian = makeAddr("oraclePauseGuardian");
     delegateeScoreEligibilityThreshold = 50;
     updateEligibilityDelay = 7 days;
 
@@ -26,6 +28,7 @@ contract EarningPowerCalculatorTest is Test {
       owner,
       scoreOracle,
       staleOracleWindow,
+      oraclePauseGuardian,
       delegateeScoreEligibilityThreshold,
       updateEligibilityDelay
     );
@@ -36,6 +39,7 @@ contract Constructor is EarningPowerCalculatorTest {
   function test_SetsOwnerAndContractParametersCorrectly() public view {
     assertEq(calculator.owner(), owner);
     assertEq(calculator.scoreOracle(), scoreOracle);
+    assertEq(calculator.oraclePauseGuardian(), oraclePauseGuardian);
     assertEq(calculator.delegateeEligibilityThresholdScore(), delegateeScoreEligibilityThreshold);
     assertEq(calculator.updateEligibilityDelay(), updateEligibilityDelay);
   }
@@ -43,6 +47,7 @@ contract Constructor is EarningPowerCalculatorTest {
   function testFuzz_SetsOwnerAndContractParametersToArbitraryValues(
     address _owner,
     address _scoreOracle,
+    address _oraclePauseGuardian,
     uint256 _delegateeScoreEligibilityThreshold,
     uint256 _updateEligibilityDelay
   ) public {
@@ -51,11 +56,13 @@ contract Constructor is EarningPowerCalculatorTest {
       _owner,
       _scoreOracle,
       staleOracleWindow,
+      _oraclePauseGuardian,
       _delegateeScoreEligibilityThreshold,
       _updateEligibilityDelay
     );
     assertEq(_calculator.owner(), _owner);
     assertEq(_calculator.scoreOracle(), _scoreOracle);
+    assertEq(_calculator.oraclePauseGuardian(), _oraclePauseGuardian);
     assertEq(_calculator.delegateeEligibilityThresholdScore(), _delegateeScoreEligibilityThreshold);
     assertEq(_calculator.updateEligibilityDelay(), _updateEligibilityDelay);
   }
@@ -63,6 +70,7 @@ contract Constructor is EarningPowerCalculatorTest {
   function testFuzz_EmitsEventsWhenOwnerAndContractParametersAreSetToArbitraryValues(
     address _owner,
     address _scoreOracle,
+    address _oraclePauseGuardian,
     uint256 _delegateeScoreEligibilityThreshold,
     uint256 _updateEligibilityDelay
   ) public {
@@ -72,6 +80,8 @@ contract Constructor is EarningPowerCalculatorTest {
     emit Ownable.OwnershipTransferred(address(0), _owner);
     vm.expectEmit();
     emit EarningPowerCalculator.ScoreOracleSet(address(0), _scoreOracle);
+    vm.expectEmit();
+    emit EarningPowerCalculator.OraclePauseGuardianSet(address(0), _oraclePauseGuardian);
     vm.expectEmit();
     emit EarningPowerCalculator.DelegateeEligibilityThresholdScoreSet(
       0, _delegateeScoreEligibilityThreshold
@@ -83,6 +93,7 @@ contract Constructor is EarningPowerCalculatorTest {
       _owner,
       _scoreOracle,
       staleOracleWindow,
+      _oraclePauseGuardian,
       _delegateeScoreEligibilityThreshold,
       _updateEligibilityDelay
     );
@@ -98,6 +109,7 @@ contract Constructor is EarningPowerCalculatorTest {
       address(0),
       _scoreOracle,
       staleOracleWindow,
+      oraclePauseGuardian,
       _delegateeScoreEligibilityThreshold,
       _updateEligibilityDelay
     );
@@ -382,6 +394,19 @@ contract UpdateDelegateeScore is EarningPowerCalculatorTest {
     calculator.updateDelegateeScore(_delegatee, _newScore);
   }
 
+  function testFuzz_RevertIf_OracleIsPaused(address _delegatee, uint256 _newScore) public {
+    vm.prank(oraclePauseGuardian);
+    calculator.setOracleState(true);
+
+    vm.prank(scoreOracle);
+    vm.expectRevert(
+      EarningPowerCalculator
+        .BinaryEligibilityOracleEarningPowerCalculator__DisallowedWhilePaused
+        .selector
+    );
+    calculator.updateDelegateeScore(_delegatee, _newScore);
+  }
+
   // Score above the threshold => below threshold; lastDelegateeEligibilityChangeTime is updated;
   function testFuzz_UpdatesTimeOfIneligibilityWhenDelegateeScoreDropsBelowThreshold(
     address _delegatee,
@@ -547,6 +572,66 @@ contract SetScoreOracle is EarningPowerCalculatorTest {
     vm.prank(_caller);
     vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _caller));
     calculator.setScoreOracle(_newScoreOracle);
+  }
+}
+
+contract SetOraclePauseGuardian is EarningPowerCalculatorTest {
+  function testFuzz_SetOraclePauseGuardian(address _newOraclePauseGuardian) public {
+    vm.prank(owner);
+    calculator.setOraclePauseGuardian(_newOraclePauseGuardian);
+    assertEq(calculator.oraclePauseGuardian(), _newOraclePauseGuardian);
+  }
+
+  function testFuzz_EmitsAnEventWhenOraclePauseGuardianIsUpdated(address _newOraclePauseGuardian)
+    public
+  {
+    vm.expectEmit();
+    emit EarningPowerCalculator.OraclePauseGuardianSet(
+      calculator.oraclePauseGuardian(), _newOraclePauseGuardian
+    );
+    vm.prank(owner);
+    calculator.setOraclePauseGuardian(_newOraclePauseGuardian);
+  }
+
+  function testFuzz_RevertIf_CallerIsNotOwner(address _caller, address _newOraclePauseGuardian)
+    public
+  {
+    vm.assume(_caller != owner);
+    vm.prank(_caller);
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _caller));
+    calculator.setOraclePauseGuardian(_newOraclePauseGuardian);
+  }
+}
+
+contract SetOracleState is EarningPowerCalculatorTest {
+  function testFuzz_SetOracleState(bool _newOracleState) public {
+    vm.prank(oraclePauseGuardian);
+    calculator.setOracleState(_newOracleState);
+    assertEq(calculator.isOraclePaused(), _newOracleState);
+  }
+
+  function testFuzz_EmitsAnEventWhenOracleStateIsUpdated(bool _newOracleState) public {
+    vm.expectEmit();
+    emit EarningPowerCalculator.OraclePausedStatusUpdated(
+      calculator.isOraclePaused(), _newOracleState
+    );
+    vm.prank(oraclePauseGuardian);
+    calculator.setOracleState(_newOracleState);
+  }
+
+  function testFuzz_RevertIf_CallerIsNotOraclePauseGuardian(address _caller, bool _newOracleState)
+    public
+  {
+    vm.assume(_caller != oraclePauseGuardian);
+    vm.prank(_caller);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        EarningPowerCalculator.BinaryEligibilityOracleEarningPowerCalculator__Unauthorized.selector,
+        bytes32("not oracle pause guardian"),
+        _caller
+      )
+    );
+    calculator.setOracleState(_newOracleState);
   }
 }
 
