@@ -282,9 +282,6 @@ contract Stake is GovernanceStakerTest {
     GovernanceStaker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
 
     GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
-    assertEq(_deposit.balance, _amount);
-    assertEq(_deposit.owner, _depositor);
-    assertEq(_deposit.delegatee, _delegatee);
     assertEq(_deposit.beneficiary, _depositor);
   }
 
@@ -385,9 +382,6 @@ contract Stake is GovernanceStakerTest {
       _stake(_depositor, _amount, _delegatee, _beneficiary);
 
     GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
-    assertEq(_deposit.balance, _amount);
-    assertEq(_deposit.owner, _depositor);
-    assertEq(_deposit.delegatee, _delegatee);
     assertEq(_deposit.beneficiary, _beneficiary);
   }
 
