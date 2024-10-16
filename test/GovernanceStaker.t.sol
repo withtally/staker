@@ -271,11 +271,9 @@ contract Stake is GovernanceStakerTest {
     uint256 _amount,
     address _delegatee
   ) public {
+    vm.assume(_delegatee != address(0));
     _amount = uint256(bound(_amount, 1, type(uint256).max));
     _mintGovToken(_depositor, _amount);
-
-    vm.assume(_delegatee != address(0));
-
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
 
@@ -370,11 +368,9 @@ contract Stake is GovernanceStakerTest {
     address _delegatee,
     address _beneficiary
   ) public {
+    vm.assume(_delegatee != address(0) && _beneficiary != address(0));
     _amount = uint256(bound(_amount, 1, type(uint256).max));
     _mintGovToken(_depositor, _amount);
-
-    vm.assume(_delegatee != address(0) && _beneficiary != address(0));
-
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
 
