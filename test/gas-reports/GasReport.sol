@@ -12,6 +12,7 @@ import {Strings} from "openzeppelin/utils/Strings.sol";
 // contract code to track the impact of the changes on gas costs for important user actions. Inherit
 // from this class,
 // implement the abstract methods, and use the helpers when building the scenarios.
+/// @dev This contract was copied from https://github.com/withtally/stUNI/blob/7de3a6661af7079a768d1f707f0bc5bba38c4a4f/test/gas-reports/GasReport.sol.
 abstract contract GasReport is Test {
   using stdJson for string;
   using Strings for uint256;

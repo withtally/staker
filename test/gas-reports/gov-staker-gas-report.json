@@ -1,6 +1,6 @@
 {
-  "generatedAt": 1729187546,
-  "reportName:": "stakerGasReport",
+  "generatedAt": 1729191138,
+  "reportName:": "gov-stakerGasReport",
   "results": [
     {
       "scenarioName": "First stake to a new delegatee",
@@ -27,7 +27,7 @@
       "gasUsed": 67216
     },
     {
-      "scenarioName": "Alter beneficiary",
+      "scenarioName": "Alter beneficiary to a new address",
       "gasUsed": 50390
     },
     {
@@ -55,11 +55,11 @@
       "gasUsed": 46099
     },
     {
-      "scenarioName": "Bump earning power up",
+      "scenarioName": "Bump earning power up no reward",
       "gasUsed": 78394
     },
     {
-      "scenarioName": "Bump earning power down",
+      "scenarioName": "Bump earning power down with reward",
       "gasUsed": 107152
     },
     {

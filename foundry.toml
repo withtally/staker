@@ -1,7 +1,7 @@
 [profile.default]
   evm_version = "paris"
   fs_permissions = [
-    { access = "write", path = "./test/gas-reports/staker-gas-report.json" },
+    { access = "write", path = "./test/gas-reports/gov-staker-gas-report.json" },
   ]
   optimizer = true
   optimizer_runs = 10_000_000

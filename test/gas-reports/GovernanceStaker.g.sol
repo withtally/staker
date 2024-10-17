@@ -12,17 +12,14 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
   }
 
   function REPORT_NAME() public pure override returns (string memory) {
-    return "staker";
+    return "gov-staker";
   }
 
   function touchSlots() public override {
-    // Touch LST global variable slots by doing an initial deposit to the default delegatee.
+    // Touch the global variable slots by doing an initial stake.
     // This ensures all reported numbers, including the first one, are representative of what
-    // a "real" use is likely to experience when interacting with the LST.
+    // a "real" use is likely to experience when interacting with a governance staker.
     _boundMintAndStake(makeAddr("Slot Warmer"), 100e18, makeAddr("Slot Warmer"));
-    // Give the Withdraw Gate some tokens so it's balance slot is not empty for the first
-    // withdrawal.
-    //_mintStakeToken(address(withdrawGate), 100e18);
   }
 
   function runScenarios() public override {
@@ -33,12 +30,9 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     uint256 _rewardAmount;
 
     //-------------------------------------------------------------------------------------------//
-    // INITIALIZE SCENARIOS
+    // Stake SCENARIOS
     //-------------------------------------------------------------------------------------------//
 
-    // Stake scenarios
-    // 1. Stake with no delegate surrogate
-    // 2. Stake with existing delegate surrogate
     startScenario("First stake to a new delegatee");
     {
       _delegatee = makeScenarioAddr("Delegatee");
@@ -88,7 +82,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    // 3. Stake more
     startScenario("Stake more after initial stake");
     {
       _delegatee = makeScenarioAddr("Delegatee");
@@ -106,7 +99,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    // 4. Alter delegatee not existing delegate surrogate
     startScenario("Alter delegatee with new delegatee");
     {
       _delegatee = makeScenarioAddr("Delegatee");
@@ -125,7 +117,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    // 5. Alter delgatee to existing delegatee
     startScenario("Alter delegatee with existing delegatee");
     {
       _delegatee = makeScenarioAddr("Delegatee");
@@ -145,8 +136,7 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    // 6. Alter beneficiary
-    startScenario("Alter beneficiary");
+    startScenario("Alter beneficiary to a new address");
     {
       _delegatee = makeScenarioAddr("Delegatee");
       address _newBeneficiary = makeScenarioAddr("New Beneficiary");
@@ -164,7 +154,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    // 7. Withdraw full stake
     startScenario("Withdraw full stake");
     {
       _delegatee = makeScenarioAddr("Delegatee");
@@ -182,7 +171,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    // 8. Withdraw partial stake
     startScenario("Withdraw partial stake");
     {
       _delegatee = makeScenarioAddr("Delegatee");
@@ -200,7 +188,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    // 9. Claim reward when no reward
     startScenario("Claim reward when no reward");
     {
       _delegatee = makeScenarioAddr("Delegatee");
@@ -218,7 +205,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    // 10. Claim full reward
     startScenario("Claim reward when reward");
     {
       _delegatee = makeScenarioAddr("Delegatee");
@@ -247,7 +233,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    // 11. Notify reward amount
     startScenario("Notify reward");
     {
       _delegatee = makeScenarioAddr("Delegatee");
@@ -255,7 +240,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
 
       vm.startPrank(rewardNotifier);
       _rewardAmount = 10_000_000e18;
-      // notify rewards
       rewardToken.mint(rewardNotifier, _rewardAmount);
 
       rewardToken.transfer(address(govStaker), _rewardAmount);
@@ -269,7 +253,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     {
       vm.startPrank(rewardNotifier);
       _rewardAmount = 10_000_000e18;
-      // notify rewards
       rewardToken.mint(rewardNotifier, _rewardAmount * 2);
 
       rewardToken.transfer(address(govStaker), _rewardAmount * 2);
@@ -281,7 +264,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    // 12. Bump earning power up
     startScenario("Bump earning power up no reward");
     {
       _delegatee = makeScenarioAddr("Delegatee");
@@ -303,7 +285,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    // 13. Bump earning power down
     startScenario("Bump earning power down with reward");
     {
       _delegatee = makeScenarioAddr("Delegatee");
