@@ -42,7 +42,7 @@ contract GovernanceStakerTest is Test, PercentAssertions {
   mapping(DelegationSurrogate surrogate => bool isKnown) isKnownSurrogate;
   mapping(address depositor => bool isKnown) isKnownDepositor;
 
-  function setUp() public {
+  function setUp() public virtual {
     // Set the block timestamp to an arbitrary value to avoid introducing assumptions into tests
     // based on a starting timestamp of 0, which is the default.
     _jumpAhead(1234);

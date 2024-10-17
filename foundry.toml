@@ -1,5 +1,8 @@
 [profile.default]
   evm_version = "paris"
+  fs_permissions = [
+    { access = "write", path = "./test/gas-reports/staker-gas-report.json" },
+  ]
   optimizer = true
   optimizer_runs = 10_000_000
   remappings = ["openzeppelin/=lib/openzeppelin-contracts/contracts"]
