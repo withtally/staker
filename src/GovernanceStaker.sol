@@ -108,7 +108,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   error GovernanceStaker__InvalidSignature();
 
   /// @notice Thrown if an earning power update is unqualified to be bumped.
-  error GovernanceStaker__Unqualified();
+  error GovernanceStaker__Unqualified(uint256 score);
 
   /// @notice Metadata associated with a discrete staking deposit.
   /// @param balance The deposit's staked balance.
@@ -743,7 +743,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
       deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower
     );
     if (!_isQualifiedForBump || _newEarningPower == deposit.earningPower) {
-      revert GovernanceStaker__Unqualified();
+      revert GovernanceStaker__Unqualified(_newEarningPower);
     }
 
     if (_newEarningPower > deposit.earningPower && _unclaimedRewards < _requestedTip) {
