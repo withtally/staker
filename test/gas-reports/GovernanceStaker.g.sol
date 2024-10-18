@@ -29,10 +29,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     GovernanceStaker.DepositIdentifier _depositId;
     uint256 _rewardAmount;
 
-    //-------------------------------------------------------------------------------------------//
-    // Stake SCENARIOS
-    //-------------------------------------------------------------------------------------------//
-
     startScenario("First stake to a new delegatee");
     {
       _delegatee = makeScenarioAddr("Delegatee");
