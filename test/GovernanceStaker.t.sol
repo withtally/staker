@@ -3594,7 +3594,11 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
       _delegatee, _newEarningPower, false
     );
     // Bump earning power is called
-    vm.expectRevert(GovernanceStaker.GovernanceStaker__Unqualified.selector);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        GovernanceStaker.GovernanceStaker__Unqualified.selector, _newEarningPower
+      )
+    );
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
@@ -3624,7 +3628,9 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     // The staker's earning power changes
     earningPowerCalculator.__setEarningPowerForDelegatee(_delegatee, _stakeAmount);
     // Bump earning power is called
-    vm.expectRevert(GovernanceStaker.GovernanceStaker__Unqualified.selector);
+    vm.expectRevert(
+      abi.encodeWithSelector(GovernanceStaker.GovernanceStaker__Unqualified.selector, _stakeAmount)
+    );
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
