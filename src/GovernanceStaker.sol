@@ -129,11 +129,11 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// rewards for a deposit are thus this value plus all rewards earned after this checkpoint was
   /// taken. This value is reset to zero when the deposit's rewards are claimed.
   struct Deposit {
-    uint256 balance;
+    uint96 balance;
     address owner;
+    uint96 earningPower;
     address delegatee;
     address beneficiary;
-    uint256 earningPower;
     uint256 rewardPerTokenCheckpoint;
     uint256 scaledUnclaimedRewardCheckpoint;
   }
@@ -317,7 +317,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @return _depositId The unique identifier for this deposit.
   /// @dev The delegatee may not be the zero address. The deposit will be owned by the message
   /// sender, and the beneficiary will also be the message sender.
-  function stake(uint256 _amount, address _delegatee)
+  function stake(uint96 _amount, address _delegatee)
     external
     returns (DepositIdentifier _depositId)
   {
@@ -332,7 +332,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @return _depositId Unique identifier for this deposit.
   /// @dev Neither the delegatee nor the beneficiary may be the zero address. The deposit will be
   /// owned by the message sender.
-  function stake(uint256 _amount, address _delegatee, address _beneficiary)
+  function stake(uint96 _amount, address _delegatee, address _beneficiary)
     external
     returns (DepositIdentifier _depositId)
   {
@@ -353,7 +353,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @dev Neither the delegatee nor the beneficiary may be the zero address. The deposit will be
   /// owned by the message sender.
   function permitAndStake(
-    uint256 _amount,
+    uint96 _amount,
     address _delegatee,
     address _beneficiary,
     uint256 _deadline,
@@ -377,7 +377,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @return _depositId Unique identifier for this deposit.
   /// @dev Neither the delegatee nor the beneficiary may be the zero address.
   function stakeOnBehalf(
-    uint256 _amount,
+    uint96 _amount,
     address _delegatee,
     address _beneficiary,
     address _depositor,
@@ -411,7 +411,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _depositId Unique identifier of the deposit to which stake will be added.
   /// @param _amount Quantity of stake to be added.
   /// @dev The message sender must be the owner of the deposit.
-  function stakeMore(DepositIdentifier _depositId, uint256 _amount) external {
+  function stakeMore(DepositIdentifier _depositId, uint96 _amount) external {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
     _stakeMore(deposit, _depositId, _amount);
@@ -430,7 +430,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @dev The message sender must be the owner of the deposit.
   function permitAndStakeMore(
     DepositIdentifier _depositId,
-    uint256 _amount,
+    uint96 _amount,
     uint256 _deadline,
     uint8 _v,
     bytes32 _r,
@@ -453,7 +453,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _signature Signature of the user authorizing this stake.
   function stakeMoreOnBehalf(
     DepositIdentifier _depositId,
-    uint256 _amount,
+    uint96 _amount,
     address _depositor,
     uint256 _deadline,
     bytes memory _signature
@@ -582,7 +582,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @param _amount Quantity of staked token to withdraw.
   /// @dev The message sender must be the owner of the deposit. Stake is withdrawn to the message
   /// sender's account.
-  function withdraw(DepositIdentifier _depositId, uint256 _amount) external {
+  function withdraw(DepositIdentifier _depositId, uint96 _amount) external {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
     _withdraw(deposit, _depositId, _amount);
@@ -598,7 +598,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @dev Stake is withdrawn to the deposit owner's account.
   function withdrawOnBehalf(
     DepositIdentifier _depositId,
-    uint256 _amount,
+    uint96 _amount,
     address _depositor,
     uint256 _deadline,
     bytes memory _signature
@@ -754,7 +754,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
 
     // Update global earning power & deposit earning power based on this bump
     totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
-    deposit.earningPower = _newEarningPower;
+    deposit.earningPower = uint96(_newEarningPower);
 
     // Send tip to the receiver
     SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _requestedTip);
@@ -814,7 +814,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Internal convenience methods which performs the staking operations.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public stake methods for additional documentation.
-  function _stake(address _depositor, uint256 _amount, address _delegatee, address _beneficiary)
+  function _stake(address _depositor, uint96 _amount, address _delegatee, address _beneficiary)
     internal
     returns (DepositIdentifier _depositId)
   {
@@ -826,7 +826,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
     DelegationSurrogate _surrogate = _fetchOrDeploySurrogate(_delegatee);
     _depositId = _useDepositId();
 
-    uint256 _earningPower = earningPowerCalculator.getEarningPower(_amount, _depositor, _delegatee);
+    uint96 _earningPower = uint96(earningPowerCalculator.getEarningPower(_amount, _depositor, _delegatee));
     totalStaked += _amount;
     totalEarningPower += _earningPower;
     depositorTotalStaked[_depositor] += _amount;
@@ -848,7 +848,7 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Internal convenience method which adds more stake to an existing deposit.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public stakeMore methods for additional documentation.
-  function _stakeMore(Deposit storage deposit, DepositIdentifier _depositId, uint256 _amount)
+  function _stakeMore(Deposit storage deposit, DepositIdentifier _depositId, uint96 _amount)
     internal
   {
     _checkpointGlobalReward();
@@ -856,9 +856,9 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
 
     DelegationSurrogate _surrogate = surrogates[deposit.delegatee];
 
-    uint256 _newBalance = deposit.balance + _amount;
-    uint256 _newEarningPower =
-      earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
+    uint96 _newBalance = deposit.balance + _amount;
+    uint96 _newEarningPower =
+      uint96(earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee));
     totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
     totalStaked += _amount;
     depositorTotalStaked[deposit.owner] += _amount;
@@ -878,8 +878,8 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   ) internal {
     _revertIfAddressZero(_newDelegatee);
     DelegationSurrogate _oldSurrogate = surrogates[deposit.delegatee];
-    uint256 _newEarningPower =
-      earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee);
+    uint96 _newEarningPower =
+      uint96(earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee));
     totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
     emit DelegateeAltered(_depositId, deposit.delegatee, _newDelegatee);
     deposit.delegatee = _newDelegatee;
@@ -900,8 +900,8 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
 
     // Updating the earning power here is not strictly necessary, but if the user is touching their
     // deposit anyway, it seems reasonable to make sure their earning power is up to date.
-    uint256 _newEarningPower =
-      earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
+    uint96 _newEarningPower =
+      uint96(earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee));
     totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
     deposit.earningPower = _newEarningPower;
 
@@ -912,16 +912,16 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
   /// @notice Internal convenience method which withdraws the stake from an existing deposit.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public withdraw methods for additional documentation.
-  function _withdraw(Deposit storage deposit, DepositIdentifier _depositId, uint256 _amount)
+  function _withdraw(Deposit storage deposit, DepositIdentifier _depositId, uint96 _amount)
     internal
   {
     _checkpointGlobalReward();
     _checkpointReward(deposit);
 
     // overflow prevents withdrawing more than balance
-    uint256 _newBalance = deposit.balance - _amount;
-    uint256 _newEarningPower =
-      earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
+    uint96 _newBalance = deposit.balance - _amount;
+    uint96 _newEarningPower =
+      uint96(earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee));
 
     totalStaked -= _amount;
     totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
@@ -951,8 +951,8 @@ contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonce
       deposit.scaledUnclaimedRewardCheckpoint - (_reward * SCALE_FACTOR);
     emit RewardClaimed(_depositId, _claimer, _reward);
 
-    uint256 _newEarningPower =
-      earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
+    uint96 _newEarningPower =
+      uint96(earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee));
     totalEarningPower = _calculateTotalEarningPower(deposit.earningPower, _newEarningPower);
     deposit.earningPower = _newEarningPower;
 
