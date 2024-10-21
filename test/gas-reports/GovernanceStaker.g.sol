@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
-import {GasReport} from "test/gas-reports/GasReport.sol";
+import {GasReport} from "test/lib/GasReport.sol";
 import {GovernanceStaker} from "src/GovernanceStaker.sol";
 import {GovernanceStakerTest} from "test/GovernanceStaker.t.sol";
 
@@ -25,7 +25,6 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
   function runScenarios() public override {
     address _staker;
     address _delegatee;
-    uint256 _stakeAmount;
     GovernanceStaker.DepositIdentifier _depositId;
     uint256 _rewardAmount;
 
