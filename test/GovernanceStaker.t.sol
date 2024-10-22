@@ -112,6 +112,14 @@ contract GovernanceStakerTest is Test, PercentAssertions {
     );
   }
 
+  function _setClaimFeeAndCollector(uint96 _amount, address _collector) internal {
+    GovernanceStaker.ClaimFeeParameters memory _params =
+      GovernanceStaker.ClaimFeeParameters({feeAmount: _amount, feeCollector: _collector});
+
+    vm.prank(admin);
+    govStaker.setClaimFeeParameters(_params);
+  }
+
   function _stake(address _depositor, uint256 _amount, address _delegatee)
     internal
     returns (GovernanceStaker.DepositIdentifier _depositId)
@@ -3249,6 +3257,108 @@ contract SetEarningPowerCalculator is GovernanceStakerTest {
   }
 }
 
+contract SetClaimFeeParameters is GovernanceStakerTest {
+  function testFuzz_AllowsAdminToUpdateTheClaimFeeAmountAndFeeCollector(
+    GovernanceStaker.ClaimFeeParameters memory _newParams
+  ) public {
+    vm.assume(_newParams.feeCollector != address(0));
+    _newParams.feeAmount = uint96(bound(_newParams.feeAmount, 0, govStaker.MAX_CLAIM_FEE()));
+
+    vm.prank(admin);
+    govStaker.setClaimFeeParameters(_newParams);
+
+    (uint96 _feeAmount, address _feeCollector) = govStaker.claimFeeParameters();
+    assertEq(_feeAmount, _newParams.feeAmount);
+    assertEq(_feeCollector, _newParams.feeCollector);
+  }
+
+  function testFuzz_AllowsAdminToSetFeeAmountAndFeeCollectorToZero(
+    GovernanceStaker.ClaimFeeParameters memory _initialParams
+  ) public {
+    vm.assume(_initialParams.feeCollector != address(0));
+    _initialParams.feeAmount = uint96(bound(_initialParams.feeAmount, 0, govStaker.MAX_CLAIM_FEE()));
+
+    // Establish some initial parameters.
+    vm.prank(admin);
+    govStaker.setClaimFeeParameters(_initialParams);
+
+    GovernanceStaker.ClaimFeeParameters memory _zeroParams =
+      GovernanceStaker.ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)});
+
+    // Update the parameters to both be zero.
+    vm.prank(admin);
+    govStaker.setClaimFeeParameters(_zeroParams);
+
+    (uint96 _feeAmount, address _feeCollector) = govStaker.claimFeeParameters();
+    assertEq(_feeAmount, 0);
+    assertEq(_feeCollector, address(0));
+  }
+
+  function testFuzz_EmitsAClaimFeeParametersSetEvent(
+    GovernanceStaker.ClaimFeeParameters memory _initialParams,
+    GovernanceStaker.ClaimFeeParameters memory _newParams
+  ) public {
+    vm.assume(_initialParams.feeCollector != address(0) && _newParams.feeCollector != address(0));
+    _newParams.feeAmount = uint96(bound(_newParams.feeAmount, 0, govStaker.MAX_CLAIM_FEE()));
+    _initialParams.feeAmount = uint96(bound(_initialParams.feeAmount, 0, govStaker.MAX_CLAIM_FEE()));
+
+    // Establish initial non-zero params.
+    vm.prank(admin);
+    govStaker.setClaimFeeParameters(_initialParams);
+
+    // Update params, expecting appropriate event.
+    vm.prank(admin);
+    vm.expectEmit();
+    emit GovernanceStaker.ClaimFeeParametersSet(
+      _initialParams.feeAmount,
+      _newParams.feeAmount,
+      _initialParams.feeCollector,
+      _newParams.feeCollector
+    );
+    govStaker.setClaimFeeParameters(_newParams);
+  }
+
+  function testFuzz_RevertIf_FeeAmountIsMoreThanTheMaxClaimFee(
+    GovernanceStaker.ClaimFeeParameters memory _newParams
+  ) public {
+    vm.assume(_newParams.feeCollector != address(0));
+    _newParams.feeAmount =
+      uint96(bound(_newParams.feeAmount, govStaker.MAX_CLAIM_FEE() + 1, type(uint96).max));
+
+    vm.prank(admin);
+    vm.expectRevert(GovernanceStaker.GovernanceStaker__InvalidClaimFeeParameters.selector);
+    govStaker.setClaimFeeParameters(_newParams);
+  }
+
+  function testFuzz_RevertIf_TheFeeCollectorIsAddressZeroWhileFeeAmountIsNotZero(
+    GovernanceStaker.ClaimFeeParameters memory _newParams
+  ) public {
+    _newParams.feeAmount = uint96(bound(_newParams.feeAmount, 1, govStaker.MAX_CLAIM_FEE()));
+    _newParams.feeCollector = address(0);
+
+    vm.prank(admin);
+    vm.expectRevert(GovernanceStaker.GovernanceStaker__InvalidClaimFeeParameters.selector);
+    govStaker.setClaimFeeParameters(_newParams);
+  }
+
+  function testFuzz_RevertIf_TheCallerIsNotTheAdmin(
+    address _notAdmin,
+    GovernanceStaker.ClaimFeeParameters memory _newParams
+  ) public {
+    vm.assume(_newParams.feeCollector != address(0));
+    vm.assume(_notAdmin != admin);
+    _newParams.feeAmount = uint96(bound(_newParams.feeAmount, 0, govStaker.MAX_CLAIM_FEE()));
+
+    vm.prank(_notAdmin);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        GovernanceStaker.GovernanceStaker__Unauthorized.selector, bytes32("not admin"), _notAdmin
+      )
+    );
+    govStaker.setClaimFeeParameters(_newParams);
+  }
+}
+
 contract InvalidateNonce is GovernanceStakerTest {
   using stdStorage for StdStorage;
 
@@ -5593,6 +5703,112 @@ contract ClaimReward is GovernanceStakerRewardsTest {
     govStaker.claimReward(_depositId);
   }
 
+  function testFuzz_SendsTheClaimFeeToTheFeeCollector(
+    address _depositor,
+    address _delegatee,
+    address _beneficiary,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    uint96 _feeAmount,
+    address _feeCollector
+  ) public {
+    vm.assume(
+      _depositor != address(govStaker) && _feeCollector != address(govStaker)
+        && _feeCollector != address(0) && _depositor != _feeCollector
+    );
+    _feeAmount = uint96(bound(_feeAmount, 0, govStaker.MAX_CLAIM_FEE()));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = bound(_rewardAmount, 1e18, 10_000_000e18);
+
+    // The admin sets a claim fee
+    _setClaimFeeAndCollector(_feeAmount, _feeCollector);
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(100);
+
+    uint256 _earned = govStaker.unclaimedReward(_depositId);
+
+    vm.prank(_depositor);
+    govStaker.claimReward(_depositId);
+
+    assertEq(rewardToken.balanceOf(_depositor), _earned - _feeAmount);
+    assertEq(rewardToken.balanceOf(_feeCollector), _feeAmount);
+  }
+
+  function testFuzz_SubtractsTheFeeCollectedFromTheAmountReturned(
+    address _depositor,
+    address _delegatee,
+    address _beneficiary,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    uint96 _feeAmount,
+    address _feeCollector
+  ) public {
+    vm.assume(
+      _depositor != address(govStaker) && _feeCollector != address(govStaker)
+        && _feeCollector != address(0) && _depositor != _feeCollector
+    );
+    _feeAmount = uint96(bound(_feeAmount, 0, govStaker.MAX_CLAIM_FEE()));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = bound(_rewardAmount, 1e18, 10_000_000e18);
+
+    // The admin sets a claim fee
+    _setClaimFeeAndCollector(_feeAmount, _feeCollector);
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(100);
+
+    uint256 _earned = govStaker.unclaimedReward(_depositId);
+
+    vm.prank(_depositor);
+    uint256 _rewardReturned = govStaker.claimReward(_depositId);
+
+    assertEq(_rewardReturned, _earned - _feeAmount);
+  }
+
+  function testFuzz_SubtractsTheFeeCollectedFromTheAmountEmitted(
+    address _depositor,
+    address _delegatee,
+    address _beneficiary,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    uint96 _feeAmount,
+    address _feeCollector
+  ) public {
+    vm.assume(
+      _depositor != address(govStaker) && _feeCollector != address(govStaker)
+        && _feeCollector != address(0) && _depositor != _feeCollector
+    );
+    _feeAmount = uint96(bound(_feeAmount, 0, govStaker.MAX_CLAIM_FEE()));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = bound(_rewardAmount, 1e18, 10_000_000e18);
+
+    // The admin sets a claim fee
+    _setClaimFeeAndCollector(_feeAmount, _feeCollector);
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(100);
+
+    uint256 _earned = govStaker.unclaimedReward(_depositId);
+
+    vm.prank(_depositor);
+    vm.expectEmit();
+    emit GovernanceStaker.RewardClaimed(_depositId, _depositor, _earned - _feeAmount);
+    govStaker.claimReward(_depositId);
+  }
+
   function testFuzz_RevertIf_TheCallerIsNotTheDepositBeneficiaryOrOwner(
     address _depositor,
     address _delegatee,
@@ -5622,6 +5838,35 @@ contract ClaimReward is GovernanceStakerRewardsTest {
         _notBeneficiary
       )
     );
+    govStaker.claimReward(_depositId);
+  }
+
+  function testFuzz_RevertIf_UnclaimedRewardsAreLessThanTheFee(
+    address _depositor,
+    address _delegatee,
+    address _beneficiary,
+    uint256 _stakeAmount,
+    address _feeCollector
+  ) public {
+    vm.assume(
+      _depositor != address(govStaker) && _feeCollector != address(govStaker)
+        && _feeCollector != address(0) && _depositor != _feeCollector
+    );
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    uint256 _rewardAmount = govStaker.MAX_CLAIM_FEE();
+
+    // The admin sets a claim fee
+    _setClaimFeeAndCollector(uint96(govStaker.MAX_CLAIM_FEE()), _feeCollector);
+    // A user deposits staking tokens
+    (, GovernanceStaker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _beneficiary);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(100);
+
+    vm.prank(_depositor);
+    vm.expectRevert(stdError.arithmeticError);
     govStaker.claimReward(_depositId);
   }
 }
