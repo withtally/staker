@@ -131,8 +131,8 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     view
     returns (uint256)
   {
-    if (isOracleStale() || isOraclePaused) return _amountStaked;
-    return isDelegateeEligible(_delegatee) ? _amountStaked : 0;
+    if (_isOracleStale() || isOraclePaused) return _amountStaked;
+    return _isDelegateeEligible(_delegatee) ? _amountStaked : 0;
   }
 
   /// @notice Calculates the new earning power and determines if it qualifies for an update.`
@@ -148,9 +148,9 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     address _delegatee,
     uint256 /* _oldEarningPower */
   ) external view returns (uint256, bool) {
-    if (isOracleStale() || isOraclePaused) return (_amountStaked, true);
+    if (_isOracleStale() || isOraclePaused) return (_amountStaked, true);
 
-    if (!isDelegateeEligible(_delegatee)) {
+    if (!_isDelegateeEligible(_delegatee)) {
       bool _isUpdateDelayElapsed =
         (timeOfIneligibility[_delegatee] + updateEligibilityDelay) <= block.timestamp;
       return (0, _isUpdateDelayElapsed);
@@ -269,7 +269,7 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// @dev An oracle is considered stale if the time since its last update exceeds the
   /// STALE_ORACLE_WINDOW.
   /// @return bool Returns true if the oracle is stale, false otherwise.
-  function isOracleStale() internal view returns (bool) {
+  function _isOracleStale() internal view returns (bool) {
     return block.timestamp - lastOracleUpdateTime > STALE_ORACLE_WINDOW;
   }
 
@@ -278,7 +278,7 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// eligibility threshold.
   /// @param _delegatee The address of the delegatee to check.
   /// @return bool Returns true if the delegatee is eligible, false otherwise.
-  function isDelegateeEligible(address _delegatee) internal view returns (bool) {
+  function _isDelegateeEligible(address _delegatee) internal view returns (bool) {
     return delegateeScores[_delegatee] >= delegateeEligibilityThresholdScore;
   }
 
