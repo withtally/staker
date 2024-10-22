@@ -22,7 +22,10 @@ contract GovernanceStakerHarness is GovernanceStaker {
   )
     GovernanceStaker(_rewardsToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin)
     EIP712(_name, "1")
-  {}
+  {
+    MAX_CLAIM_FEE = 1e18;
+    _setClaimFeeParameters(ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)}));
+  }
 
   function exposed_useDepositId() external returns (DepositIdentifier _depositId) {
     _depositId = _useDepositId();

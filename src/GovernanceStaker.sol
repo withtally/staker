@@ -76,6 +76,11 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   /// @notice Emitted when the max bump tip is modified.
   event MaxBumpTipSet(uint256 oldMaxBumpTip, uint256 newMaxBumpTip);
 
+  /// @notice Emitted when the claim fee parameters are modified.
+  event ClaimFeeParametersSet(
+    uint96 oldFeeAmount, uint96 newFeeAmount, address oldFeeCollector, address newFeeCollector
+  );
+
   /// @notice Emitted when a reward notifier address is enabled or disabled.
   event RewardNotifierSet(address indexed account, bool isEnabled);
 
@@ -104,6 +109,9 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
 
   /// @notice Thrown if a bumper's requested tip is invalid.
   error GovernanceStaker__InvalidTip();
+
+  /// @notice Thrown if the claim fee parameters are outside permitted bounds.
+  error GovernanceStaker__InvalidClaimFeeParameters();
 
   /// @notice Thrown when an onBehalf method is called with a deadline that has expired.
   error GovernanceStaker__ExpiredDeadline();
@@ -142,6 +150,15 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     uint256 scaledUnclaimedRewardCheckpoint;
   }
 
+  /// @notice Parameters associated with the fee assessed when rewards are claimed.
+  /// @param feeAmount The absolute amount of the reward token that is taken as a fee when rewards
+  /// claimed for a given deposit.
+  /// @param feeCollector The address to which reward token fees are sent.
+  struct ClaimFeeParameters {
+    uint96 feeAmount;
+    address feeCollector;
+  }
+
   /// @notice Type hash used when encoding data for `stakeOnBehalf` calls.
   bytes32 public constant STAKE_TYPEHASH = keccak256(
     "Stake(uint256 amount,address delegatee,address beneficiary,address depositor,uint256 nonce,uint256 deadline)"
@@ -178,6 +195,11 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   /// @notice Scale factor used in reward calculation math to reduce rounding errors caused by
   /// truncation during division.
   uint256 public constant SCALE_FACTOR = 1e36;
+
+  /// @notice The maximum value to which the claim fee can be set.
+  /// @dev For anything other than a zero value, this immutable parameter should be set in the
+  /// constructor of a concrete implementation inheriting from GovernanceStaker.
+  uint256 public immutable MAX_CLAIM_FEE;
 
   /// @dev Unique identifier that will be used for the next deposit.
   DepositIdentifier private nextDepositId;
@@ -225,6 +247,9 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
 
   /// @notice Maps addresses to whether they are authorized to call `notifyRewardAmount`.
   mapping(address rewardNotifier => bool) public isRewardNotifier;
+
+  /// @notice Current configuration parameters for the fee assessed on claiming.
+  ClaimFeeParameters public claimFeeParameters;
 
   /// @param _rewardToken ERC20 token in which rewards will be denominated.
   /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
@@ -279,6 +304,14 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     _revertIfNotAdmin();
     isRewardNotifier[_rewardNotifier] = _isEnabled;
     emit RewardNotifierSet(_rewardNotifier, _isEnabled);
+  }
+
+  /// @notice Updates the parameters related to the claim fee.
+  /// @param _params The new fee parameters.
+  /// @dev Caller must be current admin.
+  function setClaimFeeParameters(ClaimFeeParameters memory _params) external virtual {
+    _revertIfNotAdmin();
+    _setClaimFeeParameters(_params);
   }
 
   /// @notice Timestamp representing the last time at which rewards have been distributed, which is
@@ -632,7 +665,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   /// @notice Claim reward tokens earned by a given deposit. Message sender must be the beneficiary
   /// address of the deposit. Tokens are sent to the beneficiary address.
   /// @param _depositId Identifier of the deposit from which accrued rewards will be claimed.
-  /// @return Amount of reward tokens claimed.
+  /// @return Amount of reward tokens claimed, after the fee has been assessed.
   function claimReward(DepositIdentifier _depositId) external virtual returns (uint256) {
     Deposit storage deposit = deposits[_depositId];
     if (deposit.beneficiary != msg.sender && deposit.owner != msg.sender) {
@@ -647,7 +680,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   /// @param _depositId The identifier for the deposit for which to claim rewards.
   /// @param _deadline The timestamp after which the signature should expire.
   /// @param _signature Signature of the beneficiary authorizing this reward claim.
-  /// @return Amount of reward tokens claimed.
+  /// @return Amount of reward tokens claimed, after the fee has been assessed.
   function claimRewardOnBehalf(
     DepositIdentifier _depositId,
     uint256 _deadline,
@@ -972,7 +1005,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   }
 
   /// @notice Internal convenience method which claims earned rewards.
-  /// @return Amount of reward tokens claimed.
+  /// @return Amount of reward tokens claimed, after the claim fee has been assessed.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public claimReward methods for additional documentation.
   function _claimReward(DepositIdentifier _depositId, Deposit storage deposit, address _claimer)
@@ -984,12 +1017,14 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     _checkpointReward(deposit);
 
     uint256 _reward = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
-    if (_reward == 0) return 0;
+    // Intentionally reverts due to overflow if unclaimed rewards are less than fee.
+    uint256 _payout = _reward - claimFeeParameters.feeAmount;
+    if (_payout == 0) return 0;
 
     // retain sub-wei dust that would be left due to the precision loss
     deposit.scaledUnclaimedRewardCheckpoint =
       deposit.scaledUnclaimedRewardCheckpoint - (_reward * SCALE_FACTOR);
-    emit RewardClaimed(_depositId, _claimer, _reward);
+    emit RewardClaimed(_depositId, _claimer, _payout);
 
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
@@ -1001,8 +1036,13 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     );
     deposit.earningPower = _newEarningPower.toUint96();
 
-    SafeERC20.safeTransfer(REWARD_TOKEN, _claimer, _reward);
-    return _reward;
+    SafeERC20.safeTransfer(REWARD_TOKEN, _claimer, _payout);
+    if (claimFeeParameters.feeAmount > 0) {
+      SafeERC20.safeTransfer(
+        REWARD_TOKEN, claimFeeParameters.feeCollector, claimFeeParameters.feeAmount
+      );
+    }
+    return _payout;
   }
 
   /// @notice Checkpoints the global reward per token accumulator.
@@ -1058,6 +1098,22 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   function _setMaxBumpTip(uint256 _newMaxTip) internal virtual {
     emit MaxBumpTipSet(maxBumpTip, _newMaxTip);
     maxBumpTip = _newMaxTip;
+  }
+
+  function _setClaimFeeParameters(ClaimFeeParameters memory _params) internal virtual {
+    if (
+      _params.feeAmount > MAX_CLAIM_FEE
+        || (_params.feeCollector == address(0) && _params.feeAmount > 0)
+    ) revert GovernanceStaker__InvalidClaimFeeParameters();
+
+    emit ClaimFeeParametersSet(
+      claimFeeParameters.feeAmount,
+      _params.feeAmount,
+      claimFeeParameters.feeCollector,
+      _params.feeCollector
+    );
+
+    claimFeeParameters = _params;
   }
 
   /// @notice Internal helper method which reverts GovernanceStaker__Unauthorized if the message
