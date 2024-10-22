@@ -2,6 +2,7 @@
 pragma solidity ^0.8.23;
 
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
+import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
 import {INotifiableRewardReceiver} from "src/interfaces/INotifiableRewardReceiver.sol";
 import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
 import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
@@ -797,7 +798,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     _surrogate = surrogates[_delegatee];
 
     if (address(_surrogate) == address(0)) {
-      _surrogate = new DelegationSurrogate(STAKE_TOKEN, _delegatee);
+      _surrogate = new DelegationSurrogateVotes(STAKE_TOKEN, _delegatee);
       surrogates[_delegatee] = _surrogate;
       emit SurrogateDeployed(_delegatee, address(_surrogate));
     }
