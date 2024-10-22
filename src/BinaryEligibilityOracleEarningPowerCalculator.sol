@@ -131,14 +131,8 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     view
     returns (uint256)
   {
-    // If the oracle has not updated eligibility scores for more than the stale oracle window,
-    // return full earning power.
-    if (block.timestamp - lastOracleUpdateTime > STALE_ORACLE_WINDOW) return _amountStaked;
-    // If the delegatee's score is below the eligibility threshold, return 0 earning power.
-    if (delegateeScores[_delegatee] < delegateeEligibilityThresholdScore) return 0;
-    // If the delegatee's score is equal to or above the eligibility threshold, return full earning
-    // power.
-    return _amountStaked;
+    if (isOracleStale() || isOraclePaused) return _amountStaked;
+    return isDelegateeEligible(_delegatee) ? _amountStaked : 0;
   }
 
   /// @notice Calculates the new earning power and determines if it qualifies for an update.`
@@ -147,31 +141,21 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// @param _delegatee The address of the delegatee.
   /// @param /* _oldEarningPower */ The previous earning power value.
   /// @return The newly calculated earning power.
-  /// @return Boolean indicating if the new earning power qualifies for an
-  /// update.
+  /// @return Boolean indicating if the new earning power qualifies for an update.
   function getNewEarningPower(
     uint256 _amountStaked,
     address, /* _staker */
     address _delegatee,
     uint256 /* _oldEarningPower */
   ) external view returns (uint256, bool) {
-    // If the oracle has not been updated for more than the stale oracle window, return full earning
-    // power and is qualified for update.
-    if (block.timestamp - lastOracleUpdateTime > STALE_ORACLE_WINDOW) return (_amountStaked, true);
+    if (isOracleStale() || isOraclePaused) return (_amountStaked, true);
 
-    // If the delegatee's score is below the eligibility threshold and the updateEligibilityDelay
-    // period has not elapsed, return 0 earning power and false for qualified to update.
-    if (
-      delegateeScores[_delegatee] < delegateeEligibilityThresholdScore
-        && (timeOfIneligibility[_delegatee] + updateEligibilityDelay) > block.timestamp
-    ) return (0, false);
+    if (!isDelegateeEligible(_delegatee)) {
+      bool _isUpdateDelayElapsed =
+        (timeOfIneligibility[_delegatee] + updateEligibilityDelay) <= block.timestamp;
+      return (0, _isUpdateDelayElapsed);
+    }
 
-    // If the delegatee's score is below the eligibility threshold and the updateEligibilityDelay
-    // period has elapsed, return 0 earning power and true for qualified to update.
-    if (delegateeScores[_delegatee] < delegateeEligibilityThresholdScore) return (0, true);
-
-    // If the delegatee's score is equal to or above the eligibility threshold, return full earning
-    // power and true for qualified to update.
     return (_amountStaked, true);
   }
 
@@ -279,6 +263,23 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   function setOraclePauseGuardian(address _newOraclePauseGuardian) public {
     _checkOwner();
     _setOraclePauseGuardian(_newOraclePauseGuardian);
+  }
+
+  /// @notice Checks if the oracle's last update is considered stale.
+  /// @dev An oracle is considered stale if the time since its last update exceeds the
+  /// STALE_ORACLE_WINDOW.
+  /// @return bool Returns true if the oracle is stale, false otherwise.
+  function isOracleStale() internal view returns (bool) {
+    return block.timestamp - lastOracleUpdateTime > STALE_ORACLE_WINDOW;
+  }
+
+  /// @notice Determines if a delegatee is eligible based on their score.
+  /// @dev A delegatee is considered eligible if their score is greater than or equal to the
+  /// eligibility threshold.
+  /// @param _delegatee The address of the delegatee to check.
+  /// @return bool Returns true if the delegatee is eligible, false otherwise.
+  function isDelegateeEligible(address _delegatee) internal view returns (bool) {
+    return delegateeScores[_delegatee] >= delegateeEligibilityThresholdScore;
   }
 
   /// @notice Internal function to set a new oracle pause guardian address.
