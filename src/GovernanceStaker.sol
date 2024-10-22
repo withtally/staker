@@ -9,6 +9,7 @@ import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {Multicall} from "openzeppelin/utils/Multicall.sol";
+import {SafeCast} from "openzeppelin/utils/math/SafeCast.sol";
 import {Nonces} from "openzeppelin/utils/Nonces.sol";
 import {SignatureChecker} from "openzeppelin/utils/cryptography/SignatureChecker.sol";
 import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
@@ -31,6 +32,8 @@ import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 /// to include the newly received rewards along with any remaining rewards that have finished
 /// streaming since the last time a reward was received.
 abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
+  using SafeCast for uint256;
+
   type DepositIdentifier is uint256;
 
   /// @notice Emitted when stake is deposited by a depositor, either to a new deposit or one that
@@ -130,11 +133,11 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   /// rewards for a deposit are thus this value plus all rewards earned after this checkpoint was
   /// taken. This value is reset to zero when the deposit's rewards are claimed.
   struct Deposit {
-    uint256 balance;
+    uint96 balance;
     address owner;
+    uint96 earningPower;
     address delegatee;
     address beneficiary;
-    uint256 earningPower;
     uint256 rewardPerTokenCheckpoint;
     uint256 scaledUnclaimedRewardCheckpoint;
   }
@@ -763,7 +766,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
       deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
-    deposit.earningPower = _newEarningPower;
+    deposit.earningPower = _newEarningPower.toUint96();
 
     // Send tip to the receiver
     SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _requestedTip);
@@ -838,16 +841,17 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     _depositId = _useDepositId();
 
     uint256 _earningPower = earningPowerCalculator.getEarningPower(_amount, _depositor, _delegatee);
+
     totalStaked += _amount;
     totalEarningPower += _earningPower;
     depositorTotalStaked[_depositor] += _amount;
     depositorTotalEarningPower[_depositor] += _earningPower;
     deposits[_depositId] = Deposit({
-      balance: _amount,
+      balance: _amount.toUint96(),
       owner: _depositor,
       delegatee: _delegatee,
       beneficiary: _beneficiary,
-      earningPower: _earningPower,
+      earningPower: _earningPower.toUint96(),
       rewardPerTokenCheckpoint: rewardPerTokenAccumulatedCheckpoint,
       scaledUnclaimedRewardCheckpoint: 0
     });
@@ -872,6 +876,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     uint256 _newBalance = deposit.balance + _amount;
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
+
     totalEarningPower =
       _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
     totalStaked += _amount;
@@ -879,8 +884,8 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
       deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
-    deposit.earningPower = _newEarningPower;
-    deposit.balance = _newBalance;
+    deposit.earningPower = _newEarningPower.toUint96();
+    deposit.balance = _newBalance.toUint96();
     _stakeTokenSafeTransferFrom(deposit.owner, address(_surrogate), _amount);
     emit StakeDeposited(deposit.owner, _depositId, _amount, deposit.balance);
   }
@@ -897,6 +902,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     DelegationSurrogate _oldSurrogate = surrogates[deposit.delegatee];
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee);
+
     totalEarningPower =
       _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
@@ -905,7 +911,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
 
     emit DelegateeAltered(_depositId, deposit.delegatee, _newDelegatee);
     deposit.delegatee = _newDelegatee;
-    deposit.earningPower = _newEarningPower;
+    deposit.earningPower = _newEarningPower.toUint96();
     DelegationSurrogate _newSurrogate = _fetchOrDeploySurrogate(_newDelegatee);
     _stakeTokenSafeTransferFrom(address(_oldSurrogate), address(_newSurrogate), deposit.balance);
   }
@@ -930,7 +936,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
       deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
 
-    deposit.earningPower = _newEarningPower;
+    deposit.earningPower = _newEarningPower.toUint96();
 
     emit BeneficiaryAltered(_depositId, deposit.beneficiary, _newBeneficiary);
     deposit.beneficiary = _newBeneficiary;
@@ -959,8 +965,8 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
       deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
 
-    deposit.balance = _newBalance;
-    deposit.earningPower = _newEarningPower;
+    deposit.balance = _newBalance.toUint96();
+    deposit.earningPower = _newEarningPower.toUint96();
     _stakeTokenSafeTransferFrom(address(surrogates[deposit.delegatee]), deposit.owner, _amount);
     emit StakeWithdrawn(_depositId, _amount, deposit.balance);
   }
@@ -987,12 +993,13 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
 
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
+
     totalEarningPower =
       _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
       deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
-    deposit.earningPower = _newEarningPower;
+    deposit.earningPower = _newEarningPower.toUint96();
 
     SafeERC20.safeTransfer(REWARD_TOKEN, _claimer, _reward);
     return _reward;

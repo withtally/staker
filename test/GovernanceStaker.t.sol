@@ -148,11 +148,11 @@ contract GovernanceStakerTest is Test, PercentAssertions {
     returns (GovernanceStaker.Deposit memory)
   {
     (
-      uint256 _balance,
+      uint96 _balance,
       address _owner,
+      uint96 _earningPower,
       address _delegatee,
       address _beneficiary,
-      uint256 _earningPower,
       uint256 _rewardPerTokenCheckpoint,
       uint256 _scaledUnclaimedRewardCheckpoint
     ) = govStaker.deposits(_depositId);
@@ -258,7 +258,7 @@ contract Stake is GovernanceStakerTest {
     uint256 _amount,
     address _delegatee
   ) public {
-    _amount = bound(_amount, 1, type(uint256).max);
+    _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
     _stake(_depositor, _amount, _delegatee);
 
@@ -275,7 +275,7 @@ contract Stake is GovernanceStakerTest {
     address _delegatee
   ) public {
     vm.assume(_delegatee != address(0));
-    _amount = uint256(bound(_amount, 1, type(uint256).max));
+    _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
@@ -291,7 +291,7 @@ contract Stake is GovernanceStakerTest {
     uint256 _amount,
     address _delegatee
   ) public {
-    _amount = bound(_amount, 1, type(uint256).max);
+    _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -318,7 +318,7 @@ contract Stake is GovernanceStakerTest {
     uint256 _amount,
     address _delegatee
   ) public {
-    _amount = bound(_amount, 1, type(uint256).max);
+    _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -344,7 +344,7 @@ contract Stake is GovernanceStakerTest {
     uint256 _amount,
     address _delegatee
   ) public {
-    _amount = bound(_amount, 1, type(uint256).max);
+    _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -372,7 +372,7 @@ contract Stake is GovernanceStakerTest {
     address _beneficiary
   ) public {
     vm.assume(_delegatee != address(0) && _beneficiary != address(0));
-    _amount = uint256(bound(_amount, 1, type(uint256).max));
+    _amount = uint256(bound(_amount, 1, type(uint96).max));
     _mintGovToken(_depositor, _amount);
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
@@ -390,7 +390,7 @@ contract Stake is GovernanceStakerTest {
     address _delegatee,
     address _beneficiary
   ) public {
-    _amount = bound(_amount, 1, type(uint256).max);
+    _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -418,7 +418,7 @@ contract Stake is GovernanceStakerTest {
     address _delegatee,
     address _beneficiary
   ) public {
-    _amount = bound(_amount, 1, type(uint256).max);
+    _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -445,7 +445,7 @@ contract Stake is GovernanceStakerTest {
     address _delegatee,
     address _beneficiary
   ) public {
-    _amount = bound(_amount, 1, type(uint256).max);
+    _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
     GovernanceStaker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
@@ -739,7 +739,7 @@ contract Stake is GovernanceStakerTest {
     // that the DepositIdentifier is never reused.
     for (uint256 _i; _i < 100; _i++) {
       // Perform the stake and save the deposit identifier
-      _amount = _bound(_amount, 0, 100_000_000_000e18);
+      _amount = _bound(_amount, 0, type(uint96).max);
       _mintGovToken(_depositor, _amount);
       _depositId = _stake(_depositor, _amount, _delegatee);
 
@@ -841,7 +841,7 @@ contract PermitAndStake is GovernanceStakerTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
     _depositAmount = _boundMintAmount(_depositAmount);
-    _approvalAmount = bound(_approvalAmount, _depositAmount, type(uint256).max);
+    _approvalAmount = bound(_approvalAmount, _depositAmount, type(uint96).max);
     _mintGovToken(_depositor, _depositAmount);
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _approvalAmount);
@@ -1396,8 +1396,8 @@ contract PermitAndStakeMore is GovernanceStakerTest {
     GovernanceStaker.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _beneficiary);
-    _stakeMoreAmount = bound(_stakeMoreAmount, 0, type(uint256).max - _initialDepositAmount);
-    _approvalAmount = bound(_approvalAmount, _stakeMoreAmount, type(uint256).max);
+    _stakeMoreAmount = bound(_stakeMoreAmount, 0, type(uint96).max - _initialDepositAmount);
+    _approvalAmount = bound(_approvalAmount, _stakeMoreAmount, type(uint96).max);
     _mintGovToken(_depositor, _stakeMoreAmount);
     vm.prank(_depositor);
     govToken.approve(address(govStaker), _approvalAmount);
@@ -1869,7 +1869,7 @@ contract AlterDelegatee is GovernanceStakerTest {
     address _firstDelegatee,
     address _beneficiary,
     address _newDelegatee,
-    uint256 _newEarningPower
+    uint96 _newEarningPower
   ) public {
     vm.assume(_newDelegatee != address(0) && _newDelegatee != _firstDelegatee);
 
@@ -1895,7 +1895,7 @@ contract AlterDelegatee is GovernanceStakerTest {
     address _firstDelegatee,
     address _beneficiary,
     address _newDelegatee,
-    uint256 _newEarningPower
+    uint96 _newEarningPower
   ) public {
     vm.assume(_newDelegatee != address(0) && _newDelegatee != _firstDelegatee);
 
@@ -1919,7 +1919,7 @@ contract AlterDelegatee is GovernanceStakerTest {
     address _firstDelegatee,
     address _beneficiary,
     address _newDelegatee,
-    uint256 _newEarningPower
+    uint96 _newEarningPower
   ) public {
     vm.assume(_newDelegatee != address(0) && _newDelegatee != _firstDelegatee);
 
@@ -2297,7 +2297,7 @@ contract AlterBeneficiary is GovernanceStakerTest {
     address _delegatee,
     address _firstBeneficiary,
     address _newBeneficiary,
-    uint256 _newEarningPower
+    uint96 _newEarningPower
   ) public {
     vm.assume(_newBeneficiary != address(0) && _newBeneficiary != _firstBeneficiary);
 
@@ -2323,7 +2323,7 @@ contract AlterBeneficiary is GovernanceStakerTest {
     address _delegatee,
     address _firstBeneficiary,
     address _newBeneficiary,
-    uint256 _newEarningPower
+    uint96 _newEarningPower
   ) public {
     vm.assume(_newBeneficiary != address(0) && _newBeneficiary != _firstBeneficiary);
 
@@ -2347,7 +2347,7 @@ contract AlterBeneficiary is GovernanceStakerTest {
     address _delegatee,
     address _firstBeneficiary,
     address _newBeneficiary,
-    uint256 _newEarningPower
+    uint96 _newEarningPower
   ) public {
     vm.assume(_newBeneficiary != address(0) && _newBeneficiary != _firstBeneficiary);
 
@@ -3353,9 +3353,9 @@ contract GovernanceStakerRewardsTest is GovernanceStakerTest {
   function _boundToRealisticStakeAndReward(uint256 _stakeAmount, uint256 _rewardAmount)
     public
     pure
-    returns (uint256 _boundedStakeAmount, uint256 _boundedRewardAmount)
+    returns (uint96 _boundedStakeAmount, uint256 _boundedRewardAmount)
   {
-    _boundedStakeAmount = _boundToRealisticStake(_stakeAmount);
+    _boundedStakeAmount = uint96(_boundToRealisticStake(_stakeAmount));
     _boundedRewardAmount = _boundToRealisticReward(_rewardAmount);
   }
 
@@ -3557,12 +3557,12 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     address _bumpCaller,
     address _tipReceiver,
     uint256 _requestedTip,
-    uint256 _earningPowerIncrease
+    uint96 _earningPowerIncrease
   ) public {
     vm.assume(_tipReceiver != address(0));
     _stakeAmount = _boundToRealisticStake(_stakeAmount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
-    _earningPowerIncrease = bound(_earningPowerIncrease, 1, type(uint128).max);
+    _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
     (, GovernanceStaker.DepositIdentifier _depositId) =
@@ -3582,7 +3582,7 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
 
-    (,,,, uint256 _newEarningPower,,) = govStaker.deposits(_depositId);
+    (,, uint96 _newEarningPower,,,,) = govStaker.deposits(_depositId);
     assertEq(_newEarningPower, _stakeAmount + _earningPowerIncrease);
   }
 
@@ -3594,12 +3594,12 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     address _bumpCaller,
     address _tipReceiver,
     uint256 _requestedTip,
-    uint256 _earningPowerIncrease
+    uint96 _earningPowerIncrease
   ) public {
     vm.assume(_tipReceiver != address(0));
     _stakeAmount = _boundToRealisticStake(_stakeAmount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
-    _earningPowerIncrease = bound(_earningPowerIncrease, 1, type(uint128).max);
+    _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
     (, GovernanceStaker.DepositIdentifier _depositId) =
@@ -3630,12 +3630,12 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     address _bumpCaller,
     address _tipReceiver,
     uint256 _requestedTip,
-    uint256 _earningPowerIncrease
+    uint96 _earningPowerIncrease
   ) public {
     vm.assume(_tipReceiver != address(0));
     _stakeAmount = _boundToRealisticStake(_stakeAmount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
-    _earningPowerIncrease = bound(_earningPowerIncrease, 1, type(uint128).max);
+    _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
     (, GovernanceStaker.DepositIdentifier _depositId) =
@@ -3666,13 +3666,13 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     address _bumpCaller,
     address _tipReceiver,
     uint256 _requestedTip,
-    uint256 _earningPowerIncrease
+    uint96 _earningPowerIncrease
   ) public {
     vm.assume(_tipReceiver != address(0) && _tipReceiver != address(govStaker));
     _stakeAmount = _boundToRealisticStake(_stakeAmount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     uint256 _initialTipReceiverBalance = rewardToken.balanceOf(_tipReceiver);
-    _earningPowerIncrease = bound(_earningPowerIncrease, 1, type(uint128).max);
+    _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
     (, GovernanceStaker.DepositIdentifier _depositId) =
@@ -3732,7 +3732,7 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
 
-    (,,,, uint256 _newEarningPower,,) = govStaker.deposits(_depositId);
+    (,, uint96 _newEarningPower,,,,) = govStaker.deposits(_depositId);
     assertEq(_newEarningPower, _stakeAmount - _earningPowerDecrease);
   }
 
@@ -4529,7 +4529,7 @@ contract RewardPerTokenAccumulated is GovernanceStakerRewardsTest {
       _totalDurationPercent += _durationPercent;
 
       if (_totalDurationPercent > 100) {
-        // If we've jumped ahead past the end of the duration, this will be the last iteration, so
+        // If we've jumped ahead past the end of the duration, this will be the last iteration so
         // the only portion of the time elapsed that contributed to the accrued expected value is
         // the portion before we reached 100% of the duration.
         _durationPercent = 100 - (_totalDurationPercent - _durationPercent);
@@ -5451,7 +5451,7 @@ contract ClaimReward is GovernanceStakerRewardsTest {
     address _beneficiary,
     uint256 _rewardAmount,
     uint256 _stakeAmount,
-    uint256 _newEarningPower
+    uint96 _newEarningPower
   ) public {
     vm.assume(_depositor != address(govStaker));
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
@@ -5482,8 +5482,8 @@ contract ClaimReward is GovernanceStakerRewardsTest {
     address _delegatee,
     address _beneficiary,
     uint256 _rewardAmount,
-    uint256 _stakeAmount,
-    uint256 _newEarningPower
+    uint96 _stakeAmount,
+    uint96 _newEarningPower
   ) public {
     vm.assume(_depositor != address(govStaker));
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
@@ -5513,7 +5513,7 @@ contract ClaimReward is GovernanceStakerRewardsTest {
     address _beneficiary,
     uint256 _rewardAmount,
     uint256 _stakeAmount,
-    uint256 _newEarningPower
+    uint96 _newEarningPower
   ) public {
     vm.assume(_depositor != address(govStaker));
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
@@ -6102,7 +6102,7 @@ contract Multicall is GovernanceStakerRewardsTest {
     govStaker.multicall(_calls);
     vm.stopPrank();
 
-    (uint256 _amountResult,, address _delegateeResult, address _beneficiaryResult,,,) =
+    (uint96 _amountResult,,, address _delegateeResult, address _beneficiaryResult,,) =
       govStaker.deposits(_depositId);
     assertEq(govStaker.depositorTotalStaked(_depositor), _stakeAmount0 + _stakeAmount1);
     assertEq(govStaker.depositorTotalEarningPower(_depositor), _stakeAmount0 + _stakeAmount1);
