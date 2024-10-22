@@ -2,10 +2,10 @@
 pragma solidity ^0.8.23;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
+import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
 import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
 
-contract DelegationSurrogateTest is Test {
+contract DelegationSurrogateVotesTest is Test {
   ERC20VotesMock govToken;
 
   function setUp() public {
@@ -13,18 +13,21 @@ contract DelegationSurrogateTest is Test {
     vm.label(address(govToken), "Governance Token");
   }
 
-  function __deploy(address _deployer, address _delegatee) public returns (DelegationSurrogate) {
+  function __deploy(address _deployer, address _delegatee)
+    public
+    returns (DelegationSurrogateVotes)
+  {
     vm.assume(_deployer != address(0));
 
     vm.prank(_deployer);
-    DelegationSurrogate _surrogate = new DelegationSurrogate(govToken, _delegatee);
+    DelegationSurrogateVotes _surrogate = new DelegationSurrogateVotes(govToken, _delegatee);
     return _surrogate;
   }
 }
 
-contract Constructor is DelegationSurrogateTest {
+contract Constructor is DelegationSurrogateVotesTest {
   function testFuzz_DelegatesToDeployer(address _deployer, address _delegatee) public {
-    DelegationSurrogate _surrogate = __deploy(_deployer, _delegatee);
+    DelegationSurrogateVotes _surrogate = __deploy(_deployer, _delegatee);
     assertEq(_delegatee, govToken.delegates(address(_surrogate)));
   }
 
@@ -36,7 +39,7 @@ contract Constructor is DelegationSurrogateTest {
   ) public {
     vm.assume(_receiver != address(0));
 
-    DelegationSurrogate _surrogate = __deploy(_deployer, _delegatee);
+    DelegationSurrogateVotes _surrogate = __deploy(_deployer, _delegatee);
     govToken.mint(address(_surrogate), _amount);
 
     uint256 _allowance = govToken.allowance(address(_surrogate), _deployer);

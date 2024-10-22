@@ -4,11 +4,11 @@ pragma solidity ^0.8.23;
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
 import {
   GovernanceStaker,
-  DelegationSurrogate,
   IERC20,
   IERC20Delegates,
   IEarningPowerCalculator
 } from "src/GovernanceStaker.sol";
+import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
 import {GovernanceStakerHarness} from "test/harnesses/GovernanceStakerHarness.sol";
 import {ERC20VotesMock, ERC20Permit} from "test/mocks/MockERC20Votes.sol";
 import {IERC20Errors} from "openzeppelin/interfaces/draft-IERC6093.sol";
