@@ -17,31 +17,33 @@ Governance Staking can be deployed as an immutable contract with minimal governa
 
 Staking is compatible with existing `ERC20Votes` governance tokens. It splits voting power by creating a surrogate contract for each delegate.
 
-Governance Staking distributes rewards over a fix period of time. That gives everyone a chance to stake and minimizes discontinuities from flash staking.
+Governance Staking distributes rewards over a fixed period of time. That gives everyone a chance to stake and minimizes discontinuities from flash staking.
 
-### Staking system
+### Governance Staking system
+
+The governance staking system accepts user stake, delegates their voting power, and distributes rewards for eligibile stakers.
+
 ```mermaid
+
 stateDiagram-v2
     direction TB
 
-    User --> GovernanceStaker: Stakes tokens
+    User --> CUF: Stakes tokens
     
     state GovernanceStaker {
-        state "Core User Functions" as CUF {
-            [*] --> Stake: stake()
-            Stake --> Withdraw: withdraw()
-            Withdraw --> ClaimReward: claimReward()
+        state "Key User Functions" as CUF {
+            stake --> claimReward
+            claimReward --> withdraw
         }
         
         state "Key State" as KS {
-            totalStaked
-            totalEarningPower
             rewardRate
             deposits
         }
 
-        state "Core Admin Functions" as CAF {
-            [*] --> NotifyReward: notifyRewardAmount()
+        state "Admin Functions" as CAF {
+            setRewardNotifier
+            setEarningPowerCalculator
         }
     }
 
@@ -52,45 +54,41 @@ stateDiagram-v2
         }
     }
 
-    GovernanceStaker --> DelegationSurrogate: 2. Transfers tokens
-    DelegationSurrogate --> Delegatee: 3. Delegates voting power
+    KS  --> DelegationSurrogate: Holds tokens per delegatee
+    DelegationSurrogate --> Delegatee: Delegates voting power
+    Admin --> CAF: e.g. governance
     
-    RewardNotifier --> GovernanceStaker: Notifies of rewards
-    Oracle --> GovernanceStaker: Calculates earning power
+    RewardNotifier --> GovernanceStaker: Tells Staker about new rewards
+    EarningPowerCalculator --> GovernanceStaker: Calculates eligibility
 
-    note right of GovernanceStaker
-        Manages staking, delegation,
-        and reward distribution
-    end note
     
-    note right of DelegationSurrogate
-        Holds tokens and delegates
-        voting power per delegatee
-    end note
 ```
 
-### Earning Power Calculation
+### Earning Power Calculator
+
+The earning power calculator determines which stakers are eligible for a reward. This implementation uses an oracle. An oracle is needed because eligibility depends on off-chain behavior.
+
 ```mermaid
 stateDiagram-v2
     direction TB
 
-    state BinaryEligibilityOracleEarningPowerCalculator {
+    state EarningPowerCalculator {
         state "Public Functions" as PF {
-            [*] --> GetEarningPower: getEarningPower()
+            GetEarningPower: getEarningPower()
         }
 
         state "Score Oracle Functions" as SOF {
-            [*] --> UpdateScore: updateDelegateeScore()
+            UpdateScore: updateDelegateeScore()
         }
 
         state "Owner Functions" as OF {
-            [*] --> OverrideScore: overrideDelegateeScore()
-            [*] --> SetScoreLock: setDelegateeScoreLock()
-            [*] --> SetGuardian: setOraclePauseGuardian()
+            OverrideScore: overrideDelegateeScore()
+            SetScoreLock: setDelegateeScoreLock()
+            SetGuardian: setOraclePauseGuardian()
         }
 
         state "Guardian Functions" as GF {
-            [*] --> SetOracleState: setOracleState()
+            SetOracleState: setOracleState()
         }
 
 
@@ -99,7 +97,7 @@ stateDiagram-v2
     ScoreOracle --> SOF: Updates scores
     Owner --> OF: Admin controls
     Guardian --> GF: Emergency pause
-    PF --> GovernanceStaker: Returns earning power
+    PF --> GovernanceStaker: Returns earning power to staking system
 ```
 
 ## Development
