@@ -136,6 +136,17 @@ contract GetEarningPower is EarningPowerCalculatorTest {
     assertEq(calculator.getEarningPower(_amountStaked, _staker, _delegatee), _amountStaked);
   }
 
+  function testFuzz_EarningPowerIsAmountStakedAfterTheOracleIsPaused(
+    uint256 _amountStaked,
+    address _staker,
+    address _delegatee
+  ) public {
+    vm.prank(oraclePauseGuardian);
+    calculator.setOracleState(true);
+
+    assertEq(calculator.getEarningPower(_amountStaked, _staker, _delegatee), _amountStaked);
+  }
+
   function testFuzz_EarningPowerIsZeroIfBelowEligibilityThreshold(
     uint256 _delegateeScore,
     uint256 _amountStaked,
@@ -183,6 +194,34 @@ contract GetNewEarningPower is EarningPowerCalculatorTest {
     (uint256 _earningPower, bool _isQualifiedForUpdate) =
       calculator.getNewEarningPower(_amountStaked, _staker, _delegatee, _oldEarningPower);
     assertEq(_earningPower, _amountStaked);
+    assertEq(_isQualifiedForUpdate, true);
+  }
+
+  function testFuzz_EarningPowerIsAmountStakedAfterOracleIsPaused(
+    uint256 _amountStaked,
+    address _staker,
+    address _delegatee,
+    uint256 _oldEarningPower
+  ) public {
+    vm.prank(oraclePauseGuardian);
+    calculator.setOracleState(true);
+
+    (uint256 _earningPower,) =
+      calculator.getNewEarningPower(_amountStaked, _staker, _delegatee, _oldEarningPower);
+    assertEq(_earningPower, _amountStaked);
+  }
+
+  function testFuzz_EarningPowerChangeIsQualifiedAfterOracleIsPaused(
+    uint256 _amountStaked,
+    address _staker,
+    address _delegatee,
+    uint256 _oldEarningPower
+  ) public {
+    vm.prank(oraclePauseGuardian);
+    calculator.setOracleState(true);
+
+    (, bool _isQualifiedForUpdate) =
+      calculator.getNewEarningPower(_amountStaked, _staker, _delegatee, _oldEarningPower);
     assertEq(_isQualifiedForUpdate, true);
   }
 
