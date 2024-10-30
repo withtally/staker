@@ -70,8 +70,9 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
   {
     vm.assume(_notifier != address(0) && _notifier != address(govStaker));
     _rewardNotifiers.add(_notifier);
-    vm.prank(admin);
+    vm.startPrank(admin);
     govStaker.setRewardNotifier(_notifier, true);
+    vm.stopPrank();
   }
 
   function notifyRewardAmount(uint256 _amount, uint256 _actorSeed)
@@ -183,6 +184,8 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     _currentActor = msg.sender;
     // Surrogates can't stake. We won't include them as potential depositors.
     vm.assume(!_surrogates.contains(_currentActor));
+    // GovStaker can't stake. We won't include it as a potential depositor.
+    vm.assume(_currentActor != address(govStaker));
     _depositors.add(msg.sender);
   }
 
