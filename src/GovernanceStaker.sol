@@ -31,7 +31,7 @@ import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 /// received, the reward duration restarts, and the rate at which rewards are streamed is updated
 /// to include the newly received rewards along with any remaining rewards that have finished
 /// streaming since the last time a reward was received.
-abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
+abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   using SafeCast for uint256;
 
   type DepositIdentifier is uint256;
@@ -161,30 +161,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     address feeCollector;
   }
 
-  /// @notice Type hash used when encoding data for `stakeOnBehalf` calls.
-  bytes32 public constant STAKE_TYPEHASH = keccak256(
-    "Stake(uint256 amount,address delegatee,address beneficiary,address depositor,uint256 nonce,uint256 deadline)"
-  );
-  /// @notice Type hash used when encoding data for `stakeMoreOnBehalf` calls.
-  bytes32 public constant STAKE_MORE_TYPEHASH = keccak256(
-    "StakeMore(uint256 depositId,uint256 amount,address depositor,uint256 nonce,uint256 deadline)"
-  );
-  /// @notice Type hash used when encoding data for `alterDelegateeOnBehalf` calls.
-  bytes32 public constant ALTER_DELEGATEE_TYPEHASH = keccak256(
-    "AlterDelegatee(uint256 depositId,address newDelegatee,address depositor,uint256 nonce,uint256 deadline)"
-  );
-  /// @notice Type hash used when encoding data for `alterBeneficiaryOnBehalf` calls.
-  bytes32 public constant ALTER_BENEFICIARY_TYPEHASH = keccak256(
-    "AlterBeneficiary(uint256 depositId,address newBeneficiary,address depositor,uint256 nonce,uint256 deadline)"
-  );
-  /// @notice Type hash used when encoding data for `withdrawOnBehalf` calls.
-  bytes32 public constant WITHDRAW_TYPEHASH = keccak256(
-    "Withdraw(uint256 depositId,uint256 amount,address depositor,uint256 nonce,uint256 deadline)"
-  );
-  /// @notice Type hash used when encoding data for `claimRewardOnBehalf` calls.
-  bytes32 public constant CLAIM_REWARD_TYPEHASH =
-    keccak256("ClaimReward(uint256 depositId,uint256 nonce,uint256 deadline)");
-
   /// @notice ERC20 token in which rewards are denominated and distributed.
   IERC20 public immutable REWARD_TOKEN;
 
@@ -270,10 +246,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     _setAdmin(_admin);
     _setMaxBumpTip(_maxBumpTip);
     _setEarningPowerCalculator(address(_earningPowerCalculator));
-  }
-
-  function DOMAIN_SEPERATOR() external view returns (bytes32) {
-    return _domainSeparatorV4();
   }
 
   /// @notice Set the admin address.
@@ -382,46 +354,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     _depositId = _stake(msg.sender, _amount, _delegatee, _beneficiary);
   }
 
-  /// @notice Stake tokens to a new deposit on behalf of a user, using a signature to validate the
-  /// user's intent. The caller must pre-approve the staking contract to spend at least the
-  /// would-be staked amount of the token.
-  /// @param _amount Quantity of the staking token to stake.
-  /// @param _delegatee Address to assign the governance voting weight of the staked tokens.
-  /// @param _beneficiary Address that will accrue rewards for this stake.
-  /// @param _depositor Address of the user on whose behalf this stake is being made.
-  /// @param _deadline The timestamp after which the signature should expire.
-  /// @param _signature Signature of the user authorizing this stake.
-  /// @return _depositId Unique identifier for this deposit.
-  /// @dev Neither the delegatee nor the beneficiary may be the zero address.
-  function stakeOnBehalf(
-    uint256 _amount,
-    address _delegatee,
-    address _beneficiary,
-    address _depositor,
-    uint256 _deadline,
-    bytes memory _signature
-  ) external virtual returns (DepositIdentifier _depositId) {
-    _revertIfPastDeadline(_deadline);
-    _revertIfSignatureIsNotValidNow(
-      _depositor,
-      _hashTypedDataV4(
-        keccak256(
-          abi.encode(
-            STAKE_TYPEHASH,
-            _amount,
-            _delegatee,
-            _beneficiary,
-            _depositor,
-            _useNonce(_depositor),
-            _deadline
-          )
-        )
-      ),
-      _signature
-    );
-    _depositId = _stake(_depositor, _amount, _delegatee, _beneficiary);
-  }
-
   /// @notice Add more staking tokens to an existing deposit. A staker should call this method when
   /// they have an existing deposit, and wish to stake more while retaining the same delegatee and
   /// beneficiary.
@@ -431,39 +363,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   function stakeMore(DepositIdentifier _depositId, uint256 _amount) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
-    _stakeMore(deposit, _depositId, _amount);
-  }
-
-  /// @notice Add more staking tokens to an existing deposit on behalf of a user, using a signature
-  /// to validate the user's intent. A staker should call this method when they have an existing
-  /// deposit, and wish to stake more while retaining the same delegatee and beneficiary.
-  /// @param _depositId Unique identifier of the deposit to which stake will be added.
-  /// @param _amount Quantity of stake to be added.
-  /// @param _depositor Address of the user on whose behalf this stake is being made.
-  /// @param _deadline The timestamp after which the signature should expire.
-  /// @param _signature Signature of the user authorizing this stake.
-  function stakeMoreOnBehalf(
-    DepositIdentifier _depositId,
-    uint256 _amount,
-    address _depositor,
-    uint256 _deadline,
-    bytes memory _signature
-  ) external virtual {
-    Deposit storage deposit = deposits[_depositId];
-    _revertIfNotDepositOwner(deposit, _depositor);
-    _revertIfPastDeadline(_deadline);
-    _revertIfSignatureIsNotValidNow(
-      _depositor,
-      _hashTypedDataV4(
-        keccak256(
-          abi.encode(
-            STAKE_MORE_TYPEHASH, _depositId, _amount, _depositor, _useNonce(_depositor), _deadline
-          )
-        )
-      ),
-      _signature
-    );
-
     _stakeMore(deposit, _depositId, _amount);
   }
 
@@ -479,44 +378,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     _alterDelegatee(deposit, _depositId, _newDelegatee);
   }
 
-  /// @notice For an existing deposit, change the address to which governance voting power is
-  /// assigned on behalf of a user, using a signature to validate the user's intent.
-  /// @param _depositId Unique identifier of the deposit which will have its delegatee altered.
-  /// @param _newDelegatee Address of the new governance delegate.
-  /// @param _depositor Address of the user on whose behalf this stake is being made.
-  /// @param _deadline The timestamp after which the signature should expire.
-  /// @param _signature Signature of the user authorizing this stake.
-  /// @dev The new delegatee may not be the zero address.
-  function alterDelegateeOnBehalf(
-    DepositIdentifier _depositId,
-    address _newDelegatee,
-    address _depositor,
-    uint256 _deadline,
-    bytes memory _signature
-  ) external virtual {
-    Deposit storage deposit = deposits[_depositId];
-    _revertIfNotDepositOwner(deposit, _depositor);
-    _revertIfPastDeadline(_deadline);
-    _revertIfSignatureIsNotValidNow(
-      _depositor,
-      _hashTypedDataV4(
-        keccak256(
-          abi.encode(
-            ALTER_DELEGATEE_TYPEHASH,
-            _depositId,
-            _newDelegatee,
-            _depositor,
-            _useNonce(_depositor),
-            _deadline
-          )
-        )
-      ),
-      _signature
-    );
-
-    _alterDelegatee(deposit, _depositId, _newDelegatee);
-  }
-
   /// @notice For an existing deposit, change the beneficiary account which has the right to
   /// withdraw staking rewards.
   /// @param _depositId Unique identifier of the deposit which will have its beneficiary altered.
@@ -526,45 +387,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   function alterBeneficiary(DepositIdentifier _depositId, address _newBeneficiary) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
-    _alterBeneficiary(deposit, _depositId, _newBeneficiary);
-  }
-
-  /// @notice For an existing deposit, change the beneficiary account which has the right to
-  /// withdraw staking rewards accruing on behalf of a user, using a signature to validate the
-  /// user's intent.
-  /// @param _depositId Unique identifier of the deposit which will have its beneficiary altered.
-  /// @param _newBeneficiary Address of the new beneficiary.
-  /// @param _depositor Address of the user on whose behalf this stake is being made.
-  /// @param _deadline The timestamp after which the signature should expire.
-  /// @param _signature Signature of the user authorizing this stake.
-  /// @dev The new beneficiary may not be the zero address.
-  function alterBeneficiaryOnBehalf(
-    DepositIdentifier _depositId,
-    address _newBeneficiary,
-    address _depositor,
-    uint256 _deadline,
-    bytes memory _signature
-  ) external virtual {
-    Deposit storage deposit = deposits[_depositId];
-    _revertIfNotDepositOwner(deposit, _depositor);
-    _revertIfPastDeadline(_deadline);
-    _revertIfSignatureIsNotValidNow(
-      _depositor,
-      _hashTypedDataV4(
-        keccak256(
-          abi.encode(
-            ALTER_BENEFICIARY_TYPEHASH,
-            _depositId,
-            _newBeneficiary,
-            _depositor,
-            _useNonce(_depositor),
-            _deadline
-          )
-        )
-      ),
-      _signature
-    );
-
     _alterBeneficiary(deposit, _depositId, _newBeneficiary);
   }
 
@@ -579,39 +401,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     _withdraw(deposit, _depositId, _amount);
   }
 
-  /// @notice Withdraw staked tokens from an existing deposit on behalf of a user, using a
-  /// signature to validate the user's intent.
-  /// @param _depositId Unique identifier of the deposit from which stake will be withdrawn.
-  /// @param _amount Quantity of staked token to withdraw.
-  /// @param _depositor Address of the user on whose behalf this stake is being made.
-  /// @param _deadline The timestamp after which the signature should expire.
-  /// @param _signature Signature of the user authorizing this stake.
-  /// @dev Stake is withdrawn to the deposit owner's account.
-  function withdrawOnBehalf(
-    DepositIdentifier _depositId,
-    uint256 _amount,
-    address _depositor,
-    uint256 _deadline,
-    bytes memory _signature
-  ) external virtual {
-    Deposit storage deposit = deposits[_depositId];
-    _revertIfNotDepositOwner(deposit, _depositor);
-    _revertIfPastDeadline(_deadline);
-    _revertIfSignatureIsNotValidNow(
-      _depositor,
-      _hashTypedDataV4(
-        keccak256(
-          abi.encode(
-            WITHDRAW_TYPEHASH, _depositId, _amount, _depositor, _useNonce(_depositor), _deadline
-          )
-        )
-      ),
-      _signature
-    );
-
-    _withdraw(deposit, _depositId, _amount);
-  }
-
   /// @notice Claim reward tokens earned by a given deposit. Message sender must be the beneficiary
   /// address of the deposit. Tokens are sent to the beneficiary address.
   /// @param _depositId Identifier of the deposit from which accrued rewards will be claimed.
@@ -622,38 +411,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
       revert GovernanceStaker__Unauthorized("not beneficiary or owner", msg.sender);
     }
     return _claimReward(_depositId, deposit, msg.sender);
-  }
-
-  /// @notice Claim reward tokens earned by a given deposit, using a signature to validate the
-  /// caller's intent. The signer must be the beneficiary address of the deposit Tokens are sent to
-  /// the beneficiary.
-  /// @param _depositId The identifier for the deposit for which to claim rewards.
-  /// @param _deadline The timestamp after which the signature should expire.
-  /// @param _signature Signature of the beneficiary authorizing this reward claim.
-  /// @return Amount of reward tokens claimed, after the fee has been assessed.
-  function claimRewardOnBehalf(
-    DepositIdentifier _depositId,
-    uint256 _deadline,
-    bytes memory _signature
-  ) external virtual returns (uint256) {
-    _revertIfPastDeadline(_deadline);
-    Deposit storage deposit = deposits[_depositId];
-    bytes32 _beneficiaryHash = _hashTypedDataV4(
-      keccak256(
-        abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, _useNonce(deposit.beneficiary), _deadline)
-      )
-    );
-    bool _isValidBeneficiaryClaim =
-      SignatureChecker.isValidSignatureNow(deposit.beneficiary, _beneficiaryHash, _signature);
-    if (_isValidBeneficiaryClaim) return _claimReward(_depositId, deposit, deposit.beneficiary);
-
-    bytes32 _ownerHash = _hashTypedDataV4(
-      keccak256(abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, _useNonce(deposit.owner), _deadline))
-    );
-    bool _isValidOwnerClaim =
-      SignatureChecker.isValidSignatureNow(deposit.owner, _ownerHash, _signature);
-    if (!_isValidOwnerClaim) revert GovernanceStaker__InvalidSignature();
-    return _claimReward(_depositId, deposit, deposit.owner);
   }
 
   /// @notice Called by an authorized rewards notifier to alert the staking contract that a new
@@ -764,12 +521,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   function _scaledUnclaimedReward(Deposit storage deposit) internal view virtual returns (uint256) {
     return deposit.scaledUnclaimedRewardCheckpoint
       + (deposit.earningPower * (rewardPerTokenAccumulated() - deposit.rewardPerTokenCheckpoint));
-  }
-
-  /// @notice Allows an address to increment their nonce and therefore invalidate any pending signed
-  /// actions.
-  function invalidateNonce() external virtual {
-    _useNonce(msg.sender);
   }
 
   /// @notice Internal method which finds the existing surrogate contract—or deploys a new one if
@@ -1086,23 +837,5 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   /// @param _account Account to verify.
   function _revertIfAddressZero(address _account) internal pure {
     if (_account == address(0)) revert GovernanceStaker__InvalidAddress();
-  }
-
-  function _revertIfPastDeadline(uint256 _deadline) internal view virtual {
-    if (block.timestamp > _deadline) revert GovernanceStaker__ExpiredDeadline();
-  }
-
-  /// @notice Internal helper method which reverts with GovernanceStaker__InvalidSignature if the
-  /// signature is invalid.
-  /// @param _signer Address of the signer.
-  /// @param _hash Hash of the message.
-  /// @param _signature Signature to validate.
-  function _revertIfSignatureIsNotValidNow(address _signer, bytes32 _hash, bytes memory _signature)
-    internal
-    view
-    virtual
-  {
-    bool _isValid = SignatureChecker.isValidSignatureNow(_signer, _hash, _signature);
-    if (!_isValid) revert GovernanceStaker__InvalidSignature();
   }
 }

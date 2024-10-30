@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
 import {GovernanceStaker} from "src/GovernanceStaker.sol";
 import {GovernanceStakerPermitAndStake} from "src/extensions/GovernanceStakerPermitAndStake.sol";
+import {GovernanceStakerOnBehalf} from "src/extensions/GovernanceStakerOnBehalf.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
@@ -11,7 +12,11 @@ import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
 
-contract GovernanceStakerHarness is GovernanceStaker, GovernanceStakerPermitAndStake {
+contract GovernanceStakerHarness is
+  GovernanceStaker,
+  GovernanceStakerPermitAndStake,
+  GovernanceStakerOnBehalf
+{
   constructor(
     IERC20 _rewardsToken,
     IERC20Delegates _stakeToken,
