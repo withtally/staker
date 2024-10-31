@@ -5,6 +5,9 @@ import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
 import {GovernanceStaker} from "src/GovernanceStaker.sol";
 import {GovernanceStakerPermitAndStake} from "src/extensions/GovernanceStakerPermitAndStake.sol";
 import {GovernanceStakerOnBehalf} from "src/extensions/GovernanceStakerOnBehalf.sol";
+import {GovernanceStakerDelegateSurrogateVotes} from
+  "src/GovernanceStakerDelegateSurrogateVotes.sol";
+
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
@@ -15,7 +18,8 @@ import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
 contract GovernanceStakerHarness is
   GovernanceStaker,
   GovernanceStakerPermitAndStake,
-  GovernanceStakerOnBehalf
+  GovernanceStakerOnBehalf,
+  GovernanceStakerDelegateSurrogateVotes
 {
   constructor(
     IERC20 _rewardsToken,

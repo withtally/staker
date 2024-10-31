@@ -82,9 +82,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   /// @notice Emitted when a reward notifier address is enabled or disabled.
   event RewardNotifierSet(address indexed account, bool isEnabled);
 
-  /// @notice Emitted when a surrogate contract is deployed.
-  event SurrogateDeployed(address indexed delegatee, address indexed surrogate);
-
   /// @notice Thrown when an account attempts a call for which it lacks appropriate permission.
   /// @param reason Human readable code explaining why the call is unauthorized.
   /// @param caller The address that attempted the unauthorized call.
@@ -202,10 +199,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   /// @notice Stores the metadata associated with a given deposit.
   mapping(DepositIdentifier depositId => Deposit deposit) public deposits;
 
-  /// @notice Maps the account of each governance delegate with the surrogate contract which holds
-  /// the staked tokens from deposits which assign voting weight to said delegate.
-  mapping(address delegatee => DelegationSurrogate surrogate) public surrogates;
-
   /// @notice Time at which rewards distribution will complete if there are no new rewards.
   uint256 public rewardEndTime;
 
@@ -283,6 +276,14 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     _revertIfNotAdmin();
     _setClaimFeeParameters(_params);
   }
+
+  /// @notice A method to get a delegation surrogate contract for a given delegate.
+  /// @param _delegatee The address the delegation surrogate is delegating voting power.
+  /// @return The delegation surrogate.
+  /// @dev A concrete implementation should return a delegate surrogate address for a given
+  /// delegatee. In practice this may be as simple as returning an address stored in a mapping or
+  /// computing it's create2 address.
+  function surrogates(address _delegatee) public view virtual returns (DelegationSurrogate);
 
   /// @notice Timestamp representing the last time at which rewards have been distributed, which is
   /// either the current timestamp (because rewards are still actively being streamed) or the time
@@ -523,19 +524,12 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   /// none exists—for a given delegatee.
   /// @param _delegatee Account for which a surrogate is sought.
   /// @return _surrogate The address of the surrogate contract for the delegatee.
+  /// @dev A concrete implementation would either deploy a new delegate surrogate or return an
+  /// existing surrogate for a given delegatee address.
   function _fetchOrDeploySurrogate(address _delegatee)
     internal
     virtual
-    returns (DelegationSurrogate _surrogate)
-  {
-    _surrogate = surrogates[_delegatee];
-
-    if (address(_surrogate) == address(0)) {
-      _surrogate = new DelegationSurrogateVotes(STAKE_TOKEN, _delegatee);
-      surrogates[_delegatee] = _surrogate;
-      emit SurrogateDeployed(_delegatee, address(_surrogate));
-    }
-  }
+    returns (DelegationSurrogate _surrogate);
 
   /// @notice Internal convenience method which calls the `transferFrom` method on the stake token
   /// contract and reverts on failure.
@@ -601,7 +595,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     _checkpointGlobalReward();
     _checkpointReward(deposit);
 
-    DelegationSurrogate _surrogate = surrogates[deposit.delegatee];
+    DelegationSurrogate _surrogate = surrogates(deposit.delegatee);
 
     uint256 _newBalance = deposit.balance + _amount;
     uint256 _newEarningPower =
@@ -629,7 +623,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     address _newDelegatee
   ) internal virtual {
     _revertIfAddressZero(_newDelegatee);
-    DelegationSurrogate _oldSurrogate = surrogates[deposit.delegatee];
+    DelegationSurrogate _oldSurrogate = surrogates(deposit.delegatee);
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee);
 
@@ -696,7 +690,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
 
     deposit.balance = _newBalance.toUint96();
     deposit.earningPower = _newEarningPower.toUint96();
-    _stakeTokenSafeTransferFrom(address(surrogates[deposit.delegatee]), deposit.owner, _amount);
+    _stakeTokenSafeTransferFrom(address(surrogates(deposit.delegatee)), deposit.owner, _amount);
     emit StakeWithdrawn(deposit.owner, _depositId, _amount, deposit.balance);
   }
 
