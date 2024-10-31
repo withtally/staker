@@ -96,11 +96,7 @@ contract GovernanceStakerInvariants is Test {
     return balance + govStaker.depositorTotalStaked(depositor);
   }
 
-  function accumulateSurrogateBalance(uint256 balance, address delegate)
-    external
-    view
-    returns (uint256)
-  {
+  function accumulateSurrogateBalance(uint256 balance, address delegate) external returns (uint256) {
     address surrogateAddr = address(govStaker.surrogates(delegate));
     return balance + IERC20(address(govStaker.STAKE_TOKEN())).balanceOf(surrogateAddr);
   }

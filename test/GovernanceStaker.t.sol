@@ -102,7 +102,7 @@ contract GovernanceStakerTest is Test, PercentAssertions {
   // no overlap between them. This is to prevent the fuzzer from selecting a surrogate as a
   // depositor or vice versa.
   function _assumeSafeDepositorAndSurrogate(address _depositor, address _delegatee) internal {
-    DelegationSurrogate _surrogate = govStaker.surrogates(_delegatee);
+    DelegationSurrogate _surrogate = DelegationSurrogate(govStaker.surrogates(_delegatee));
     isKnownDepositor[_depositor] = true;
     isKnownSurrogate[_surrogate] = true;
 
@@ -270,7 +270,7 @@ contract Stake is GovernanceStakerTest {
     _mintGovToken(_depositor, _amount);
     _stake(_depositor, _amount, _delegatee);
 
-    DelegationSurrogate _surrogate = govStaker.surrogates(_delegatee);
+    DelegationSurrogate _surrogate = DelegationSurrogate(govStaker.surrogates(_delegatee));
 
     assertEq(govToken.balanceOf(address(_surrogate)), _amount);
     assertEq(govToken.delegates(address(_surrogate)), _delegatee);
@@ -489,7 +489,7 @@ contract Stake is GovernanceStakerTest {
     // Perform first stake with this delegatee
     _stake(_depositor1, _amount1, _delegatee);
     // Remember the surrogate which was deployed for this delegatee
-    DelegationSurrogate _surrogate = govStaker.surrogates(_delegatee);
+    DelegationSurrogate _surrogate = DelegationSurrogate(govStaker.surrogates(_delegatee));
 
     // Perform the second stake with this delegatee
     _stake(_depositor2, _amount2, _delegatee);
@@ -519,12 +519,12 @@ contract Stake is GovernanceStakerTest {
     // Perform first stake with first delegatee
     _stake(_depositor1, _amount1, _delegatee1);
     // Remember the surrogate which was deployed for first delegatee
-    DelegationSurrogate _surrogate1 = govStaker.surrogates(_delegatee1);
+    DelegationSurrogate _surrogate1 = DelegationSurrogate(govStaker.surrogates(_delegatee1));
 
     // Perform second stake with second delegatee
     _stake(_depositor2, _amount2, _delegatee2);
     // Remember the surrogate which was deployed for first delegatee
-    DelegationSurrogate _surrogate2 = govStaker.surrogates(_delegatee2);
+    DelegationSurrogate _surrogate2 = DelegationSurrogate(govStaker.surrogates(_delegatee2));
 
     // Ensure surrogates are different with discreet delegation & balances
     assertTrue(_surrogate1 != _surrogate2);
@@ -1148,7 +1148,7 @@ contract StakeMore is GovernanceStakerTest {
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _beneficiary);
     GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
-    DelegationSurrogate _surrogate = govStaker.surrogates(_deposit.delegatee);
+    DelegationSurrogate _surrogate = DelegationSurrogate(govStaker.surrogates(_deposit.delegatee));
 
     _addAmount = _boundToRealisticStake(_addAmount);
     _mintGovToken(_depositor, _addAmount);
@@ -6221,7 +6221,7 @@ contract _FetchOrDeploySurrogate is GovernanceStakerRewardsTest {
     govStaker.exposed_fetchOrDeploySurrogate(_delegatee);
 
     Vm.Log[] memory logs = vm.getRecordedLogs();
-    DelegationSurrogate _surrogate = govStaker.surrogates(_delegatee);
+    DelegationSurrogate _surrogate = DelegationSurrogate(govStaker.surrogates(_delegatee));
 
     assertEq(logs[1].topics[0], keccak256("SurrogateDeployed(address,address)"));
     assertEq(logs[1].topics[1], bytes32(uint256(uint160(_delegatee))));

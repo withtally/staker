@@ -114,7 +114,6 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     // update handler state
     _depositIds[_currentActor].push(ghost_depositCount);
     ghost_depositCount++;
-    _surrogates.add(address(govStaker.surrogates(_delegatee)));
     ghost_stakeSum += _amount;
   }
 

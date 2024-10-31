@@ -8,6 +8,7 @@ import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.so
 import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import {Create2} from "openzeppelin/utils/Create2.sol";
 import {Multicall} from "openzeppelin/utils/Multicall.sol";
 import {SafeCast} from "openzeppelin/utils/math/SafeCast.sol";
 import {Nonces} from "openzeppelin/utils/Nonces.sol";
@@ -159,6 +160,8 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     address feeCollector;
   }
 
+  /// @notice The surrogate bytecode used to compute a given surrogate address.
+  bytes public constant SURROGATE_BYTECODE = type(DelegationSurrogateVotes).creationCode;
   /// @notice Type hash used when encoding data for `stakeOnBehalf` calls.
   bytes32 public constant STAKE_TYPEHASH = keccak256(
     "Stake(uint256 amount,address delegatee,address beneficiary,address depositor,uint256 nonce,uint256 deadline)"
@@ -227,10 +230,6 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
 
   /// @notice Stores the metadata associated with a given deposit.
   mapping(DepositIdentifier depositId => Deposit deposit) public deposits;
-
-  /// @notice Maps the account of each governance delegate with the surrogate contract which holds
-  /// the staked tokens from deposits which assign voting weight to said delegate.
-  mapping(address delegatee => DelegationSurrogate surrogate) public surrogates;
 
   /// @notice Time at which rewards distribution will complete if there are no new rewards.
   uint256 public rewardEndTime;
@@ -805,6 +804,15 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _requestedTip);
   }
 
+  /// @notice Get a surrogate address for a given delegatee address.
+  /// @param _delegatee The address of the surrogate's delegatee.
+  function surrogates(address _delegatee) public returns (address) {
+    return Create2.computeAddress(
+      _salt(_delegatee),
+      keccak256(abi.encodePacked(SURROGATE_BYTECODE, abi.encode(STAKE_TOKEN, _delegatee)))
+    );
+  }
+
   /// @notice Live value of the unclaimed rewards earned by a given deposit with the
   /// scale factor included. Used internally for calculating reward checkpoints while minimizing
   /// precision loss.
@@ -831,11 +839,10 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     virtual
     returns (DelegationSurrogate _surrogate)
   {
-    _surrogate = surrogates[_delegatee];
+    _surrogate = DelegationSurrogate(surrogates(_delegatee));
 
-    if (address(_surrogate) == address(0)) {
-      _surrogate = new DelegationSurrogateVotes(STAKE_TOKEN, _delegatee);
-      surrogates[_delegatee] = _surrogate;
+    if (address(_surrogate).code.length == 0) {
+      _surrogate = new DelegationSurrogateVotes{salt: _salt(_delegatee)}(STAKE_TOKEN, _delegatee);
       emit SurrogateDeployed(_delegatee, address(_surrogate));
     }
   }
@@ -904,7 +911,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     _checkpointGlobalReward();
     _checkpointReward(deposit);
 
-    DelegationSurrogate _surrogate = surrogates[deposit.delegatee];
+    DelegationSurrogate _surrogate = DelegationSurrogate(surrogates(deposit.delegatee));
 
     uint256 _newBalance = deposit.balance + _amount;
     uint256 _newEarningPower =
@@ -932,7 +939,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     address _newDelegatee
   ) internal virtual {
     _revertIfAddressZero(_newDelegatee);
-    DelegationSurrogate _oldSurrogate = surrogates[deposit.delegatee];
+    DelegationSurrogate _surrogate = DelegationSurrogate(surrogates(deposit.delegatee));
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee);
 
@@ -943,10 +950,11 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     );
 
     emit DelegateeAltered(_depositId, deposit.delegatee, _newDelegatee);
+    address _oldDelegate = surrogates(deposit.delegatee);
     deposit.delegatee = _newDelegatee;
     deposit.earningPower = _newEarningPower.toUint96();
     DelegationSurrogate _newSurrogate = _fetchOrDeploySurrogate(_newDelegatee);
-    _stakeTokenSafeTransferFrom(address(_oldSurrogate), address(_newSurrogate), deposit.balance);
+    _stakeTokenSafeTransferFrom(_oldDelegate, address(_newSurrogate), deposit.balance);
   }
 
   /// @notice Internal convenience method which alters the beneficiary of an existing deposit.
@@ -1000,7 +1008,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
 
     deposit.balance = _newBalance.toUint96();
     deposit.earningPower = _newEarningPower.toUint96();
-    _stakeTokenSafeTransferFrom(address(surrogates[deposit.delegatee]), deposit.owner, _amount);
+    _stakeTokenSafeTransferFrom(surrogates(deposit.delegatee), deposit.owner, _amount);
     emit StakeWithdrawn(_depositId, _amount, deposit.balance);
   }
 
@@ -1154,5 +1162,9 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   {
     bool _isValid = SignatureChecker.isValidSignatureNow(_signer, _hash, _signature);
     if (!_isValid) revert GovernanceStaker__InvalidSignature();
+  }
+
+  function _salt(address _delegatee) internal returns (bytes32) {
+    return bytes32(uint256(uint160(_delegatee)));
   }
 }
