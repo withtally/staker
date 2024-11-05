@@ -2814,7 +2814,7 @@ contract Withdraw is GovernanceStakerTest {
 
     vm.expectEmit();
     emit GovernanceStaker.StakeWithdrawn(
-      _depositId, _withdrawalAmount, _depositAmount - _withdrawalAmount
+      _depositor, _depositId, _withdrawalAmount, _depositAmount - _withdrawalAmount
     );
 
     vm.prank(_depositor);
