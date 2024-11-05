@@ -4,7 +4,7 @@ Governance Staking rewards a DAO's tokenholders for participating in governance.
 
 ## How it works:
 - The DAO decides how stakers can be eligible for rewards. The DAO sets up an oracle to put eligiblity scores onchain.
-- Tokenholders stake their tokens. There is no delay to stake or unstake. Stakers set a beneficiary for their reward, such as themselves.
+- Tokenholders stake their tokens. There is no delay to stake or unstake. Stakers set a claimer for their reward, such as themselves.
 - The DAO sends rewards into its Governance Staking.
 - Governance Staking distributes the rewards over time. Each staker's reward is proportional to their staked balance over time.
 - Beneficiaries can claim their accrued rewards at any time.

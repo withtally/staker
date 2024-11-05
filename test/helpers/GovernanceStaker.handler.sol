@@ -92,14 +92,14 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     ghost_rewardsNotified += _amount;
   }
 
-  function stake(uint256 _amount, address _delegatee, address _beneficiary)
+  function stake(uint256 _amount, address _delegatee, address _claimer)
     public
     countCall("stake")
     doCheckpoints
   {
     _createDepositor();
 
-    _beneficiaries.add(_beneficiary);
+    _beneficiaries.add(_claimer);
     _delegates.add(_delegatee);
     _amount = uint256(_bound(_amount, 0, 100_000_000e18));
 
@@ -108,7 +108,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
 
     vm.startPrank(_currentActor);
     stakeToken.approve(address(govStaker), _amount);
-    govStaker.stake(_amount, _delegatee, _beneficiary);
+    govStaker.stake(_amount, _delegatee, _claimer);
     vm.stopPrank();
 
     // update handler state
