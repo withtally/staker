@@ -43,7 +43,9 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
   );
 
   /// @notice Emitted when a depositor withdraws some portion of stake from a given deposit.
-  event StakeWithdrawn(DepositIdentifier indexed depositId, uint256 amount, uint256 depositBalance);
+  event StakeWithdrawn(
+    address owner, DepositIdentifier indexed depositId, uint256 amount, uint256 depositBalance
+  );
 
   /// @notice Emitted when a deposit's delegatee is changed.
   event DelegateeAltered(
@@ -949,7 +951,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall, EIP7
     deposit.balance = _newBalance.toUint96();
     deposit.earningPower = _newEarningPower.toUint96();
     _stakeTokenSafeTransferFrom(address(surrogates[deposit.delegatee]), deposit.owner, _amount);
-    emit StakeWithdrawn(_depositId, _amount, deposit.balance);
+    emit StakeWithdrawn(deposit.owner, _depositId, _amount, deposit.balance);
   }
 
   /// @notice Internal convenience method which claims earned rewards.
