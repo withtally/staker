@@ -45,6 +45,8 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
   bytes32 public constant CLAIM_REWARD_TYPEHASH =
     keccak256("ClaimReward(uint256 depositId,uint256 nonce,uint256 deadline)");
 
+  /// @notice Returns the domain separator used in the encoding of the signatures for this contract.
+  /// @return The domain separator, as a bytes32 value, used for EIP-712 signatures.
   function DOMAIN_SEPARATOR() external view returns (bytes32) {
     return _domainSeparatorV4();
   }
@@ -270,6 +272,8 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
     return _claimReward(_depositId, deposit, deposit.owner);
   }
 
+  /// @notice Internal helper method which reverts if the provided deadline has passed.
+  /// @param _deadline The timestamp that represents when the operation should no longer be valid.
   function _revertIfPastDeadline(uint256 _deadline) internal view virtual {
     if (block.timestamp > _deadline) revert GovernanceStakerOnBehalf__ExpiredDeadline();
   }
