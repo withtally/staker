@@ -27,7 +27,7 @@ import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 /// implementation. The core mechanic involves the streaming of rewards over a designated period
 /// of time. Each staker earns rewards proportional to their share of the total stake, and each
 /// staker earns only while their tokens are staked. Stakers may add or withdraw their stake at any
-/// point. Beneficiaries can claim the rewards they've earned at any point. When a new reward is
+/// point. Claimers can claim the rewards they've earned at any point. When a new reward is
 /// received, the reward duration restarts, and the rate at which rewards are streamed is updated
 /// to include the newly received rewards along with any remaining rewards that have finished
 /// streaming since the last time a reward was received.

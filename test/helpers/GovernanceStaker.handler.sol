@@ -22,7 +22,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
   address internal _currentActor;
   AddressSet internal _depositors;
   AddressSet internal _delegates;
-  AddressSet internal _beneficiaries;
+  AddressSet internal _claimers;
   AddressSet internal _surrogates;
   AddressSet internal _rewardNotifiers;
   mapping(address => uint256[]) internal _depositIds;
@@ -99,7 +99,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
   {
     _createDepositor();
 
-    _beneficiaries.add(_claimer);
+    _claimers.add(_claimer);
     _delegates.add(_delegatee);
     _amount = uint256(_bound(_amount, 0, 100_000_000e18));
 
@@ -200,11 +200,11 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     return _depositors.reduce(acc, func);
   }
 
-  function reduceBeneficiaries(
-    uint256 acc,
-    function(uint256,address) external returns (uint256) func
-  ) public returns (uint256) {
-    return _beneficiaries.reduce(acc, func);
+  function reduceClaimers(uint256 acc, function(uint256,address) external returns (uint256) func)
+    public
+    returns (uint256)
+  {
+    return _claimers.reduce(acc, func);
   }
 
   function reduceDelegates(uint256 acc, function(uint256,address) external returns (uint256) func)

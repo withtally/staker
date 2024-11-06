@@ -9,7 +9,7 @@ The invariant suite is a collection of tests designed to build confidence around
 - The sum of all surrogate balance should equal the total staked balance
 - Cumulative deposits minus withdrawals should equal the total staked balance
 - The sum of all notified rewards should be greater or equal to all claimed rewards plus the rewards balance in the staking contract (TODO: not strictly equal because of stray transfers in, which are not yet implemented in handler)
-- Sum of unclaimed reward across all beneficiaries should be less than or equal to total rewards
+- Sum of unclaimed reward across all claimers should be less than or equal to total rewards
 - `rewardPerTokenAccumulatedCheckpoint` should be greater or equal to the last `rewardPerTokenAccumulatedCheckpoint` value
 
 ## Invariant Handler
@@ -27,7 +27,7 @@ These actions are typical user actions that can be taken on the system. They are
 - [x] withdraw: a user withdraws some balance from a deposit that she owns.
   - Action taken by: existing depositors
 - [x] claimReward: A beneficiary claims the reward that is due to her.
-  - Action taken by: existing beneficiaries
+  - Action taken by: existing claimers
 - [ ] alterDelegatee
 - [ ] alterBeneficiary
 - [ ] permitAndStake

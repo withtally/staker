@@ -3,14 +3,17 @@
 Governance Staking rewards a DAO's tokenholders for participating in governance. This staking system distributes rewards to tokenholders whose tokens are active in governance. Rewards generally come from the DAO, funded by protocol revenue and/or issuance of the native token from the treasury.
 
 ## How it works:
+
 - The DAO decides how stakers can be eligible for rewards. The DAO sets up an oracle to put eligiblity scores onchain.
 - Tokenholders stake their tokens. There is no delay to stake or unstake. Stakers set a claimer for their reward, such as themselves.
 - The DAO sends rewards into its Governance Staking.
 - Governance Staking distributes the rewards over time. Each staker's reward is proportional to their staked balance over time.
-- Beneficiaries can claim their accrued rewards at any time.
+- Claimers can claim their accrued rewards at any time.
 
 ## Implementation details:
+
 Governance Staking can be deployed as an immutable contract with minimal governance. It does have some admin functions:
+
 - Adding a new source of rewards
 - Changing the eligibility oracle or the emergency pause guardian
 - Overriding eligibility for a particular address
@@ -29,13 +32,13 @@ stateDiagram-v2
     direction TB
 
     User --> CUF: Stakes tokens
-    
+
     state GovernanceStaker {
         state "Key User Functions" as CUF {
             stake --> claimReward
             claimReward --> withdraw
         }
-        
+
         state "Key State" as KS {
             rewardRate
             deposits
@@ -57,11 +60,11 @@ stateDiagram-v2
     KS  --> DelegationSurrogate: Holds tokens per delegatee
     DelegationSurrogate --> Delegatee: Delegates voting power
     Admin --> CAF: e.g. governance
-    
+
     RewardNotifier --> GovernanceStaker: Tells Staker about new rewards
     EarningPowerCalculator --> GovernanceStaker: Calculates eligibility
 
-    
+
 ```
 
 ### Earning Power Calculator
@@ -143,7 +146,6 @@ scopelint spec
 ```
 
 This command will use the names of the contract's unit tests to generate a human readable spec. It will list each contract, its constituent functions, and the human readable description of functionality each unit test aims to assert.
-
 
 ## License
 
