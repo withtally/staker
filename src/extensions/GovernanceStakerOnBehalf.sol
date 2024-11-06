@@ -10,9 +10,9 @@ import {Nonces} from "openzeppelin/utils/Nonces.sol";
 /// @author [ScopeLift](https://scopelift.co)
 /// @notice This contract extension adds signature execution functionality to the GovernanceStaker
 /// base contract, allowing key operations to be executed via signatures rather than requiring the
-/// owner or beneficiary to execute transactions directly. This includes staking, withdrawing,
-/// altering delegatees and beneficiaries, and claiming rewards. Each operation requires a unique
-/// signature that is validated against the appropriate signer (owner or beneficiary) before
+/// owner or claimer to execute transactions directly. This includes staking, withdrawing,
+/// altering delegatees and claimers, and claiming rewards. Each operation requires a unique
+/// signature that is validated against the appropriate signer (owner or claimer) before
 /// execution.
 abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
   /// @notice Thrown when an onBehalf method is called with a deadline that has expired.
@@ -23,7 +23,7 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
 
   /// @notice Type hash used when encoding data for `stakeOnBehalf` calls.
   bytes32 public constant STAKE_TYPEHASH = keccak256(
-    "Stake(uint256 amount,address delegatee,address beneficiary,address depositor,uint256 nonce,uint256 deadline)"
+    "Stake(uint256 amount,address delegatee,address claimer,address depositor,uint256 nonce,uint256 deadline)"
   );
   /// @notice Type hash used when encoding data for `stakeMoreOnBehalf` calls.
   bytes32 public constant STAKE_MORE_TYPEHASH = keccak256(
@@ -33,9 +33,9 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
   bytes32 public constant ALTER_DELEGATEE_TYPEHASH = keccak256(
     "AlterDelegatee(uint256 depositId,address newDelegatee,address depositor,uint256 nonce,uint256 deadline)"
   );
-  /// @notice Type hash used when encoding data for `alterBeneficiaryOnBehalf` calls.
-  bytes32 public constant ALTER_BENEFICIARY_TYPEHASH = keccak256(
-    "AlterBeneficiary(uint256 depositId,address newBeneficiary,address depositor,uint256 nonce,uint256 deadline)"
+  /// @notice Type hash used when encoding data for `alterClaimerOnBehalf` calls.
+  bytes32 public constant ALTER_CLAIMER_TYPEHASH = keccak256(
+    "AlterClaimer(uint256 depositId,address newClaimer,address depositor,uint256 nonce,uint256 deadline)"
   );
   /// @notice Type hash used when encoding data for `withdrawOnBehalf` calls.
   bytes32 public constant WITHDRAW_TYPEHASH = keccak256(
@@ -62,16 +62,16 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
   /// would-be staked amount of the token.
   /// @param _amount Quantity of the staking token to stake.
   /// @param _delegatee Address to assign the governance voting weight of the staked tokens.
-  /// @param _beneficiary Address that will accrue rewards for this stake.
+  /// @param _claimer Address that will accrue rewards for this stake.
   /// @param _depositor Address of the user on whose behalf this stake is being made.
   /// @param _deadline The timestamp after which the signature should expire.
   /// @param _signature Signature of the user authorizing this stake.
   /// @return _depositId Unique identifier for this deposit.
-  /// @dev Neither the delegatee nor the beneficiary may be the zero address.
+  /// @dev Neither the delegatee nor the claimer may be the zero address.
   function stakeOnBehalf(
     uint256 _amount,
     address _delegatee,
-    address _beneficiary,
+    address _claimer,
     address _depositor,
     uint256 _deadline,
     bytes memory _signature
@@ -85,7 +85,7 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
             STAKE_TYPEHASH,
             _amount,
             _delegatee,
-            _beneficiary,
+            _claimer,
             _depositor,
             _useNonce(_depositor),
             _deadline
@@ -94,12 +94,12 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
       ),
       _signature
     );
-    _depositId = _stake(_depositor, _amount, _delegatee, _beneficiary);
+    _depositId = _stake(_depositor, _amount, _delegatee, _claimer);
   }
 
   /// @notice Add more staking tokens to an existing deposit on behalf of a user, using a signature
   /// to validate the user's intent. A staker should call this method when they have an existing
-  /// deposit, and wish to stake more while retaining the same delegatee and beneficiary.
+  /// deposit, and wish to stake more while retaining the same delegatee and claimer.
   /// @param _depositId Unique identifier of the deposit to which stake will be added.
   /// @param _amount Quantity of stake to be added.
   /// @param _depositor Address of the user on whose behalf this stake is being made.
@@ -168,18 +168,18 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
     _alterDelegatee(deposit, _depositId, _newDelegatee);
   }
 
-  /// @notice For an existing deposit, change the beneficiary account which has the right to
+  /// @notice For an existing deposit, change the claimer account which has the right to
   /// withdraw staking rewards accruing on behalf of a user, using a signature to validate the
   /// user's intent.
-  /// @param _depositId Unique identifier of the deposit which will have its beneficiary altered.
-  /// @param _newBeneficiary Address of the new beneficiary.
+  /// @param _depositId Unique identifier of the deposit which will have its claimer altered.
+  /// @param _newClaimer Address of the new claimer.
   /// @param _depositor Address of the user on whose behalf this stake is being made.
   /// @param _deadline The timestamp after which the signature should expire.
   /// @param _signature Signature of the user authorizing this stake.
-  /// @dev The new beneficiary may not be the zero address.
-  function alterBeneficiaryOnBehalf(
+  /// @dev The new claimer may not be the zero address.
+  function alterClaimerOnBehalf(
     DepositIdentifier _depositId,
-    address _newBeneficiary,
+    address _newClaimer,
     address _depositor,
     uint256 _deadline,
     bytes memory _signature
@@ -192,9 +192,9 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
       _hashTypedDataV4(
         keccak256(
           abi.encode(
-            ALTER_BENEFICIARY_TYPEHASH,
+            ALTER_CLAIMER_TYPEHASH,
             _depositId,
-            _newBeneficiary,
+            _newClaimer,
             _depositor,
             _useNonce(_depositor),
             _deadline
@@ -204,7 +204,7 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
       _signature
     );
 
-    _alterBeneficiary(deposit, _depositId, _newBeneficiary);
+    _alterClaimer(deposit, _depositId, _newClaimer);
   }
 
   /// @notice Withdraw staked tokens from an existing deposit on behalf of a user, using a
@@ -241,11 +241,11 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
   }
 
   /// @notice Claim reward tokens earned by a given deposit, using a signature to validate the
-  /// caller's intent. The signer must be the beneficiary address of the deposit Tokens are sent to
-  /// the beneficiary.
+  /// caller's intent. The signer must be the claimer address of the deposit Tokens are sent to
+  /// the claimer.
   /// @param _depositId The identifier for the deposit for which to claim rewards.
   /// @param _deadline The timestamp after which the signature should expire.
-  /// @param _signature Signature of the beneficiary authorizing this reward claim.
+  /// @param _signature Signature of the claimer authorizing this reward claim.
   /// @return Amount of reward tokens claimed, after the fee has been assessed.
   function claimRewardOnBehalf(
     DepositIdentifier _depositId,
@@ -254,14 +254,14 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
   ) external virtual returns (uint256) {
     _revertIfPastDeadline(_deadline);
     Deposit storage deposit = deposits[_depositId];
-    bytes32 _beneficiaryHash = _hashTypedDataV4(
+    bytes32 _claimerHash = _hashTypedDataV4(
       keccak256(
-        abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, _useNonce(deposit.beneficiary), _deadline)
+        abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, _useNonce(deposit.claimer), _deadline)
       )
     );
-    bool _isValidBeneficiaryClaim =
-      SignatureChecker.isValidSignatureNow(deposit.beneficiary, _beneficiaryHash, _signature);
-    if (_isValidBeneficiaryClaim) return _claimReward(_depositId, deposit, deposit.beneficiary);
+    bool _isValidClaimerClaim =
+      SignatureChecker.isValidSignatureNow(deposit.claimer, _claimerHash, _signature);
+    if (_isValidClaimerClaim) return _claimReward(_depositId, deposit, deposit.claimer);
 
     bytes32 _ownerHash = _hashTypedDataV4(
       keccak256(abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, _useNonce(deposit.owner), _deadline))
