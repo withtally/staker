@@ -17,10 +17,7 @@ abstract contract GovernanceStakerDelegateSurrogateVotes is GovernanceStaker {
     return storedSurrogates[_delegatee];
   }
 
-  /// @notice Internal method which finds the existing surrogate contract—or deploys a new one if
-  /// none exists—for a given delegatee.
-  /// @param _delegatee Account for which a surrogate is sought.
-  /// @return _surrogate The address of the surrogate contract for the delegatee.
+  /// @inheritdoc GovernanceStaker
   function _fetchOrDeploySurrogate(address _delegatee)
     internal
     virtual
