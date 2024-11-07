@@ -12,6 +12,7 @@ import {IERC20Permit} from "openzeppelin/token/ERC20/extensions/IERC20Permit.sol
 /// enabling users to approve and stake tokens in a single transaction.
 /// Note that this extension requires the stake token to support EIP-2612 permit functionality.
 abstract contract GovernanceStakerPermitAndStake is GovernanceStaker {
+  /// @notice A staking token that conforms to the interface needed for this extension.
   IERC20Permit private PERMIT_TOKEN;
 
   /// @notice Thrown if an inheritor uses a seperate staking token.
