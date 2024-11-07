@@ -2,12 +2,8 @@
 pragma solidity ^0.8.23;
 
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
-import {
-  GovernanceStaker,
-  IERC20,
-  IERC20Delegates,
-  IEarningPowerCalculator
-} from "src/GovernanceStaker.sol";
+import {GovernanceStaker, IERC20, IEarningPowerCalculator} from "src/GovernanceStaker.sol";
+import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
 import {GovernanceStakerHarness} from "test/harnesses/GovernanceStakerHarness.sol";
 import {GovernanceStakerOnBehalf} from "src/extensions/GovernanceStakerOnBehalf.sol";
@@ -16,6 +12,7 @@ import {IERC20Errors} from "openzeppelin/interfaces/draft-IERC6093.sol";
 import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
 import {MockFullEarningPowerCalculator} from "test/mocks/MockFullEarningPowerCalculator.sol";
 import {PercentAssertions} from "test/helpers/PercentAssertions.sol";
+import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
 
 contract GovernanceStakerTest is Test, PercentAssertions {
   ERC20Fake rewardToken;
@@ -247,7 +244,7 @@ contract Constructor is GovernanceStakerTest {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     GovernanceStakerHarness _govStaker = new GovernanceStakerHarness(
       IERC20(_rewardToken),
-      IERC20Delegates(_stakeToken),
+      IERC20Staking(_stakeToken),
       IEarningPowerCalculator(_earningPowerCalculator),
       _maxBumpTip,
       _admin,
