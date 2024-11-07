@@ -21,13 +21,13 @@ import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 /// deposit a designated, delegable ERC20 governance token and leave it over a period of time.
 /// The contract allows stakers to delegate the voting power of the tokens they stake to any
 /// governance delegatee on a per deposit basis. The contract also allows stakers to designate the
-/// beneficiary address that earns rewards for the associated deposit.
+/// claimer address that earns rewards for the associated deposit.
 ///
 /// The staking mechanism of this contract is directly inspired by the Synthetix StakingRewards.sol
 /// implementation. The core mechanic involves the streaming of rewards over a designated period
 /// of time. Each staker earns rewards proportional to their share of the total stake, and each
 /// staker earns only while their tokens are staked. Stakers may add or withdraw their stake at any
-/// point. Beneficiaries can claim the rewards they've earned at any point. When a new reward is
+/// point. Claimers can claim the rewards they've earned at any point. When a new reward is
 /// received, the reward duration restarts, and the rate at which rewards are streamed is updated
 /// to include the newly received rewards along with any remaining rewards that have finished
 /// streaming since the last time a reward was received.
@@ -52,17 +52,13 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     DepositIdentifier indexed depositId, address oldDelegatee, address newDelegatee
   );
 
-  /// @notice Emitted when a deposit's beneficiary is changed.
-  event BeneficiaryAltered(
-    DepositIdentifier indexed depositId,
-    address indexed oldBeneficiary,
-    address indexed newBeneficiary
+  /// @notice Emitted when a deposit's claimer is changed.
+  event ClaimerAltered(
+    DepositIdentifier indexed depositId, address indexed oldClaimer, address indexed newClaimer
   );
 
-  /// @notice Emitted when a beneficiary claims their earned reward.
-  event RewardClaimed(
-    DepositIdentifier indexed depositId, address indexed beneficiary, uint256 amount
-  );
+  /// @notice Emitted when a claimer claims their earned reward.
+  event RewardClaimed(DepositIdentifier indexed depositId, address indexed claimer, uint256 amount);
 
   /// @notice Emitted when this contract is notified of a new reward.
   event RewardNotified(uint256 amount, address notifier);
@@ -128,7 +124,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   /// @param balance The deposit's staked balance.
   /// @param owner The owner of this deposit.
   /// @param delegatee The governance delegate who receives the voting weight for this deposit.
-  /// @param beneficiary The address which has the right to withdraw rewards earned by this
+  /// @param claimer The address which has the right to withdraw rewards earned by this
   /// deposit.
   /// @param earningPower The "power" this deposit has as it pertains to earning rewards, which
   /// accrue to this deposit at a rate proportional to its share of the total earning power of the
@@ -147,7 +143,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     address owner;
     uint96 earningPower;
     address delegatee;
-    address beneficiary;
+    address claimer;
     uint256 rewardPerTokenCheckpoint;
     uint256 scaledUnclaimedRewardCheckpoint;
   }
@@ -329,7 +325,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   /// @param _delegatee The address to assign the governance voting weight of the staked tokens.
   /// @return _depositId The unique identifier for this deposit.
   /// @dev The delegatee may not be the zero address. The deposit will be owned by the message
-  /// sender, and the beneficiary will also be the message sender.
+  /// sender, and the claimer will also be the message sender.
   function stake(uint256 _amount, address _delegatee)
     external
     virtual
@@ -342,21 +338,21 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   /// contract to spend at least the would-be staked amount of the token.
   /// @param _amount Quantity of the staking token to stake.
   /// @param _delegatee Address to assign the governance voting weight of the staked tokens.
-  /// @param _beneficiary Address that will accrue rewards for this stake.
+  /// @param _claimer Address that will accrue rewards for this stake.
   /// @return _depositId Unique identifier for this deposit.
-  /// @dev Neither the delegatee nor the beneficiary may be the zero address. The deposit will be
+  /// @dev Neither the delegatee nor the claimer may be the zero address. The deposit will be
   /// owned by the message sender.
-  function stake(uint256 _amount, address _delegatee, address _beneficiary)
+  function stake(uint256 _amount, address _delegatee, address _claimer)
     external
     virtual
     returns (DepositIdentifier _depositId)
   {
-    _depositId = _stake(msg.sender, _amount, _delegatee, _beneficiary);
+    _depositId = _stake(msg.sender, _amount, _delegatee, _claimer);
   }
 
   /// @notice Add more staking tokens to an existing deposit. A staker should call this method when
   /// they have an existing deposit, and wish to stake more while retaining the same delegatee and
-  /// beneficiary.
+  /// claimer.
   /// @param _depositId Unique identifier of the deposit to which stake will be added.
   /// @param _amount Quantity of stake to be added.
   /// @dev The message sender must be the owner of the deposit.
@@ -378,16 +374,16 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     _alterDelegatee(deposit, _depositId, _newDelegatee);
   }
 
-  /// @notice For an existing deposit, change the beneficiary account which has the right to
+  /// @notice For an existing deposit, change the claimer account which has the right to
   /// withdraw staking rewards.
-  /// @param _depositId Unique identifier of the deposit which will have its beneficiary altered.
-  /// @param _newBeneficiary Address of the new beneficiary.
-  /// @dev The new beneficiary may not be the zero address. The message sender must be the owner of
+  /// @param _depositId Unique identifier of the deposit which will have its claimer altered.
+  /// @param _newClaimer Address of the new claimer.
+  /// @dev The new claimer may not be the zero address. The message sender must be the owner of
   /// the deposit.
-  function alterBeneficiary(DepositIdentifier _depositId, address _newBeneficiary) external virtual {
+  function alterClaimer(DepositIdentifier _depositId, address _newClaimer) external virtual {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
-    _alterBeneficiary(deposit, _depositId, _newBeneficiary);
+    _alterClaimer(deposit, _depositId, _newClaimer);
   }
 
   /// @notice Withdraw staked tokens from an existing deposit.
@@ -401,14 +397,14 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     _withdraw(deposit, _depositId, _amount);
   }
 
-  /// @notice Claim reward tokens earned by a given deposit. Message sender must be the beneficiary
-  /// address of the deposit. Tokens are sent to the beneficiary address.
+  /// @notice Claim reward tokens earned by a given deposit. Message sender must be the claimer
+  /// address of the deposit. Tokens are sent to the claimer address.
   /// @param _depositId Identifier of the deposit from which accrued rewards will be claimed.
   /// @return Amount of reward tokens claimed, after the fee has been assessed.
   function claimReward(DepositIdentifier _depositId) external virtual returns (uint256) {
     Deposit storage deposit = deposits[_depositId];
-    if (deposit.beneficiary != msg.sender && deposit.owner != msg.sender) {
-      revert GovernanceStaker__Unauthorized("not beneficiary or owner", msg.sender);
+    if (deposit.claimer != msg.sender && deposit.owner != msg.sender) {
+      revert GovernanceStaker__Unauthorized("not claimer or owner", msg.sender);
     }
     return _claimReward(_depositId, deposit, msg.sender);
   }
@@ -561,13 +557,13 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   /// @notice Internal convenience methods which performs the staking operations.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public stake methods for additional documentation.
-  function _stake(address _depositor, uint256 _amount, address _delegatee, address _beneficiary)
+  function _stake(address _depositor, uint256 _amount, address _delegatee, address _claimer)
     internal
     virtual
     returns (DepositIdentifier _depositId)
   {
     _revertIfAddressZero(_delegatee);
-    _revertIfAddressZero(_beneficiary);
+    _revertIfAddressZero(_claimer);
 
     _checkpointGlobalReward();
 
@@ -584,14 +580,14 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
       balance: _amount.toUint96(),
       owner: _depositor,
       delegatee: _delegatee,
-      beneficiary: _beneficiary,
+      claimer: _claimer,
       earningPower: _earningPower.toUint96(),
       rewardPerTokenCheckpoint: rewardPerTokenAccumulatedCheckpoint,
       scaledUnclaimedRewardCheckpoint: 0
     });
     _stakeTokenSafeTransferFrom(_depositor, address(_surrogate), _amount);
     emit StakeDeposited(_depositor, _depositId, _amount, _amount);
-    emit BeneficiaryAltered(_depositId, address(0), _beneficiary);
+    emit ClaimerAltered(_depositId, address(0), _claimer);
     emit DelegateeAltered(_depositId, address(0), _delegatee);
   }
 
@@ -650,15 +646,14 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     _stakeTokenSafeTransferFrom(address(_oldSurrogate), address(_newSurrogate), deposit.balance);
   }
 
-  /// @notice Internal convenience method which alters the beneficiary of an existing deposit.
+  /// @notice Internal convenience method which alters the claimer of an existing deposit.
   /// @dev This method must only be called after proper authorization has been completed.
-  /// @dev See public alterBeneficiary methods for additional documentation.
-  function _alterBeneficiary(
-    Deposit storage deposit,
-    DepositIdentifier _depositId,
-    address _newBeneficiary
-  ) internal virtual {
-    _revertIfAddressZero(_newBeneficiary);
+  /// @dev See public alterClaimer methods for additional documentation.
+  function _alterClaimer(Deposit storage deposit, DepositIdentifier _depositId, address _newClaimer)
+    internal
+    virtual
+  {
+    _revertIfAddressZero(_newClaimer);
 
     // Updating the earning power here is not strictly necessary, but if the user is touching their
     // deposit anyway, it seems reasonable to make sure their earning power is up to date.
@@ -672,8 +667,8 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
 
     deposit.earningPower = _newEarningPower.toUint96();
 
-    emit BeneficiaryAltered(_depositId, deposit.beneficiary, _newBeneficiary);
-    deposit.beneficiary = _newBeneficiary;
+    emit ClaimerAltered(_depositId, deposit.claimer, _newClaimer);
+    deposit.claimer = _newClaimer;
   }
 
   /// @notice Internal convenience method which withdraws the stake from an existing deposit.

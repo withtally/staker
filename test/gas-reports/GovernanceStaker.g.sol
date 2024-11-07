@@ -131,10 +131,10 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
     }
     stopScenario();
 
-    startScenario("Alter beneficiary to a new address");
+    startScenario("Alter claimer to a new address");
     {
       _delegatee = makeScenarioAddr("Delegatee");
-      address _newBeneficiary = makeScenarioAddr("New Beneficiary");
+      address _newClaimer = makeScenarioAddr("New Claimer");
       _staker = makeScenarioAddr("Initializer");
       _mintGovToken(_staker, 200e18);
       vm.prank(_staker);
@@ -143,7 +143,7 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
       vm.startPrank(_staker);
       _depositId = govStaker.stake(100e18, _delegatee);
 
-      govStaker.alterBeneficiary(_depositId, _newBeneficiary);
+      govStaker.alterClaimer(_depositId, _newClaimer);
       recordScenarioGasResult();
       vm.stopPrank();
     }

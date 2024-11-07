@@ -22,7 +22,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
   address internal _currentActor;
   AddressSet internal _depositors;
   AddressSet internal _delegates;
-  AddressSet internal _beneficiaries;
+  AddressSet internal _claimers;
   AddressSet internal _surrogates;
   AddressSet internal _rewardNotifiers;
   mapping(address => uint256[]) internal _depositIds;
@@ -92,14 +92,14 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     ghost_rewardsNotified += _amount;
   }
 
-  function stake(uint256 _amount, address _delegatee, address _beneficiary)
+  function stake(uint256 _amount, address _delegatee, address _claimer)
     public
     countCall("stake")
     doCheckpoints
   {
     _createDepositor();
 
-    _beneficiaries.add(_beneficiary);
+    _claimers.add(_claimer);
     _delegates.add(_delegatee);
     _amount = uint256(_bound(_amount, 0, 100_000_000e18));
 
@@ -108,7 +108,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
 
     vm.startPrank(_currentActor);
     stakeToken.approve(address(govStaker), _amount);
-    govStaker.stake(_amount, _delegatee, _beneficiary);
+    govStaker.stake(_amount, _delegatee, _claimer);
     vm.stopPrank();
 
     // update handler state
@@ -200,11 +200,11 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     return _depositors.reduce(acc, func);
   }
 
-  function reduceBeneficiaries(
-    uint256 acc,
-    function(uint256,address) external returns (uint256) func
-  ) public returns (uint256) {
-    return _beneficiaries.reduce(acc, func);
+  function reduceClaimers(uint256 acc, function(uint256,address) external returns (uint256) func)
+    public
+    returns (uint256)
+  {
+    return _claimers.reduce(acc, func);
   }
 
   function reduceDelegates(uint256 acc, function(uint256,address) external returns (uint256) func)
