@@ -6,7 +6,7 @@ import {GovernanceStaker} from "src/GovernanceStaker.sol";
 import {GovernanceStakerPermitAndStake} from "src/extensions/GovernanceStakerPermitAndStake.sol";
 import {GovernanceStakerOnBehalf} from "src/extensions/GovernanceStakerOnBehalf.sol";
 import {GovernanceStakerDelegateSurrogateVotes} from
-  "src/GovernanceStakerDelegateSurrogateVotes.sol";
+  "src/extensions/GovernanceStakerDelegateSurrogateVotes.sol";
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
