@@ -12,9 +12,6 @@ import {IERC20Permit} from "openzeppelin/token/ERC20/extensions/IERC20Permit.sol
 /// enabling users to approve and stake tokens in a single transaction.
 /// Note that this extension requires the stake token to support EIP-2612 permit functionality.
 abstract contract GovernanceStakerPermitAndStake is GovernanceStaker {
-  /// @notice A staking token that conforms to the interface needed for this extension.
-  IERC20Permit private PERMIT_TOKEN;
-
   /// @notice Thrown if an inheritor uses a seperate staking token.
   error GovernaceStakerPermitAndStake__UnauthorizedToken();
 
@@ -22,7 +19,6 @@ abstract contract GovernanceStakerPermitAndStake is GovernanceStaker {
     if (address(STAKE_TOKEN) != address(_permitToken)) {
       revert GovernaceStakerPermitAndStake__UnauthorizedToken();
     }
-    PERMIT_TOKEN = _permitToken;
   }
 
   /// @notice Method to stake tokens to a new deposit. Before the staking operation occurs, a
@@ -47,7 +43,9 @@ abstract contract GovernanceStakerPermitAndStake is GovernanceStaker {
     bytes32 _r,
     bytes32 _s
   ) external virtual returns (DepositIdentifier _depositId) {
-    try PERMIT_TOKEN.permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s) {} catch {}
+    try IERC20Permit(address(STAKE_TOKEN)).permit(
+      msg.sender, address(this), _amount, _deadline, _v, _r, _s
+    ) {} catch {}
     _depositId = _stake(msg.sender, _amount, _delegatee, _claimer);
   }
 
@@ -73,7 +71,9 @@ abstract contract GovernanceStakerPermitAndStake is GovernanceStaker {
     Deposit storage deposit = deposits[_depositId];
     _revertIfNotDepositOwner(deposit, msg.sender);
 
-    try PERMIT_TOKEN.permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s) {} catch {}
+    try IERC20Permit(address(STAKE_TOKEN)).permit(
+      msg.sender, address(this), _amount, _deadline, _v, _r, _s
+    ) {} catch {}
     _stakeMore(deposit, _depositId, _amount);
   }
 }
