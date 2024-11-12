@@ -12,7 +12,6 @@ import {IERC20Errors} from "openzeppelin/interfaces/draft-IERC6093.sol";
 import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
 import {MockFullEarningPowerCalculator} from "test/mocks/MockFullEarningPowerCalculator.sol";
 import {PercentAssertions} from "test/helpers/PercentAssertions.sol";
-import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
 
 contract GovernanceStakerTest is Test, PercentAssertions {
   ERC20Fake rewardToken;

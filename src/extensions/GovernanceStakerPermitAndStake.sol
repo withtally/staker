@@ -13,11 +13,11 @@ import {IERC20Permit} from "openzeppelin/token/ERC20/extensions/IERC20Permit.sol
 /// Note that this extension requires the stake token to support EIP-2612 permit functionality.
 abstract contract GovernanceStakerPermitAndStake is GovernanceStaker {
   /// @notice Thrown if an inheritor uses a seperate staking token.
-  error GovernaceStakerPermitAndStake__UnauthorizedToken();
+  error GovernanceStakerPermitAndStake__UnauthorizedToken();
 
   constructor(IERC20Permit _permitToken) {
     if (address(STAKE_TOKEN) != address(_permitToken)) {
-      revert GovernaceStakerPermitAndStake__UnauthorizedToken();
+      revert GovernanceStakerPermitAndStake__UnauthorizedToken();
     }
   }
 

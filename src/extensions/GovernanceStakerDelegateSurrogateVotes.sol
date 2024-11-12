@@ -6,7 +6,7 @@ import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
 import {GovernanceStaker} from "src/GovernanceStaker.sol";
 import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 
-/// @title GovernaceStakerDelegateSurrogateVotes
+/// @title GovernanceStakerDelegateSurrogateVotes
 /// @author [ScopeLift](https://scopelift.co)
 /// @notice This contract extension adds delegation surrogates to the GovernanceStaker base
 /// contract, allowing staked tokens to be delegated to a specific delegate.
