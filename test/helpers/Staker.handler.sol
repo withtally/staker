@@ -204,6 +204,13 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
     return _depositors.reduce(acc, func);
   }
 
+  function reduceClaimers(uint256 acc, function(uint256,address) external returns (uint256) func)
+    public
+    returns (uint256)
+  {
+    return _claimers.reduce(acc, func);
+  }
+
   function reduceDeposits(
     uint256 acc,
     function(uint256,GovernanceStaker.DepositIdentifier) external returns (uint256) func
