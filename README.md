@@ -1,3 +1,5 @@
+***DISCLAIMER: This codebase is not yet audited***
+
 # Governance Staking
 
 Governance Staking rewards a DAO's tokenholders for participating in governance. This staking system distributes rewards to tokenholders whose tokens are active in governance. Rewards generally come from the DAO, funded by protocol revenue and/or issuance of the native token from the treasury.
