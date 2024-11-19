@@ -5,12 +5,8 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {GovernanceStakerOnBehalf} from "src/extensions/GovernanceStakerOnBehalf.sol";
 import {GovernanceStakerTest, GovernanceStakerRewardsTest} from "test/GovernanceStaker.t.sol";
 import {GovernanceStakerHarness} from "test/harnesses/GovernanceStakerHarness.sol";
-import {
-  GovernanceStaker,
-  IERC20,
-  IERC20Delegates,
-  IEarningPowerCalculator
-} from "src/GovernanceStaker.sol";
+import {GovernanceStaker, IERC20, IEarningPowerCalculator} from "src/GovernanceStaker.sol";
+import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
 
 contract Domain_Separator is GovernanceStakerTest {
   function _buildDomainSeparator(string memory _name, string memory _version, address _contract)
@@ -39,7 +35,7 @@ contract Domain_Separator is GovernanceStakerTest {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     GovernanceStakerHarness _govStaker = new GovernanceStakerHarness(
       IERC20(_rewardToken),
-      IERC20Delegates(_stakeToken),
+      IERC20Staking(_stakeToken),
       IEarningPowerCalculator(_earningPowerCalculator),
       _maxBumpTip,
       _admin,

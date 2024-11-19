@@ -5,7 +5,6 @@ import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
 import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
 import {INotifiableRewardReceiver} from "src/interfaces/INotifiableRewardReceiver.sol";
 import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
-import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {Multicall} from "openzeppelin/utils/Multicall.sol";
@@ -158,7 +157,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   IERC20 public immutable REWARD_TOKEN;
 
   /// @notice Delegable governance token which users stake to earn rewards.
-  IERC20Delegates public immutable STAKE_TOKEN;
+  IERC20 public immutable STAKE_TOKEN;
 
   /// @notice Length of time over which rewards sent to this contract are distributed to stakers.
   uint256 public constant REWARD_DURATION = 30 days;
@@ -225,7 +224,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   /// @param _admin Address which will have permission to manage rewardNotifiers.
   constructor(
     IERC20 _rewardToken,
-    IERC20Delegates _stakeToken,
+    IERC20 _stakeToken,
     IEarningPowerCalculator _earningPowerCalculator,
     uint256 _maxBumpTip,
     address _admin
