@@ -2,7 +2,6 @@
 pragma solidity ^0.8.23;
 
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
-import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
 import {INotifiableRewardReceiver} from "src/interfaces/INotifiableRewardReceiver.sol";
 import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
