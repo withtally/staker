@@ -119,6 +119,7 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     _setOraclePauseGuardian(_oraclePauseGuardian);
     _setDelegateeScoreEligibilityThreshold(_delegateeScoreEligibilityThreshold);
     _setUpdateEligibilityDelay(_updateEligibilityDelay);
+    lastOracleUpdateTime = block.timestamp;
   }
 
   /// @notice Calculates the earning power for a given delegatee and staking amount.
