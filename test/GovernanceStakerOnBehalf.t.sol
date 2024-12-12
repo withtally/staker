@@ -1269,12 +1269,11 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     uint256 _depositAmount,
     uint256 _durationPercent,
     uint256 _rewardAmount,
-    address _delegatee,
     address _depositor,
     uint256 _currentNonce,
     uint256 _deadline
   ) public {
-    vm.assume(_delegatee != address(0) && _depositor != address(0) && _sender != address(0));
+    vm.assume(_depositor != address(0) && _sender != address(0));
     _claimerPrivateKey = bound(_claimerPrivateKey, 1, 100e18);
     address _claimer = vm.addr(_claimerPrivateKey);
 
@@ -1284,7 +1283,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
 
     // A user deposits staking tokens
     (_depositAmount, _depositId) =
-      _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
+      _boundMintAndStake(_depositor, _depositAmount, address(0x01), _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // A portion of the duration passes
@@ -1307,10 +1306,12 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_claimerPrivateKey, _messageHash);
 
+    uint256 _oldDepositorNonce = govStaker.nonces(_depositor);
     vm.prank(_sender);
     govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
 
     assertEq(rewardToken.balanceOf(_claimer), _earned);
+    assertEq(govStaker.nonces(_depositor), _oldDepositorNonce);
   }
 
   function testFuzz_ClaimRewardOnBehalfOfDepositor(
@@ -1319,12 +1320,11 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     uint256 _depositAmount,
     uint256 _durationPercent,
     uint256 _rewardAmount,
-    address _delegatee,
     address _claimer,
     uint256 _currentNonce,
     uint256 _deadline
   ) public {
-    vm.assume(_delegatee != address(0) && _claimer != address(0) && _sender != address(0));
+    vm.assume(_claimer != address(0) && _sender != address(0));
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
@@ -1334,7 +1334,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
 
     // A user deposits staking tokens
     (_depositAmount, _depositId) =
-      _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
+      _boundMintAndStake(_depositor, _depositAmount, address(0x01), _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // A portion of the duration passes
@@ -1357,10 +1357,12 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
+    uint256 _oldClaimerNonce = govStaker.nonces(_claimer);
     vm.prank(_sender);
     govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
 
     assertEq(rewardToken.balanceOf(_depositor), _earned);
+    assertEq(govStaker.nonces(_claimer), _oldClaimerNonce);
   }
 
   function testFuzz_ReturnsClaimedRewardAmount(

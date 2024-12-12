@@ -255,13 +255,14 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
     _revertIfPastDeadline(_deadline);
     Deposit storage deposit = deposits[_depositId];
     bytes32 _claimerHash = _hashTypedDataV4(
-      keccak256(
-        abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, _useNonce(deposit.claimer), _deadline)
-      )
+      keccak256(abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, nonces(deposit.claimer), _deadline))
     );
     bool _isValidClaimerClaim =
       SignatureChecker.isValidSignatureNow(deposit.claimer, _claimerHash, _signature);
-    if (_isValidClaimerClaim) return _claimReward(_depositId, deposit, deposit.claimer);
+    if (_isValidClaimerClaim) {
+      _useNonce(deposit.claimer);
+      return _claimReward(_depositId, deposit, deposit.claimer);
+    }
 
     bytes32 _ownerHash = _hashTypedDataV4(
       keccak256(abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, _useNonce(deposit.owner), _deadline))
