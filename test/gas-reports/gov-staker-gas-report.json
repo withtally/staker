@@ -1,42 +1,42 @@
 {
-  "generatedAt": 1730917215,
+  "generatedAt": 1734023383,
   "reportName:": "gov-stakerGasReport",
   "results": [
     {
       "scenarioName": "First stake to a new delegatee",
-      "gasUsed": 326097
+      "gasUsed": 330405
     },
     {
       "scenarioName": "Second stake to a existing delegatee",
-      "gasUsed": 159815
+      "gasUsed": 164123
     },
     {
       "scenarioName": "Second stake to a new delegatee",
-      "gasUsed": 291897
+      "gasUsed": 296205
     },
     {
       "scenarioName": "Stake more after initial stake",
-      "gasUsed": 97307
+      "gasUsed": 101615
     },
     {
       "scenarioName": "Alter delegatee with new delegatee",
-      "gasUsed": 198482
+      "gasUsed": 218503
     },
     {
       "scenarioName": "Alter delegatee with existing delegatee",
-      "gasUsed": 66376
+      "gasUsed": 86397
     },
     {
       "scenarioName": "Alter claimer to a new address",
-      "gasUsed": 49455
+      "gasUsed": 69468
     },
     {
       "scenarioName": "Withdraw full stake",
-      "gasUsed": 106298
+      "gasUsed": 110594
     },
     {
       "scenarioName": "Withdraw partial stake",
-      "gasUsed": 120698
+      "gasUsed": 124994
     },
     {
       "scenarioName": "Claim reward when no reward",
@@ -44,7 +44,7 @@
     },
     {
       "scenarioName": "Claim reward when reward",
-      "gasUsed": 160600
+      "gasUsed": 164908
     },
     {
       "scenarioName": "Notify reward",
@@ -56,15 +56,15 @@
     },
     {
       "scenarioName": "Bump earning power up no reward",
-      "gasUsed": 80175
+      "gasUsed": 80178
     },
     {
       "scenarioName": "Bump earning power down with reward",
-      "gasUsed": 108919
+      "gasUsed": 108922
     },
     {
       "scenarioName": "Bump earning power up with reward",
-      "gasUsed": 108919
+      "gasUsed": 108922
     }
   ]
 }
