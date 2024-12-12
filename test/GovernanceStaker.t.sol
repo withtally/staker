@@ -2812,8 +2812,8 @@ contract NotifyRewardAmount is GovernanceStakerRewardsTest {
 
     //!audit-ok doe claims double the rewards (the share inflation is valid for everybody)
     vm.prank(_doe);
-    vm.expectRevert();
     govStaker.claimReward(GovernanceStaker.DepositIdentifier.wrap(0));
+	assertEq(rewardToken.balanceOf(_doe), rewardToken.balanceOf(_fox));
   }
 
   function testFuzz_EmitsAnEventWhenRewardsAreNotified(uint256 _amount) public {
