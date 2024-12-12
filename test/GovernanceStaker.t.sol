@@ -3200,10 +3200,9 @@ contract BumpEarningPower is GovernanceStakerRewardsTest {
     _mintTransferAndNotifyReward(_rewardAmount);
     // The full duration passes
     _jumpAheadByPercentOfRewardDuration(101);
-	uint256 _unclaimedReward = govStaker.unclaimedReward(_depositId);
+    uint256 _unclaimedReward = govStaker.unclaimedReward(_depositId);
     // Tip must be less than the max bump, but also less than rewards for the sake of this test
-    _requestedTip =
-      bound(_requestedTip, 0, _min(maxBumpTip, _unclaimedReward - maxBumpTip));
+    _requestedTip = bound(_requestedTip, 0, _min(maxBumpTip, _unclaimedReward - maxBumpTip));
 
     // The staker's earning power decreases
     earningPowerCalculator.__setEarningPowerForDelegatee(
