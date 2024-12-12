@@ -761,10 +761,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     uint256 _depositNewEarningPower,
     uint256 _totalEarningPower
   ) internal pure returns (uint256 _newTotalEarningPower) {
-    if (_depositNewEarningPower >= _depositOldEarningPower) {
-      return _totalEarningPower + (_depositNewEarningPower - _depositOldEarningPower);
-    }
-    return _totalEarningPower - (_depositOldEarningPower - _depositNewEarningPower);
+    return _totalEarningPower + _depositNewEarningPower - _depositOldEarningPower;
   }
 
   /// @notice Internal helper method which sets the admin address.
