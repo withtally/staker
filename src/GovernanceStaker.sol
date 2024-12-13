@@ -2,7 +2,6 @@
 pragma solidity ^0.8.23;
 
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
-import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
 import {INotifiableRewardReceiver} from "src/interfaces/INotifiableRewardReceiver.sol";
 import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
@@ -772,10 +771,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     uint256 _depositNewEarningPower,
     uint256 _totalEarningPower
   ) internal pure returns (uint256 _newTotalEarningPower) {
-    if (_depositNewEarningPower >= _depositOldEarningPower) {
-      return _totalEarningPower + (_depositNewEarningPower - _depositOldEarningPower);
-    }
-    return _totalEarningPower - (_depositOldEarningPower - _depositNewEarningPower);
+    return _totalEarningPower + _depositNewEarningPower - _depositOldEarningPower;
   }
 
   /// @notice Internal helper method which sets the admin address.
