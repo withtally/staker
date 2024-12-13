@@ -628,6 +628,9 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     address _newDelegatee
   ) internal virtual {
     _revertIfAddressZero(_newDelegatee);
+    _checkpointGlobalReward();
+    _checkpointReward(deposit);
+
     DelegationSurrogate _oldSurrogate = surrogates(deposit.delegatee);
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee);
@@ -653,6 +656,8 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     virtual
   {
     _revertIfAddressZero(_newClaimer);
+    _checkpointGlobalReward();
+    _checkpointReward(deposit);
 
     // Updating the earning power here is not strictly necessary, but if the user is touching their
     // deposit anyway, it seems reasonable to make sure their earning power is up to date.
