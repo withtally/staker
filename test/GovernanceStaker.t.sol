@@ -2811,7 +2811,7 @@ contract NotifyRewardAmount is GovernanceStakerRewardsTest {
 
     vm.prank(_doe);
     govStaker.claimReward(GovernanceStaker.DepositIdentifier.wrap(0));
-	assertEq(rewardToken.balanceOf(_doe), rewardToken.balanceOf(_fox));
+    assertEq(rewardToken.balanceOf(_doe), rewardToken.balanceOf(_fox));
   }
 
   function testFuzz_EmitsAnEventWhenRewardsAreNotified(uint256 _amount) public {
