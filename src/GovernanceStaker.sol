@@ -506,6 +506,8 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
 
     // Send tip to the receiver
     SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _requestedTip);
+    deposit.scaledUnclaimedRewardCheckpoint =
+      deposit.scaledUnclaimedRewardCheckpoint - (_requestedTip * SCALE_FACTOR);
   }
 
   /// @notice Live value of the unclaimed rewards earned by a given deposit with the
