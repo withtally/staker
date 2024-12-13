@@ -188,10 +188,9 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
 
   /// @notice Contract that determines a deposit's earning power based on their delegatee.
   /// @dev An earning power calculator should take into account that a deposit's earning power is an
-  /// uint96. If this is not taken into account than there may be overflow issues within governance
-  /// staker. Also, if earning power frequently changes than there should be some mechanism to
-  /// prevent the deposit from frequently being bumpable as this will eat into a users unclaimed
-  /// rewards.
+  /// uint96. There may be overflow issues within governance staker if this is not taken into account.
+  /// Also, there should be some mechanism to prevent the deposit from frequently being bumpable if 
+  /// earning power changes frequently as this will eat into a users unclaimed rewards.
   IEarningPowerCalculator public earningPowerCalculator;
 
   /// @notice Tracks the total staked by a depositor across all unique deposits.
