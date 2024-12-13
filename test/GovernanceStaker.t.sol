@@ -2764,7 +2764,7 @@ contract NotifyRewardAmount is GovernanceStakerRewardsTest {
     assertLe(govStaker.scaledRewardRate(), _expectedRewardRate);
   }
 
-  function test_shareManipulationIfRewardsArentCeckpointed() public {
+  function test_SharesArentManipulatedIfRewardsCheckpointed() public {
     earningPowerCalculator.__setEarningPowerForDelegatee(address(0x1), 0);
     earningPowerCalculator.__setEarningPowerForDelegatee(address(0x2), 500e18);
 
@@ -2774,11 +2774,11 @@ contract NotifyRewardAmount is GovernanceStakerRewardsTest {
 
     address _fox = makeAddr("fox");
 
-    //!audit-ok Step 1, fox deposits with full earning power
+    // fox deposits with full earning power
     _mintGovToken(_fox, 500e18);
     _stake(_fox, 500e18, address(0x2));
 
-    //!audit-ok some rewards are sent
+    // some rewards are sent
     rewardToken.mint(rewardNotifier, 1_000_000e18);
     // The contract is notified of a reward
     vm.startPrank(rewardNotifier);
@@ -2786,31 +2786,29 @@ contract NotifyRewardAmount is GovernanceStakerRewardsTest {
     govStaker.notifyRewardAmount(1_000_000e18);
     vm.stopPrank();
 
-    //!audit-ok some time passes and fox becomes eligible
-    _jumpAhead(100);
+    // some time passes and fox becomes eligible
     _jumpAheadByPercentOfRewardDuration(101);
 
     /*
-    * Begin manipulation
+    * Begin manipulation attempt
     */
 
-    //!audit-ok fox alters delegatee
+    // fox alters delegatee
     vm.prank(_fox);
     govStaker.alterDelegatee(GovernanceStaker.DepositIdentifier.wrap(1), address(0x2));
 
-    //!audit-ok fox checkpoints global rewards
+    // fox checkpoints global rewards
     _mintGovToken(_fox, 0);
     _stake(_fox, 0, address(0x1));
 
-    //!audit-ok fox alters back to valid delegatee
+    // fox alters back to valid delegatee
     vm.prank(_fox);
     govStaker.alterDelegatee(GovernanceStaker.DepositIdentifier.wrap(1), address(0x2));
 
-    //!audit-ok fox claims double the rewards
+    // fox claims double the rewards
     vm.prank(_fox);
     govStaker.claimReward(GovernanceStaker.DepositIdentifier.wrap(1));
 
-    //!audit-ok doe claims double the rewards (the share inflation is valid for everybody)
     vm.prank(_doe);
     govStaker.claimReward(GovernanceStaker.DepositIdentifier.wrap(0));
 	assertEq(rewardToken.balanceOf(_doe), rewardToken.balanceOf(_fox));
