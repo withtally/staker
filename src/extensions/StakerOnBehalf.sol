@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {GovernanceStaker} from "src/GovernanceStaker.sol";
+import {Staker} from "src/Staker.sol";
 import {SignatureChecker} from "openzeppelin/utils/cryptography/SignatureChecker.sol";
 import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 import {Nonces} from "openzeppelin/utils/Nonces.sol";
 
-/// @title GovernanceStakerOnBehalf
+/// @title StakerOnBehalf
 /// @author [ScopeLift](https://scopelift.co)
-/// @notice This contract extension adds signature execution functionality to the GovernanceStaker
+/// @notice This contract extension adds signature execution functionality to the Staker
 /// base contract, allowing key operations to be executed via signatures rather than requiring the
 /// owner or claimer to execute transactions directly. This includes staking, withdrawing,
 /// altering delegatees and claimers, and claiming rewards. Each operation requires a unique
 /// signature that is validated against the appropriate signer (owner or claimer) before
 /// execution.
-abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
+abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
   /// @notice Thrown when an onBehalf method is called with a deadline that has expired.
-  error GovernanceStakerOnBehalf__ExpiredDeadline();
+  error StakerOnBehalf__ExpiredDeadline();
 
   /// @notice Thrown if a caller supplies an invalid signature to a method that requires one.
-  error GovernanceStakerOnBehalf__InvalidSignature();
+  error StakerOnBehalf__InvalidSignature();
 
   /// @notice Type hash used when encoding data for `stakeOnBehalf` calls.
   bytes32 public constant STAKE_TYPEHASH = keccak256(
@@ -269,17 +269,17 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
     );
     bool _isValidOwnerClaim =
       SignatureChecker.isValidSignatureNow(deposit.owner, _ownerHash, _signature);
-    if (!_isValidOwnerClaim) revert GovernanceStakerOnBehalf__InvalidSignature();
+    if (!_isValidOwnerClaim) revert StakerOnBehalf__InvalidSignature();
     return _claimReward(_depositId, deposit, deposit.owner);
   }
 
   /// @notice Internal helper method which reverts if the provided deadline has passed.
   /// @param _deadline The timestamp that represents when the operation should no longer be valid.
   function _revertIfPastDeadline(uint256 _deadline) internal view virtual {
-    if (block.timestamp > _deadline) revert GovernanceStakerOnBehalf__ExpiredDeadline();
+    if (block.timestamp > _deadline) revert StakerOnBehalf__ExpiredDeadline();
   }
 
-  /// @notice Internal helper method which reverts with GovernanceStaker__InvalidSignature if the
+  /// @notice Internal helper method which reverts with Staker__InvalidSignature if the
   /// signature is invalid.
   /// @param _signer Address of the signer.
   /// @param _hash Hash of the message.
@@ -290,6 +290,6 @@ abstract contract GovernanceStakerOnBehalf is GovernanceStaker, EIP712, Nonces {
     virtual
   {
     bool _isValid = SignatureChecker.isValidSignatureNow(_signer, _hash, _signature);
-    if (!_isValid) revert GovernanceStakerOnBehalf__InvalidSignature();
+    if (!_isValid) revert StakerOnBehalf__InvalidSignature();
   }
 }

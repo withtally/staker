@@ -12,7 +12,7 @@ import {Nonces} from "openzeppelin/utils/Nonces.sol";
 import {SignatureChecker} from "openzeppelin/utils/cryptography/SignatureChecker.sol";
 import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 
-/// @title GovernanceStaker
+/// @title Staker
 /// @author [ScopeLift](https://scopelift.co)
 /// @notice This contract manages the distribution of rewards to stakers. Rewards are denominated
 /// in an ERC20 token and sent to the contract by authorized reward notifiers. To stake means to
@@ -29,7 +29,7 @@ import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 /// received, the reward duration restarts, and the rate at which rewards are streamed is updated
 /// to include the newly received rewards along with any remaining rewards that have finished
 /// streaming since the last time a reward was received.
-abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
+abstract contract Staker is INotifiableRewardReceiver, Multicall {
   using SafeCast for uint256;
 
   type DepositIdentifier is uint256;
@@ -83,37 +83,37 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   /// @notice Thrown when an account attempts a call for which it lacks appropriate permission.
   /// @param reason Human readable code explaining why the call is unauthorized.
   /// @param caller The address that attempted the unauthorized call.
-  error GovernanceStaker__Unauthorized(bytes32 reason, address caller);
+  error Staker__Unauthorized(bytes32 reason, address caller);
 
   /// @notice Thrown if the new rate after a reward notification would be zero.
-  error GovernanceStaker__InvalidRewardRate();
+  error Staker__InvalidRewardRate();
 
   /// @notice Thrown if the following invariant is broken after a new reward: the contract should
   /// always have a reward balance sufficient to distribute at the reward rate across the reward
   /// duration.
-  error GovernanceStaker__InsufficientRewardBalance();
+  error Staker__InsufficientRewardBalance();
 
   /// @notice Thrown if the unclaimed rewards are insufficient to cover a bumpers requested tip or
   /// in the case of an earning power decrease the tip of a subsequent earning power increase.
-  error GovernanceStaker__InsufficientUnclaimedRewards();
+  error Staker__InsufficientUnclaimedRewards();
 
   /// @notice Thrown if a caller attempts to specify address zero for certain designated addresses.
-  error GovernanceStaker__InvalidAddress();
+  error Staker__InvalidAddress();
 
   /// @notice Thrown if a bumper's requested tip is invalid.
-  error GovernanceStaker__InvalidTip();
+  error Staker__InvalidTip();
 
   /// @notice Thrown if the claim fee parameters are outside permitted bounds.
-  error GovernanceStaker__InvalidClaimFeeParameters();
+  error Staker__InvalidClaimFeeParameters();
 
   /// @notice Thrown when an onBehalf method is called with a deadline that has expired.
-  error GovernanceStaker__ExpiredDeadline();
+  error Staker__ExpiredDeadline();
 
   /// @notice Thrown if a caller supplies an invalid signature to a method that requires one.
-  error GovernanceStaker__InvalidSignature();
+  error Staker__InvalidSignature();
 
   /// @notice Thrown if an earning power update is unqualified to be bumped.
-  error GovernanceStaker__Unqualified(uint256 score);
+  error Staker__Unqualified(uint256 score);
 
   /// @notice Metadata associated with a discrete staking deposit.
   /// @param balance The deposit's staked balance.
@@ -167,7 +167,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
 
   /// @notice The maximum value to which the claim fee can be set.
   /// @dev For anything other than a zero value, this immutable parameter should be set in the
-  /// constructor of a concrete implementation inheriting from GovernanceStaker.
+  /// constructor of a concrete implementation inheriting from Staker.
   uint256 public immutable MAX_CLAIM_FEE;
 
   /// @dev Unique identifier that will be used for the next deposit.
@@ -407,7 +407,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   function claimReward(DepositIdentifier _depositId) external virtual returns (uint256) {
     Deposit storage deposit = deposits[_depositId];
     if (deposit.claimer != msg.sender && deposit.owner != msg.sender) {
-      revert GovernanceStaker__Unauthorized("not claimer or owner", msg.sender);
+      revert Staker__Unauthorized("not claimer or owner", msg.sender);
     }
     return _claimReward(_depositId, deposit, msg.sender);
   }
@@ -428,9 +428,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   ///    required that a notifier contract always transfers the `_amount` to this contract before
   ///    calling this method.
   function notifyRewardAmount(uint256 _amount) external virtual {
-    if (!isRewardNotifier[msg.sender]) {
-      revert GovernanceStaker__Unauthorized("not notifier", msg.sender);
-    }
+    if (!isRewardNotifier[msg.sender]) revert Staker__Unauthorized("not notifier", msg.sender);
 
     // We checkpoint the accumulator without updating the timestamp at which it was updated,
     // because that second operation will be done after updating the reward rate.
@@ -446,7 +444,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     rewardEndTime = block.timestamp + REWARD_DURATION;
     lastCheckpointTime = block.timestamp;
 
-    if ((scaledRewardRate / SCALE_FACTOR) == 0) revert GovernanceStaker__InvalidRewardRate();
+    if ((scaledRewardRate / SCALE_FACTOR) == 0) revert Staker__InvalidRewardRate();
 
     // This check cannot _guarantee_ sufficient rewards have been transferred to the contract,
     // because it cannot isolate the unclaimed rewards owed to stakers left in the balance. While
@@ -455,7 +453,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     // admin.
     if (
       (scaledRewardRate * REWARD_DURATION) > (REWARD_TOKEN.balanceOf(address(this)) * SCALE_FACTOR)
-    ) revert GovernanceStaker__InsufficientRewardBalance();
+    ) revert Staker__InsufficientRewardBalance();
 
     emit RewardNotified(_amount, msg.sender);
   }
@@ -473,7 +471,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     address _tipReceiver,
     uint256 _requestedTip
   ) external virtual {
-    if (_requestedTip > maxBumpTip) revert GovernanceStaker__InvalidTip();
+    if (_requestedTip > maxBumpTip) revert Staker__InvalidTip();
 
     Deposit storage deposit = deposits[_depositId];
 
@@ -486,17 +484,17 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
       deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower
     );
     if (!_isQualifiedForBump || _newEarningPower == deposit.earningPower) {
-      revert GovernanceStaker__Unqualified(_newEarningPower);
+      revert Staker__Unqualified(_newEarningPower);
     }
 
     if (_newEarningPower > deposit.earningPower && _unclaimedRewards < _requestedTip) {
-      revert GovernanceStaker__InsufficientUnclaimedRewards();
+      revert Staker__InsufficientUnclaimedRewards();
     }
 
     // Note: underflow causes a revert if the requested  tip is more than unclaimed rewards
     if (_newEarningPower < deposit.earningPower && (_unclaimedRewards - _requestedTip) < maxBumpTip)
     {
-      revert GovernanceStaker__InsufficientUnclaimedRewards();
+      revert Staker__InsufficientUnclaimedRewards();
     }
 
     // Update global earning power & deposit earning power based on this bump
@@ -800,7 +798,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     if (
       _params.feeAmount > MAX_CLAIM_FEE
         || (_params.feeCollector == address(0) && _params.feeAmount > 0)
-    ) revert GovernanceStaker__InvalidClaimFeeParameters();
+    ) revert Staker__InvalidClaimFeeParameters();
 
     emit ClaimFeeParametersSet(
       claimFeeParameters.feeAmount,
@@ -812,25 +810,25 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
     claimFeeParameters = _params;
   }
 
-  /// @notice Internal helper method which reverts GovernanceStaker__Unauthorized if the message
+  /// @notice Internal helper method which reverts Staker__Unauthorized if the message
   /// sender is not the admin.
   function _revertIfNotAdmin() internal view virtual {
-    if (msg.sender != admin) revert GovernanceStaker__Unauthorized("not admin", msg.sender);
+    if (msg.sender != admin) revert Staker__Unauthorized("not admin", msg.sender);
   }
 
-  /// @notice Internal helper method which reverts GovernanceStaker__Unauthorized if the alleged
+  /// @notice Internal helper method which reverts Staker__Unauthorized if the alleged
   /// owner is
   /// not the true owner of the deposit.
   /// @param deposit Deposit to validate.
   /// @param owner Alleged owner of deposit.
   function _revertIfNotDepositOwner(Deposit storage deposit, address owner) internal view virtual {
-    if (owner != deposit.owner) revert GovernanceStaker__Unauthorized("not owner", owner);
+    if (owner != deposit.owner) revert Staker__Unauthorized("not owner", owner);
   }
 
-  /// @notice Internal helper method which reverts with GovernanceStaker__InvalidAddress if the
+  /// @notice Internal helper method which reverts with Staker__InvalidAddress if the
   /// account in question is address zero.
   /// @param _account Account to verify.
   function _revertIfAddressZero(address _account) internal pure {
-    if (_account == address(0)) revert GovernanceStaker__InvalidAddress();
+    if (_account == address(0)) revert Staker__InvalidAddress();
   }
 }

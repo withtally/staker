@@ -4,9 +4,9 @@ pragma solidity ^0.8.23;
 /// @title INotifiableRewardReceiver
 /// @author [ScopeLift](https://scopelift.co)
 /// @notice The communication interface between contracts that distribute rewards and the
-/// GovernanceStaker contract. In particular, said contracts only need to know the staker
+/// Staker contract. In particular, said contracts only need to know the staker
 /// implements the specified method in order to forward payouts to the staker contract. The
-/// GovernanceStaker contract receives the rewards and abstracts the distribution mechanics.
+/// Staker contract receives the rewards and abstracts the distribution mechanics.
 interface INotifiableRewardReceiver {
   /// @notice Method called to notify a reward receiver it has received a reward.
   /// @param _amount The amount of reward.
