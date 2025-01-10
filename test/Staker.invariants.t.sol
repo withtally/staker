@@ -4,22 +4,22 @@ pragma solidity ^0.8.23;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-import {IEarningPowerCalculator} from "src/GovernanceStaker.sol";
-import {GovernanceStakerHandler} from "test/helpers/GovernanceStaker.handler.sol";
-import {GovernanceStakerHarness} from "test/harnesses/GovernanceStakerHarness.sol";
+import {IEarningPowerCalculator} from "src/Staker.sol";
+import {StakerHandler} from "test/helpers/Staker.handler.sol";
+import {StakerHarness} from "test/harnesses/StakerHarness.sol";
 import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
 import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
 import {MockFullEarningPowerCalculator} from "test/mocks/MockFullEarningPowerCalculator.sol";
 
-contract GovernanceStakerInvariants is Test {
-  GovernanceStakerHandler public handler;
-  GovernanceStakerHarness public govStaker;
+contract StakerInvariants is Test {
+  StakerHandler public handler;
+  StakerHarness public govStaker;
   ERC20Fake rewardToken;
   ERC20VotesMock govToken;
   IEarningPowerCalculator earningPowerCalculator;
   address rewardsNotifier;
   uint256 maxBumpTip = 2e18;
-  string STAKER_NAME = "GovernanceStakerHarness";
+  string STAKER_NAME = "StakerHarness";
 
   function setUp() public {
     rewardToken = new ERC20Fake();
@@ -34,19 +34,19 @@ contract GovernanceStakerInvariants is Test {
     earningPowerCalculator = new MockFullEarningPowerCalculator();
     vm.label(address(earningPowerCalculator), "Full Earning Power Calculator");
 
-    govStaker = new GovernanceStakerHarness(
+    govStaker = new StakerHarness(
       rewardToken, govToken, earningPowerCalculator, maxBumpTip, rewardsNotifier, STAKER_NAME
     );
-    handler = new GovernanceStakerHandler(govStaker);
+    handler = new StakerHandler(govStaker);
 
     bytes4[] memory selectors = new bytes4[](7);
-    selectors[0] = GovernanceStakerHandler.stake.selector;
-    selectors[1] = GovernanceStakerHandler.validStakeMore.selector;
-    selectors[2] = GovernanceStakerHandler.validWithdraw.selector;
-    selectors[3] = GovernanceStakerHandler.warpAhead.selector;
-    selectors[4] = GovernanceStakerHandler.claimReward.selector;
-    selectors[5] = GovernanceStakerHandler.enableRewardNotifier.selector;
-    selectors[6] = GovernanceStakerHandler.notifyRewardAmount.selector;
+    selectors[0] = StakerHandler.stake.selector;
+    selectors[1] = StakerHandler.validStakeMore.selector;
+    selectors[2] = StakerHandler.validWithdraw.selector;
+    selectors[3] = StakerHandler.warpAhead.selector;
+    selectors[4] = StakerHandler.claimReward.selector;
+    selectors[5] = StakerHandler.enableRewardNotifier.selector;
+    selectors[6] = StakerHandler.notifyRewardAmount.selector;
 
     targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
 

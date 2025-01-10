@@ -2,13 +2,13 @@
 pragma solidity ^0.8.23;
 
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
-import {GovernanceStakerOnBehalf} from "src/extensions/GovernanceStakerOnBehalf.sol";
-import {GovernanceStakerTest, GovernanceStakerRewardsTest} from "test/GovernanceStaker.t.sol";
-import {GovernanceStakerHarness} from "test/harnesses/GovernanceStakerHarness.sol";
-import {GovernanceStaker, IERC20, IEarningPowerCalculator} from "src/GovernanceStaker.sol";
+import {StakerOnBehalf} from "src/extensions/StakerOnBehalf.sol";
+import {StakerTest, StakerRewardsTest} from "test/Staker.t.sol";
+import {StakerHarness} from "test/harnesses/StakerHarness.sol";
+import {Staker, IERC20, IEarningPowerCalculator} from "src/Staker.sol";
 import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
 
-contract Domain_Separator is GovernanceStakerTest {
+contract Domain_Separator is StakerTest {
   function _buildDomainSeparator(string memory _name, string memory _version, address _contract)
     internal
     view
@@ -33,7 +33,7 @@ contract Domain_Separator is GovernanceStakerTest {
     string memory _name
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
-    GovernanceStakerHarness _govStaker = new GovernanceStakerHarness(
+    StakerHarness _govStaker = new StakerHarness(
       IERC20(_rewardToken),
       IERC20Staking(_stakeToken),
       IEarningPowerCalculator(_earningPowerCalculator),
@@ -48,7 +48,7 @@ contract Domain_Separator is GovernanceStakerTest {
   }
 }
 
-contract InvalidateNonce is GovernanceStakerTest {
+contract InvalidateNonce is StakerTest {
   using stdStorage for StdStorage;
 
   function testFuzz_SuccessfullyIncrementsTheNonceOfTheSender(
@@ -92,7 +92,7 @@ contract InvalidateNonce is GovernanceStakerTest {
   }
 }
 
-contract StakeOnBehalf is GovernanceStakerTest {
+contract StakeOnBehalf is StakerTest {
   using stdStorage for StdStorage;
 
   function testFuzz_StakesOnBehalfOfAnotherAccount(
@@ -135,11 +135,11 @@ contract StakeOnBehalf is GovernanceStakerTest {
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
     vm.prank(_sender);
-    GovernanceStaker.DepositIdentifier _depositId = govStaker.stakeOnBehalf(
+    Staker.DepositIdentifier _depositId = govStaker.stakeOnBehalf(
       _depositAmount, _delegatee, _claimer, _depositor, _deadline, _signature
     );
 
-    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.balance, _depositAmount);
     assertEq(_deposit.owner, _depositor);
@@ -188,7 +188,7 @@ contract StakeOnBehalf is GovernanceStakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.stakeOnBehalf(_depositAmount, _delegatee, _claimer, _depositor, _deadline, _signature);
   }
@@ -232,7 +232,7 @@ contract StakeOnBehalf is GovernanceStakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.stakeOnBehalf(_depositAmount, _delegatee, _claimer, _depositor, _deadline, _signature);
   }
@@ -292,12 +292,12 @@ contract StakeOnBehalf is GovernanceStakerTest {
     if (_randomSeed % 6 == 5) _signature = _modifySignature(_signature, _randomSeed);
 
     vm.prank(_sender);
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     govStaker.stakeOnBehalf(_depositAmount, _delegatee, _claimer, _depositor, _deadline, _signature);
   }
 }
 
-contract StakeMoreOnBehalf is GovernanceStakerTest {
+contract StakeMoreOnBehalf is StakerTest {
   using stdStorage for StdStorage;
 
   function testFuzz_StakeMoreOnBehalfOfDepositor(
@@ -315,10 +315,10 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
-    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     _stakeMoreAmount = _boundToRealisticStake(_stakeMoreAmount);
     _mintGovToken(_depositor, _stakeMoreAmount);
@@ -379,7 +379,7 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
 
@@ -405,7 +405,7 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.stakeMoreOnBehalf(_depositId, _stakeMoreAmount, _depositor, _deadline, _signature);
   }
@@ -430,7 +430,7 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
 
@@ -456,7 +456,7 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.stakeMoreOnBehalf(_depositId, _stakeMoreAmount, _depositor, _deadline, _signature);
   }
@@ -483,15 +483,13 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
 
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceStaker.GovernanceStaker__Unauthorized.selector,
-        bytes32("not owner"),
-        _notDepositor
+        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     vm.prank(_sender);
@@ -519,7 +517,7 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
 
@@ -556,13 +554,13 @@ contract StakeMoreOnBehalf is GovernanceStakerTest {
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
     if (_randomSeed % 4 == 3) _signature = _modifySignature(_signature, _randomSeed);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.stakeMoreOnBehalf(_depositId, _stakeMoreAmount, _depositor, _deadline, _signature);
   }
 }
 
-contract AlterDelegateeOnBehalf is GovernanceStakerTest {
+contract AlterDelegateeOnBehalf is StakerTest {
   using stdStorage for StdStorage;
 
   function testFuzz_AlterDelegateeOnBehalfOfDepositor(
@@ -583,9 +581,9 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
-    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     stdstore.target(address(govStaker)).sig("nonces(address)").with_key(_depositor).checked_write(
       _currentNonce
@@ -639,7 +637,7 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -652,7 +650,7 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.alterDelegateeOnBehalf(_depositId, _newDelegatee, _depositor, _deadline, _signature);
   }
@@ -680,7 +678,7 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -698,7 +696,7 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.alterDelegateeOnBehalf(_depositId, _newDelegatee, _depositor, _deadline, _signature);
   }
@@ -722,14 +720,12 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
     _amount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _amount);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceStaker.GovernanceStaker__Unauthorized.selector,
-        bytes32("not owner"),
-        _notDepositor
+        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     vm.prank(_sender);
@@ -759,7 +755,7 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -788,13 +784,13 @@ contract AlterDelegateeOnBehalf is GovernanceStakerTest {
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
     if (_randomSeed % 4 == 3) _signature = _modifySignature(_signature, _randomSeed);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.alterDelegateeOnBehalf(_depositId, _newDelegatee, _depositor, _deadline, _signature);
   }
 }
 
-contract AlterClaimerOnBehalf is GovernanceStakerTest {
+contract AlterClaimerOnBehalf is StakerTest {
   using stdStorage for StdStorage;
 
   function testFuzz_AlterClaimerOnBehalfOfDepositor(
@@ -815,9 +811,9 @@ contract AlterClaimerOnBehalf is GovernanceStakerTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
-    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     stdstore.target(address(govStaker)).sig("nonces(address)").with_key(_depositor).checked_write(
       _currentNonce
@@ -871,7 +867,7 @@ contract AlterClaimerOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -889,7 +885,7 @@ contract AlterClaimerOnBehalf is GovernanceStakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.alterClaimerOnBehalf(_depositId, _newClaimer, _depositor, _deadline, _signature);
   }
@@ -917,7 +913,7 @@ contract AlterClaimerOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -935,7 +931,7 @@ contract AlterClaimerOnBehalf is GovernanceStakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.alterClaimerOnBehalf(_depositId, _newClaimer, _depositor, _deadline, _signature);
   }
@@ -959,14 +955,12 @@ contract AlterClaimerOnBehalf is GovernanceStakerTest {
     _amount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _amount);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceStaker.GovernanceStaker__Unauthorized.selector,
-        bytes32("not owner"),
-        _notDepositor
+        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     vm.prank(_sender);
@@ -994,7 +988,7 @@ contract AlterClaimerOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -1023,13 +1017,13 @@ contract AlterClaimerOnBehalf is GovernanceStakerTest {
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
     if (_randomSeed % 4 == 3) _signature = _modifySignature(_signature, _randomSeed);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.alterClaimerOnBehalf(_depositId, _newClaimer, _depositor, _deadline, _signature);
   }
 }
 
-contract WithdrawOnBehalf is GovernanceStakerTest {
+contract WithdrawOnBehalf is StakerTest {
   using stdStorage for StdStorage;
 
   function testFuzz_WithdrawOnBehalfOfDepositor(
@@ -1047,10 +1041,10 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
-    GovernanceStaker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
     _withdrawAmount = bound(_withdrawAmount, 0, _depositAmount);
 
     stdstore.target(address(govStaker)).sig("nonces(address)").with_key(_depositor).checked_write(
@@ -1102,7 +1096,7 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1121,7 +1115,7 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.withdrawOnBehalf(_depositId, _withdrawAmount, _depositor, _deadline, _signature);
   }
@@ -1146,7 +1140,7 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1165,7 +1159,7 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.withdrawOnBehalf(_depositId, _withdrawAmount, _depositor, _deadline, _signature);
   }
@@ -1189,14 +1183,12 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
     _amount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _amount);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     vm.expectRevert(
       abi.encodeWithSelector(
-        GovernanceStaker.GovernanceStaker__Unauthorized.selector,
-        bytes32("not owner"),
-        _notDepositor
+        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     vm.prank(_sender);
@@ -1224,7 +1216,7 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1254,13 +1246,13 @@ contract WithdrawOnBehalf is GovernanceStakerTest {
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
     if (_randomSeed % 4 == 3) _signature = _modifySignature(_signature, _randomSeed);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.withdrawOnBehalf(_depositId, _withdrawAmount, _depositor, _deadline, _signature);
   }
 }
 
-contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
+contract ClaimRewardOnBehalf is StakerRewardsTest {
   using stdStorage for StdStorage;
 
   function testFuzz_ClaimRewardOnBehalfOfClaimer(
@@ -1277,7 +1269,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     _claimerPrivateKey = bound(_claimerPrivateKey, 1, 100e18);
     address _claimer = vm.addr(_claimerPrivateKey);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1328,7 +1320,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1380,7 +1372,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     _claimerPrivateKey = bound(_claimerPrivateKey, 1, 100e18);
     address _claimer = vm.addr(_claimerPrivateKey);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1432,7 +1424,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     _claimerPrivateKey = bound(_claimerPrivateKey, 1, 100e18);
     address _claimer = vm.addr(_claimerPrivateKey);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1456,7 +1448,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_claimerPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
   }
@@ -1478,7 +1470,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1503,7 +1495,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
   }
@@ -1523,7 +1515,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     _claimerPrivateKey = bound(_claimerPrivateKey, 1, 100e18);
     address _claimer = vm.addr(_claimerPrivateKey);
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1547,7 +1539,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_claimerPrivateKey, _messageHash);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
   }
@@ -1572,7 +1564,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
       _currentNonce
     );
 
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1595,7 +1587,7 @@ contract ClaimRewardOnBehalf is GovernanceStakerRewardsTest {
     bytes memory _signature = _sign(_claimerPrivateKey, _messageHash);
     if (_randomSeed % 4 == 3) _signature = _modifySignature(_signature, _randomSeed);
 
-    vm.expectRevert(GovernanceStakerOnBehalf.GovernanceStakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
   }

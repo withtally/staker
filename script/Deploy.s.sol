@@ -7,7 +7,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {Script} from "forge-std/Script.sol";
 
 import {DeployInput} from "script/DeployInput.sol";
-import {GovernanceStakerHarness} from "test/harnesses/GovernanceStakerHarness.sol";
+import {StakerHarness} from "test/harnesses/StakerHarness.sol";
 import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
 import {INotifiableRewardReceiver} from "src/interfaces/INotifiableRewardReceiver.sol";
 import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
@@ -22,20 +22,19 @@ contract Deploy is Script, DeployInput {
     );
   }
 
-  function run() public returns (GovernanceStakerHarness) {
+  function run() public returns (StakerHarness) {
     vm.startBroadcast(deployerPrivateKey);
     // Deploy the staking contract
-    // TODO: Replace with the `ArbitrumStaker` contract once it is developed
-    GovernanceStakerHarness govStaker = new GovernanceStakerHarness(
+    StakerHarness govStaker = new StakerHarness(
       IERC20(PAYOUT_TOKEN_ADDRESS),
       IERC20Staking(STAKE_TOKEN_ADDRESS),
       IEarningPowerCalculator(address(0)),
       MAX_BUMP_TIP,
       vm.addr(deployerPrivateKey),
-      "GovernanceStakerHarness"
+      "StakerHarness"
     );
 
-    // Change GovernanceStaker admin from `msg.sender` to the Governor timelock
+    // Change Staker admin from `msg.sender` to the Governor timelock
     govStaker.setAdmin(GOVERNOR_TIMELOCK);
     vm.stopBroadcast();
 
