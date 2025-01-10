@@ -8,10 +8,8 @@ import {StakerOnBehalf} from "src/extensions/StakerOnBehalf.sol";
 import {StakerDelegateSurrogateVotes} from "src/extensions/StakerDelegateSurrogateVotes.sol";
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
-import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
-import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
 

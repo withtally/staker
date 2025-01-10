@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {INotifiableRewardReceiver, IERC20} from "src/interfaces/INotifiableRewardReceiver.sol";
+import {INotifiableRewardReceiver} from "src/interfaces/INotifiableRewardReceiver.sol";
 import {IMintable} from "src/interfaces/IMintable.sol";
 import {RewardTokenNotifierBase} from "src/notifiers/RewardTokenNotifierBase.sol";
 import {Ownable} from "openzeppelin/access/Ownable.sol";

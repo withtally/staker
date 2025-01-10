@@ -4,7 +4,7 @@ Staker is a flexible, configurable staking contract. Staker makes it easy to dis
 
 ## How it works:
 
-### 1. Deploy and configurate a Staker
+### 1. Deploy and configure a Staker
 - Staker is deployed with a single staking token
 - Staker is deployed with an admin, such as a DAO.
 - Staker is configured to distribute one or more reward tokens
