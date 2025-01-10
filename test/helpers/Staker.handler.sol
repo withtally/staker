@@ -6,14 +6,14 @@ import {StdCheats} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
 import {console} from "forge-std/console.sol";
 import {AddressSet, LibAddressSet} from "../helpers/AddressSet.sol";
-import {GovernanceStaker} from "src/GovernanceStaker.sol";
+import {Staker} from "src/Staker.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
+contract StakerHandler is CommonBase, StdCheats, StdUtils {
   using LibAddressSet for AddressSet;
 
   // system setup
-  GovernanceStaker public govStaker;
+  Staker public govStaker;
   IERC20 public stakeToken;
   IERC20 public rewardToken;
   address public admin;
@@ -46,7 +46,7 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     _;
   }
 
-  constructor(GovernanceStaker _govStaker) {
+  constructor(Staker _govStaker) {
     govStaker = _govStaker;
     stakeToken = IERC20(address(_govStaker.STAKE_TOKEN()));
     rewardToken = IERC20(address(_govStaker.REWARD_TOKEN()));
@@ -126,8 +126,8 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     _useActor(_depositors, _actorSeed);
     vm.assume(_currentActor != address(0));
     vm.assume(_depositIds[_currentActor].length > 0);
-    GovernanceStaker.DepositIdentifier _depositId =
-      GovernanceStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
+    Staker.DepositIdentifier _depositId =
+      Staker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
     (uint256 _balance,,,,,,) = govStaker.deposits(_depositId);
     _amount = uint256(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
@@ -145,8 +145,8 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     _useActor(_depositors, _actorSeed);
     vm.assume(_currentActor != address(0));
     vm.assume(_depositIds[_currentActor].length > 0);
-    GovernanceStaker.DepositIdentifier _depositId =
-      GovernanceStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
+    Staker.DepositIdentifier _depositId =
+      Staker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
     (uint256 _balance,,,,,,) = govStaker.deposits(_depositId);
     _amount = uint256(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
@@ -163,8 +163,8 @@ contract GovernanceStakerHandler is CommonBase, StdCheats, StdUtils {
     _useActor(_depositors, _actorSeed);
     vm.assume(_currentActor != address(0));
     vm.assume(_depositIds[_currentActor].length > 0);
-    GovernanceStaker.DepositIdentifier _depositId =
-      GovernanceStaker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
+    Staker.DepositIdentifier _depositId =
+      Staker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
     vm.startPrank(_currentActor);
     uint256 rewardsClaimed = govStaker.claimReward(_depositId);
     vm.stopPrank();

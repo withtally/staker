@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.26;
+pragma solidity ^0.8.26;
 
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
 import {GasReport} from "test/lib/GasReport.sol";
-import {GovernanceStaker} from "src/GovernanceStaker.sol";
-import {GovernanceStakerTest} from "test/GovernanceStaker.t.sol";
+import {Staker} from "src/Staker.sol";
+import {StakerTest} from "test/Staker.t.sol";
 
-contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
+contract StakerGasReport is StakerTest, GasReport {
   function setUp() public override {
     super.setUp();
   }
@@ -25,7 +25,7 @@ contract GovernanceStakerGasReport is GovernanceStakerTest, GasReport {
   function runScenarios() public override {
     address _staker;
     address _delegatee;
-    GovernanceStaker.DepositIdentifier _depositId;
+    Staker.DepositIdentifier _depositId;
     uint256 _rewardAmount;
 
     startScenario("First stake to a new delegatee");

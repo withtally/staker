@@ -3,14 +3,14 @@ pragma solidity ^0.8.23;
 
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
 import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
-import {GovernanceStaker} from "src/GovernanceStaker.sol";
+import {Staker} from "src/Staker.sol";
 import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 
-/// @title GovernanceStakerDelegateSurrogateVotes
+/// @title StakerDelegateSurrogateVotes
 /// @author [ScopeLift](https://scopelift.co)
-/// @notice This contract extension adds delegation surrogates to the GovernanceStaker base
+/// @notice This contract extension adds delegation surrogates to the Staker base
 /// contract, allowing staked tokens to be delegated to a specific delegate.
-abstract contract GovernanceStakerDelegateSurrogateVotes is GovernanceStaker {
+abstract contract StakerDelegateSurrogateVotes is Staker {
   /// @notice Emitted when a surrogate contract is deployed.
   event SurrogateDeployed(address indexed delegatee, address indexed surrogate);
 
@@ -19,20 +19,20 @@ abstract contract GovernanceStakerDelegateSurrogateVotes is GovernanceStaker {
   mapping(address delegatee => DelegationSurrogate surrogate) private storedSurrogates;
 
   /// @notice Thrown if an inheritor uses a seperate staking token.
-  error GovernanceStakerDelegateSurrogateVotes__UnauthorizedToken();
+  error StakerDelegateSurrogateVotes__UnauthorizedToken();
 
   constructor(IERC20Delegates _votingToken) {
     if (address(STAKE_TOKEN) != address(_votingToken)) {
-      revert GovernanceStakerDelegateSurrogateVotes__UnauthorizedToken();
+      revert StakerDelegateSurrogateVotes__UnauthorizedToken();
     }
   }
 
-  /// @inheritdoc GovernanceStaker
+  /// @inheritdoc Staker
   function surrogates(address _delegatee) public view override returns (DelegationSurrogate) {
     return storedSurrogates[_delegatee];
   }
 
-  /// @inheritdoc GovernanceStaker
+  /// @inheritdoc Staker
   function _fetchOrDeploySurrogate(address _delegatee)
     internal
     virtual

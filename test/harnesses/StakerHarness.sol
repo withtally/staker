@@ -2,11 +2,10 @@
 pragma solidity ^0.8.23;
 
 import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
-import {GovernanceStaker} from "src/GovernanceStaker.sol";
-import {GovernanceStakerPermitAndStake} from "src/extensions/GovernanceStakerPermitAndStake.sol";
-import {GovernanceStakerOnBehalf} from "src/extensions/GovernanceStakerOnBehalf.sol";
-import {GovernanceStakerDelegateSurrogateVotes} from
-  "src/extensions/GovernanceStakerDelegateSurrogateVotes.sol";
+import {Staker} from "src/Staker.sol";
+import {StakerPermitAndStake} from "src/extensions/StakerPermitAndStake.sol";
+import {StakerOnBehalf} from "src/extensions/StakerOnBehalf.sol";
+import {StakerDelegateSurrogateVotes} from "src/extensions/StakerDelegateSurrogateVotes.sol";
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
@@ -16,11 +15,11 @@ import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
 
-contract GovernanceStakerHarness is
-  GovernanceStaker,
-  GovernanceStakerPermitAndStake,
-  GovernanceStakerOnBehalf,
-  GovernanceStakerDelegateSurrogateVotes
+contract StakerHarness is
+  Staker,
+  StakerPermitAndStake,
+  StakerOnBehalf,
+  StakerDelegateSurrogateVotes
 {
   constructor(
     IERC20 _rewardsToken,
@@ -30,9 +29,9 @@ contract GovernanceStakerHarness is
     address _admin,
     string memory _name
   )
-    GovernanceStaker(_rewardsToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin)
-    GovernanceStakerPermitAndStake(_stakeToken)
-    GovernanceStakerDelegateSurrogateVotes(_stakeToken)
+    Staker(_rewardsToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin)
+    StakerPermitAndStake(_stakeToken)
+    StakerDelegateSurrogateVotes(_stakeToken)
     EIP712(_name, "1")
   {
     MAX_CLAIM_FEE = 1e18;

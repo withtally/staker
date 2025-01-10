@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {GovernanceStaker} from "src/GovernanceStaker.sol";
+import {Staker} from "src/Staker.sol";
 import {IERC20Permit} from "openzeppelin/token/ERC20/extensions/IERC20Permit.sol";
 
-/// @title GovernanceStakerPermitAndStake
+/// @title StakerPermitAndStake
 /// @author [ScopeLift](https://scopelift.co)
-/// @notice This contract extension adds permit functionality to the GovernanceStaker base contract,
+/// @notice This contract extension adds permit functionality to the Staker base contract,
 /// allowing token approvals to happen via signatures rather than requiring a separate transaction.
 /// The permit functionality is used in conjunction with staking operations, improving UX by
 /// enabling users to approve and stake tokens in a single transaction.
 /// Note that this extension requires the stake token to support EIP-2612 permit functionality.
-abstract contract GovernanceStakerPermitAndStake is GovernanceStaker {
+abstract contract StakerPermitAndStake is Staker {
   /// @notice Thrown if an inheritor uses a seperate staking token.
-  error GovernanceStakerPermitAndStake__UnauthorizedToken();
+  error StakerPermitAndStake__UnauthorizedToken();
 
   constructor(IERC20Permit _permitToken) {
     if (address(STAKE_TOKEN) != address(_permitToken)) {
-      revert GovernanceStakerPermitAndStake__UnauthorizedToken();
+      revert StakerPermitAndStake__UnauthorizedToken();
     }
   }
 
