@@ -5,7 +5,6 @@ import {
   ERC20, ERC20Permit, IERC20Permit
 } from "openzeppelin/token/ERC20/extensions/ERC20Permit.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
-import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
 import {IMintable} from "src/interfaces/IMintable.sol";
 

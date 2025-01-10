@@ -2840,7 +2840,6 @@ contract BumpEarningPower is StakerRewardsTest {
     vm.assume(_tipReceiver != address(0) && _tipReceiver != address(govStaker));
     _stakeAmount = _boundToRealisticStake(_stakeAmount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
-    uint256 _initialTipReceiverBalance = rewardToken.balanceOf(_tipReceiver);
     _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
@@ -2863,8 +2862,6 @@ contract BumpEarningPower is StakerRewardsTest {
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
 
-    uint256 _tipReceiverBalanceIncrease =
-      rewardToken.balanceOf(_tipReceiver) - _initialTipReceiverBalance;
     assertEq(govStaker.unclaimedReward(_depositId), _unclaimedRewards - _requestedTip);
   }
 
@@ -3035,7 +3032,6 @@ contract BumpEarningPower is StakerRewardsTest {
     _stakeAmount = _boundToRealisticStake(_stakeAmount);
     _rewardAmount = bound(_rewardAmount, maxBumpTip + 1, 10_000_000e18);
     _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
-    uint256 _initialTipReceiverBalance = rewardToken.balanceOf(_tipReceiver);
 
     // A user deposits staking tokens
     (, Staker.DepositIdentifier _depositId) =

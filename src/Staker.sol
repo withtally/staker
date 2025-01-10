@@ -8,9 +8,6 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {Multicall} from "openzeppelin/utils/Multicall.sol";
 import {SafeCast} from "openzeppelin/utils/math/SafeCast.sol";
-import {Nonces} from "openzeppelin/utils/Nonces.sol";
-import {SignatureChecker} from "openzeppelin/utils/cryptography/SignatureChecker.sol";
-import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
 
 /// @title Staker
 /// @author [ScopeLift](https://scopelift.co)
