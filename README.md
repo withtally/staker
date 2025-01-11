@@ -1,32 +1,44 @@
-***DISCLAIMER: This codebase is not yet audited***
+# Staker
 
-# Governance Staking
-
-Governance Staking rewards a DAO's tokenholders for participating in governance. This staking system distributes rewards to tokenholders whose tokens are active in governance. Rewards generally come from the DAO, funded by protocol revenue and/or issuance of the native token from the treasury.
+Staker is a flexible, configurable staking contract. Staker makes it easy to distribute onchain staking rewards for any ERC20 token.
 
 ## How it works:
 
-- The DAO decides how stakers can be eligible for rewards. The DAO sets up an oracle to put eligiblity scores onchain.
-- Tokenholders stake their tokens. There is no delay to stake or unstake. Stakers set a claimer for their reward, such as themselves.
-- The DAO sends rewards into its Governance Staking.
-- Governance Staking distributes the rewards over time. Each staker's reward is proportional to their staked balance over time.
+### 1. Deploy and configurate a Staker
+- Staker is deployed with a single staking token
+- Staker is deployed with an admin, such as a DAO.
+- Staker is configured to distribute one or more reward tokens
+
+### 2. Tokenholders stake
+- Tokenholders of the staking token can deposit those tokens in Staker.
+- There is no delay to deposit or withdraw.
+- If the staking token is a governance token, depositors can delegate their staked tokens' voting power to themselves or someone else
+- The depositor sets a claimer who can claim the staking rewards, such as themselves or someone else.
+
+### 3. Staker distributes rewards
+- The admin sends rewards into Staker.
+- Optionally, the admin sets eligibility criteria for rewards.
+- Staker distributes those rewards over time.
+- Each tokenholder's reward is proportional to their staked balance over time.
 - Claimers can claim their accrued rewards at any time.
+
+When Staker is used for a protocol or DAO, the rewards are generally funded by protocol revenue and/or issuance of the native token from the treasury.
 
 ## Implementation details:
 
-Governance Staking can be deployed as an immutable contract with minimal governance. It does have some admin functions:
+Staker can be deployed as an immutable contract with minimal governance. It does have some admin functions:
 
 - Adding a new source of rewards
 - Changing the eligibility oracle or the emergency pause guardian
 - Overriding eligibility for a particular address
 
-Staking is compatible with existing `ERC20Votes` governance tokens. It splits voting power by creating a surrogate contract for each delegate.
+The staking token can be an `ERC20` token, including `ERC20Votes` governance tokens. Staker splits up all voting power in Staker by creating a surrogate contract for each delegate.
 
-Governance Staking distributes rewards over a fixed period of time. That gives everyone a chance to stake and minimizes discontinuities from flash staking.
+Staker distributes rewards over a fixed period of time. That gives everyone a chance to stake and minimizes discontinuities from flash staking.
 
-### Governance Staking system
+### Staking system
 
-The governance staking system accepts user stake, delegates their voting power, and distributes rewards for eligibile stakers.
+The staking system accepts user stake, delegates their voting power, and distributes rewards for eligibile stakers.
 
 ```mermaid
 
@@ -35,7 +47,7 @@ stateDiagram-v2
 
     User --> CUF: Stakes tokens
 
-    state GovernanceStaker {
+    state Staker {
         state "Key User Functions" as CUF {
             stake --> claimReward
             claimReward --> withdraw
@@ -63,8 +75,8 @@ stateDiagram-v2
     DelegationSurrogate --> Delegatee: Delegates voting power
     Admin --> CAF: e.g. governance
 
-    RewardNotifier --> GovernanceStaker: Tells Staker about new rewards
-    EarningPowerCalculator --> GovernanceStaker: Calculates eligibility
+    RewardNotifier --> Staker: Tells Staker about new rewards
+    EarningPowerCalculator --> Staker: Calculates eligibility
 
 
 ```
@@ -102,7 +114,7 @@ stateDiagram-v2
     ScoreOracle --> SOF: Updates scores
     Owner --> OF: Admin controls
     Guardian --> GF: Emergency pause
-    PF --> GovernanceStaker: Returns earning power to staking system
+    PF --> Staker: Returns earning power to staking system
 ```
 
 ## Development
