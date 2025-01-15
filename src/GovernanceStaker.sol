@@ -541,7 +541,7 @@ abstract contract GovernanceStaker is INotifiableRewardReceiver, Multicall {
   /// @param _to Destination account of the stake token which is to be transferred.
   /// @param _value Quantity of stake token which is to be transferred.
   function _stakeTokenSafeTransferFrom(address _from, address _to, uint256 _value) internal virtual {
-    SafeERC20.safeTransferFrom(IERC20(address(STAKE_TOKEN)), _from, _to, _value);
+    SafeERC20.safeTransferFrom(STAKE_TOKEN, _from, _to, _value);
   }
 
   /// @notice Internal method which generates and returns a unique, previously unused deposit
