@@ -7,12 +7,13 @@ import {
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
+import {IMintable} from "src/interfaces/IMintable.sol";
 
 /// @dev An ERC20Permit token that allows for public minting and mocks the delegation methods used
 /// in ERC20Votes governance tokens. It does not included check pointing functionality. This
 /// contract is intended only for use as a stand in for contracts that interface with ERC20Votes
 // tokens.
-contract ERC20VotesMock is IERC20Staking, ERC20Permit {
+contract ERC20VotesMock is IERC20Staking, IMintable, ERC20Permit {
   /// @dev Track delegations for mocked delegation methods
   mapping(address account => address delegate) private delegations;
 
