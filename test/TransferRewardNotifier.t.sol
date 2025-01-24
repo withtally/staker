@@ -230,3 +230,33 @@ contract Notify is TransferRewardNotifierTest {
     }
   }
 }
+
+contract Approve is TransferRewardNotifierTest {
+  function testFuzz_ApprovesTheSpenderForTheAmount(address _spender, uint256 _amount) public {
+    vm.assume(_spender != address(0));
+
+    vm.prank(owner);
+    notifier.approve(_spender, _amount);
+
+    assertEq(token.allowance(address(notifier), _spender), _amount);
+  }
+
+  function testFuzz_EmitsAnApprovedEvent(address _spender, uint256 _amount) public {
+    vm.assume(_spender != address(0));
+
+    vm.expectEmit();
+    emit TransferRewardNotifier.Approved(_spender, _amount);
+    vm.prank(owner);
+    notifier.approve(_spender, _amount);
+  }
+
+  function testFuzz_RevertIf_CallerIsNotOwner(address _spender, uint256 _amount, address _notOwner)
+    public
+  {
+    vm.assume(_spender != address(0) && _notOwner != owner);
+
+    vm.prank(_notOwner);
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _notOwner));
+    notifier.approve(_spender, _amount);
+  }
+}
