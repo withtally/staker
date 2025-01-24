@@ -17,6 +17,11 @@ import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 contract TransferRewardNotifier is RewardTokenNotifierBase {
   using SafeERC20 for IERC20;
 
+  /// @notice Emitted when the owner approves an address to spend tokens.
+  /// @param spender The address being granted approval.
+  /// @param amount The amount of tokens approved for spending.
+  event Approved(address indexed spender, uint256 amount);
+
   /// @param _receiver The contract that will receive reward notifications, typically an instance
   /// of Staker.
   /// @param _initialRewardAmount The initial amount of reward tokens to be distributed per
@@ -33,6 +38,17 @@ contract TransferRewardNotifier is RewardTokenNotifierBase {
     RewardTokenNotifierBase(_receiver, _initialRewardAmount, _initialRewardInterval)
     Ownable(_initialOwner)
   {}
+
+  /// @notice Approves an address to transferFrom tokens held by this contract.
+  /// @param _spender The address to approve for token spending.
+  /// @param _amount The amount of tokens to approve.
+  /// @dev Caller must be the contract owner. This enables tokens to be clawed back to end rewards
+  /// as desired.
+  function approve(address _spender, uint256 _amount) external {
+    _checkOwner();
+    TOKEN.approve(_spender, _amount);
+    emit Approved(_spender, _amount);
+  }
 
   /// @inheritdoc RewardTokenNotifierBase
   /// @dev Transfers exactly rewardAmount tokens from this contract's balance to the receiver
