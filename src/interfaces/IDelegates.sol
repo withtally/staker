@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-/// @notice An inteface that contains the necessary `IVotes` functions for the governance staking
+/// @notice An interface that contains the necessary `IVotes` functions for the governance staking
 /// system.
 interface IDelegates {
   function delegate(address delegatee) external;
