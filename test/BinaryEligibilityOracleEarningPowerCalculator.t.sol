@@ -5,7 +5,7 @@ import {Test, console2} from "forge-std/Test.sol";
 import {
   BinaryEligibilityOracleEarningPowerCalculator as EarningPowerCalculator,
   Ownable
-} from "src/BinaryEligibilityOracleEarningPowerCalculator.sol";
+} from "src/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
 
 contract EarningPowerCalculatorTest is Test {
   address public owner;
