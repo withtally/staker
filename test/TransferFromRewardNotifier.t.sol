@@ -20,12 +20,18 @@ contract TransferFromRewardNotifierTest is Test, TestHelpers {
   uint256 initialRewardAmount = 2000e18;
   uint256 initialRewardInterval = 30 days;
 
+  uint256 MIN_REWARD_INTERVAL;
+  uint256 MAX_REWARD_INTERVAL;
+
   function setUp() public virtual {
     token = new ERC20VotesMock();
     receiver = new MockNotifiableRewardReceiver(token);
     notifier = new TransferFromRewardNotifier(
       receiver, initialRewardAmount, initialRewardInterval, owner, source
     );
+    // cache these in tests for convenience
+    MIN_REWARD_INTERVAL = notifier.MIN_REWARD_INTERVAL();
+    MAX_REWARD_INTERVAL = notifier.MAX_REWARD_INTERVAL();
   }
 
   function _assumeSafeOwner(address _owner) public pure {
@@ -63,6 +69,7 @@ contract Constructor is TransferFromRewardNotifierTest {
     _assumeSafeOwner(_owner);
     _assumeSafeMockAddress(_receiver);
     _initialRewardAmount = bound(_initialRewardAmount, 1, type(uint256).max);
+    _initialRewardInterval = bound(_initialRewardInterval, MIN_REWARD_INTERVAL, MAX_REWARD_INTERVAL);
     vm.mockCall(
       _receiver,
       abi.encodeWithSelector(INotifiableRewardReceiver.REWARD_TOKEN.selector),
@@ -96,7 +103,7 @@ contract Constructor is TransferFromRewardNotifierTest {
   }
 
   function testFuzz_EmitsAnEventForSettingTheRewardInterval(uint256 _initialRewardInterval) public {
-    vm.expectEmit();
+    _initialRewardInterval = bound(_initialRewardInterval, MIN_REWARD_INTERVAL, MAX_REWARD_INTERVAL);
     emit RewardTokenNotifierBase.RewardIntervalSet(0, _initialRewardInterval);
     new TransferFromRewardNotifier(
       receiver, initialRewardAmount, _initialRewardInterval, owner, source
@@ -108,6 +115,37 @@ contract Constructor is TransferFromRewardNotifierTest {
     emit TransferFromRewardNotifier.RewardSourceSet(address(0), _initialRewardSource);
     new TransferFromRewardNotifier(
       receiver, initialRewardAmount, initialRewardInterval, owner, _initialRewardSource
+    );
+  }
+
+  function testFuzz_RevertIf_InitialRewardIntervalIsShorterThanTheMinInterval(
+    uint256 _initialRewardInterval
+  ) public {
+    _initialRewardInterval = bound(_initialRewardInterval, 0, MIN_REWARD_INTERVAL - 1);
+
+    vm.expectRevert(RewardTokenNotifierBase.RewardTokenNotifierBase__InvalidParameter.selector);
+    new TransferFromRewardNotifier(
+      INotifiableRewardReceiver(receiver),
+      initialRewardAmount,
+      _initialRewardInterval,
+      owner,
+      source
+    );
+  }
+
+  function testFuzz_RevertIf_InitialRewardIntervalIsLongerThanTheMaxInterval(
+    uint256 _initialRewardInterval
+  ) public {
+    _initialRewardInterval =
+      bound(_initialRewardInterval, MAX_REWARD_INTERVAL + 1, type(uint256).max);
+
+    vm.expectRevert(RewardTokenNotifierBase.RewardTokenNotifierBase__InvalidParameter.selector);
+    new TransferFromRewardNotifier(
+      INotifiableRewardReceiver(receiver),
+      initialRewardAmount,
+      _initialRewardInterval,
+      owner,
+      source
     );
   }
 
@@ -156,6 +194,8 @@ contract SetRewardAmount is TransferFromRewardNotifierTest {
 
 contract SetRewardInterval is TransferFromRewardNotifierTest {
   function testFuzz_UpdatesTheRewardInterval(uint256 _newRewardInterval) public {
+    _newRewardInterval = bound(_newRewardInterval, MIN_REWARD_INTERVAL, MAX_REWARD_INTERVAL);
+
     vm.prank(owner);
     notifier.setRewardInterval(_newRewardInterval);
 
@@ -163,6 +203,8 @@ contract SetRewardInterval is TransferFromRewardNotifierTest {
   }
 
   function testFuzz_EmitsAnEventForSettingTheRewardInterval(uint256 _newRewardInterval) public {
+    _newRewardInterval = bound(_newRewardInterval, MIN_REWARD_INTERVAL, MAX_REWARD_INTERVAL);
+
     vm.expectEmit();
     emit RewardTokenNotifierBase.RewardIntervalSet(initialRewardInterval, _newRewardInterval);
     vm.prank(owner);
@@ -171,8 +213,30 @@ contract SetRewardInterval is TransferFromRewardNotifierTest {
 
   function testFuzz_RevertIf_CallerIsNotOwner(uint256 _newRewardInterval, address _notOwner) public {
     vm.assume(_notOwner != owner);
+    _newRewardInterval = bound(_newRewardInterval, MIN_REWARD_INTERVAL, MAX_REWARD_INTERVAL);
+
     vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _notOwner));
     vm.prank(_notOwner);
+    notifier.setRewardInterval(_newRewardInterval);
+  }
+
+  function testFuzz_RevertIf_NewIntervalIsShorterThanTheMinInterval(uint256 _newRewardInterval)
+    public
+  {
+    _newRewardInterval = bound(_newRewardInterval, 0, MIN_REWARD_INTERVAL - 1);
+
+    vm.prank(owner);
+    vm.expectRevert(RewardTokenNotifierBase.RewardTokenNotifierBase__InvalidParameter.selector);
+    notifier.setRewardInterval(_newRewardInterval);
+  }
+
+  function testFuzz_RevertIf_NewIntervalIsLongerThanTheMaxInterval(uint256 _newRewardInterval)
+    public
+  {
+    _newRewardInterval = bound(_newRewardInterval, MAX_REWARD_INTERVAL + 1, type(uint256).max);
+
+    vm.prank(owner);
+    vm.expectRevert(RewardTokenNotifierBase.RewardTokenNotifierBase__InvalidParameter.selector);
     notifier.setRewardInterval(_newRewardInterval);
   }
 }
@@ -320,7 +384,7 @@ contract Notify is TransferFromRewardNotifierTest {
       // bound and label values
       _amount = bound(_amount, 1, 10_000_000_000e18);
       _extraAmount = bound(_extraAmount, 0, 1_000_000e18);
-      _interval = bound(_interval, 1 minutes, 520 weeks);
+      _interval = bound(_interval, MIN_REWARD_INTERVAL, MAX_REWARD_INTERVAL);
       _extraTime = bound(_extraTime, 0, 1 days);
       vm.label(_source, "Source");
       vm.label(_caller, "Caller");
