@@ -62,6 +62,7 @@ contract Constructor is TransferFromRewardNotifierTest {
   ) public {
     _assumeSafeOwner(_owner);
     _assumeSafeMockAddress(_receiver);
+    _initialRewardAmount = bound(_initialRewardAmount, 1, type(uint256).max);
     vm.mockCall(
       _receiver,
       abi.encodeWithSelector(INotifiableRewardReceiver.REWARD_TOKEN.selector),
@@ -85,6 +86,8 @@ contract Constructor is TransferFromRewardNotifierTest {
   }
 
   function testFuzz_EmitsAnEventForSettingTheRewardAmount(uint256 _initialRewardAmount) public {
+    _initialRewardAmount = bound(_initialRewardAmount, 1, type(uint256).max);
+
     vm.expectEmit();
     emit RewardTokenNotifierBase.RewardAmountSet(0, _initialRewardAmount);
     new TransferFromRewardNotifier(
@@ -107,10 +110,19 @@ contract Constructor is TransferFromRewardNotifierTest {
       receiver, initialRewardAmount, initialRewardInterval, owner, _initialRewardSource
     );
   }
+
+  function test_RevertIf_InitialRewardRewardAmountIsZero() public {
+    vm.expectRevert(RewardTokenNotifierBase.RewardTokenNotifierBase__InvalidParameter.selector);
+    new TransferFromRewardNotifier(
+      INotifiableRewardReceiver(receiver), 0, initialRewardInterval, owner, source
+    );
+  }
 }
 
 contract SetRewardAmount is TransferFromRewardNotifierTest {
   function testFuzz_UpdatesTheRewardAmount(uint256 _newRewardAmount) public {
+    _newRewardAmount = bound(_newRewardAmount, 1, type(uint256).max);
+
     vm.prank(owner);
     notifier.setRewardAmount(_newRewardAmount);
 
@@ -118,6 +130,8 @@ contract SetRewardAmount is TransferFromRewardNotifierTest {
   }
 
   function testFuzz_EmitsAnEventForSettingTheRewardAmount(uint256 _newRewardAmount) public {
+    _newRewardAmount = bound(_newRewardAmount, 1, type(uint256).max);
+
     vm.expectEmit();
     emit RewardTokenNotifierBase.RewardAmountSet(initialRewardAmount, _newRewardAmount);
     vm.prank(owner);
@@ -125,10 +139,18 @@ contract SetRewardAmount is TransferFromRewardNotifierTest {
   }
 
   function testFuzz_RevertIf_CallerIsNotOwner(uint256 _newRewardAmount, address _notOwner) public {
+    _newRewardAmount = bound(_newRewardAmount, 1, type(uint256).max);
     vm.assume(_notOwner != owner);
+
     vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _notOwner));
     vm.prank(_notOwner);
     notifier.setRewardAmount(_newRewardAmount);
+  }
+
+  function test_RevertIf_NewRewardAmountIsZero() public {
+    vm.expectRevert(RewardTokenNotifierBase.RewardTokenNotifierBase__InvalidParameter.selector);
+    vm.prank(owner);
+    notifier.setRewardAmount(0);
   }
 }
 
