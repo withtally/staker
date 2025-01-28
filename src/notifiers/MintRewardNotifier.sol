@@ -5,7 +5,6 @@ import {INotifiableRewardReceiver, IERC20} from "src/interfaces/INotifiableRewar
 import {IMintable} from "src/interfaces/IMintable.sol";
 import {RewardTokenNotifierBase} from "src/notifiers/RewardTokenNotifierBase.sol";
 import {Ownable} from "openzeppelin/access/Ownable.sol";
-import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 
 /// @title MintRewardNotifier
 /// @author [ScopeLift](https://scopelift.co)
@@ -17,8 +16,6 @@ import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 /// well as the minter contract that will create new tokens. The minter must implement the
 /// IMintable interface and grant this contract permission to mint tokens.
 contract MintRewardNotifier is RewardTokenNotifierBase {
-  using SafeERC20 for IERC20;
-
   /// @notice Emitted when the minter contract is changed.
   /// @param oldMinter The previous contract authorized to mint reward tokens.
   /// @param newMinter The new contract authorized to mint reward tokens.
@@ -66,8 +63,9 @@ contract MintRewardNotifier is RewardTokenNotifierBase {
   }
 
   /// @inheritdoc RewardTokenNotifierBase
-  /// @dev Mints exactly rewardAmount tokens directly to the receiver using the minter contract.
-  /// The minter must have granted this contract permission to mint tokens.
+  /// @notice Mints exactly rewardAmount tokens directly to the receiver using the minter contract.
+  /// @dev The minter must have granted this contract permission to mint tokens.
+  /// @dev The call to `mint` **must revert** if it fails to provide tokens to the receiver.
   function _sendTokensToReceiver() internal virtual override {
     minter.mint(address(RECEIVER), rewardAmount);
   }

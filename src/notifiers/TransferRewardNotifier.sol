@@ -46,7 +46,7 @@ contract TransferRewardNotifier is RewardTokenNotifierBase {
   /// as desired.
   function approve(address _spender, uint256 _amount) external {
     _checkOwner();
-    TOKEN.approve(_spender, _amount);
+    TOKEN.safeIncreaseAllowance(_spender, _amount);
     emit Approved(_spender, _amount);
   }
 
@@ -55,6 +55,6 @@ contract TransferRewardNotifier is RewardTokenNotifierBase {
   /// using transfer. This contract must have a sufficient balance of reward tokens for the
   /// transfer to succeed.
   function _sendTokensToReceiver() internal virtual override {
-    TOKEN.transfer(address(RECEIVER), rewardAmount);
+    TOKEN.safeTransfer(address(RECEIVER), rewardAmount);
   }
 }
