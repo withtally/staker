@@ -49,6 +49,16 @@ abstract contract RewardTokenNotifierBase is Ownable {
   /// @notice The ERC20 token in which rewards are denominated.
   IERC20 public immutable TOKEN;
 
+  /// @notice The minimum value to which the reward interval can be set.
+  /// @dev If an inheriting contract wants to allow for a shorter reward interval, this value can be
+  /// overwritten explicitly by the inheriting contract in its own constructor.
+  uint256 public immutable MIN_REWARD_INTERVAL = 1 days;
+
+  /// @notice The maximum value to which the reward interval can be set.
+  /// @dev If an inheriting contract wants to allow for a longer reward interval, this value can be
+  /// overwritten explicitly by the inheriting contract in its own constructor.
+  uint256 public immutable MAX_REWARD_INTERVAL = 365 days;
+
   /// @notice The amount of reward tokens to be distributed in each notification.
   uint256 public rewardAmount;
 
@@ -64,6 +74,10 @@ abstract contract RewardTokenNotifierBase is Ownable {
   /// notification.
   /// @param _initialRewardInterval The initial minimum time that must elapse between
   /// notifications.
+  /// @dev Care must be taken when initializing a reward interval, because the interval until the
+  /// next notification is saved at the time a `notify` is called. This means, if an unacceptably
+  /// long reward time is set, the tokens must be revoked and a new notifier must be deployed to
+  /// resolve the problem.
   constructor(
     INotifiableRewardReceiver _receiver,
     uint256 _initialRewardAmount,
@@ -102,6 +116,10 @@ abstract contract RewardTokenNotifierBase is Ownable {
   /// @notice Sets a new reward interval to be used between future notifications.
   /// @param _newRewardInterval The new minimum time that must elapse between notifications.
   /// @dev Caller must be the contract owner.
+  /// @dev Care must be taken when setting a reward interval, because the interval until the next
+  /// notification is saved at the time a `notify` is called. This means, if an unacceptably long
+  /// reward time is set, the tokens must be revoked and a new notifier must be deployed to resolve
+  /// the problem.
   function setRewardInterval(uint256 _newRewardInterval) external virtual {
     _checkOwner();
     _setRewardInterval(_newRewardInterval);
@@ -119,6 +137,10 @@ abstract contract RewardTokenNotifierBase is Ownable {
   /// @notice Internal helper method which sets a new reward interval.
   /// @param _newRewardInterval The new minimum time that must elapse between notifications.
   function _setRewardInterval(uint256 _newRewardInterval) internal {
+    if (_newRewardInterval < MIN_REWARD_INTERVAL || _newRewardInterval > MAX_REWARD_INTERVAL) {
+      revert RewardTokenNotifierBase__InvalidParameter();
+    }
+
     emit RewardIntervalSet(rewardInterval, _newRewardInterval);
     rewardInterval = _newRewardInterval;
   }
