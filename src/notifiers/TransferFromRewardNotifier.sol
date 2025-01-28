@@ -69,6 +69,6 @@ contract TransferFromRewardNotifier is RewardTokenNotifierBase {
   /// using transferFrom. The rewardSource must have approved this contract to spend at least
   /// rewardAmount tokens.
   function _sendTokensToReceiver() internal virtual override {
-    TOKEN.transferFrom(rewardSource, address(RECEIVER), rewardAmount);
+    TOKEN.safeTransferFrom(rewardSource, address(RECEIVER), rewardAmount);
   }
 }
