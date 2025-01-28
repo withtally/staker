@@ -41,6 +41,8 @@ abstract contract RewardTokenNotifierBase is Ownable {
   /// @notice Thrown if a caller attempts to notify rewards before the reward interval has elapsed.
   error RewardTokenNotifierBase__RewardIntervalNotElapsed();
 
+  error RewardTokenNotifierBase__InvalidParameter();
+
   /// @notice The contract that will receive reward notifications. Typically an instance of Staker.
   INotifiableRewardReceiver public immutable RECEIVER;
 
@@ -108,6 +110,8 @@ abstract contract RewardTokenNotifierBase is Ownable {
   /// @notice Internal helper method which sets a new reward amount.
   /// @param _newRewardAmount The new amount of reward tokens to distribute per notification.
   function _setRewardAmount(uint256 _newRewardAmount) internal {
+    if (_newRewardAmount == 0) revert RewardTokenNotifierBase__InvalidParameter();
+
     emit RewardAmountSet(rewardAmount, _newRewardAmount);
     rewardAmount = _newRewardAmount;
   }

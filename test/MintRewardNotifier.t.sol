@@ -51,6 +51,7 @@ contract Constructor is MintRewardNotifierTest {
   ) public {
     _assumeSafeOwner(_owner);
     _assumeSafeMockAddress(_receiver);
+    _initialRewardAmount = bound(_initialRewardAmount, 1, type(uint256).max);
     vm.mockCall(
       _receiver,
       abi.encodeWithSelector(INotifiableRewardReceiver.REWARD_TOKEN.selector),
@@ -74,6 +75,8 @@ contract Constructor is MintRewardNotifierTest {
   }
 
   function testFuzz_EmitsAnEventForSettingTheRewardAmount(uint256 _initialRewardAmount) public {
+    _initialRewardAmount = bound(_initialRewardAmount, 1, type(uint256).max);
+
     vm.expectEmit();
     emit RewardTokenNotifierBase.RewardAmountSet(0, _initialRewardAmount);
     new MintRewardNotifier(receiver, _initialRewardAmount, initialRewardInterval, owner, token);
