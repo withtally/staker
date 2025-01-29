@@ -2,194 +2,32 @@
 pragma solidity ^0.8.23;
 
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
+import {StakerTestBase} from "test/StakerTestBase.sol";
 import {Staker, IERC20, IEarningPowerCalculator} from "src/Staker.sol";
 import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
 import {StakerHarness} from "test/harnesses/StakerHarness.sol";
-import {StakerOnBehalf} from "src/extensions/StakerOnBehalf.sol";
-import {ERC20VotesMock, ERC20Permit} from "test/mocks/MockERC20Votes.sol";
 import {IERC20Errors} from "openzeppelin/interfaces/draft-IERC6093.sol";
-import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
-import {MockFullEarningPowerCalculator} from "test/mocks/MockFullEarningPowerCalculator.sol";
-import {PercentAssertions} from "test/helpers/PercentAssertions.sol";
 
-contract StakerTest is Test, PercentAssertions {
-  ERC20Fake rewardToken;
-  ERC20VotesMock govToken;
-  MockFullEarningPowerCalculator earningPowerCalculator;
-
-  address admin;
-  address rewardNotifier;
+contract StakerTest is StakerTestBase {
   StakerHarness govStaker;
-  uint256 SCALE_FACTOR;
   bytes32 EIP712_DOMAIN_SEPARATOR;
-  uint256 maxBumpTip = 1e18;
 
   bytes32 constant PERMIT_TYPEHASH =
     keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-  event RewardNotifierSet(address indexed account, bool isEnabled);
-  event AdminSet(address indexed oldAdmin, address indexed newAdmin);
+  function setUp() public virtual override(StakerTestBase) {
+    StakerTestBase.setUp();
 
-  mapping(DelegationSurrogate surrogate => bool isKnown) isKnownSurrogate;
-  mapping(address depositor => bool isKnown) isKnownDepositor;
-
-  function setUp() public virtual {
-    // Set the block timestamp to an arbitrary value to avoid introducing assumptions into tests
-    // based on a starting timestamp of 0, which is the default.
-    _jumpAhead(1234);
-
-    rewardToken = new ERC20Fake();
-    vm.label(address(rewardToken), "Reward Token");
-
-    govToken = new ERC20VotesMock();
-    vm.label(address(govToken), "Governance Token");
-
-    rewardNotifier = address(0xaffab1ebeef);
-    vm.label(rewardNotifier, "Reward Notifier");
-
-    earningPowerCalculator = new MockFullEarningPowerCalculator();
-    vm.label(address(earningPowerCalculator), "Full Earning Power Calculator");
-
-    admin = makeAddr("admin");
-
-    govStaker =
-      new StakerHarness(rewardToken, govToken, earningPowerCalculator, maxBumpTip, admin, "Staker");
-    vm.label(address(govStaker), "GovStaker");
-
-    vm.prank(admin);
-    govStaker.setRewardNotifier(rewardNotifier, true);
+    govStaker = StakerHarness(address(baseStaker));
 
     // Convenience for use in tests
-    SCALE_FACTOR = govStaker.SCALE_FACTOR();
     EIP712_DOMAIN_SEPARATOR = govStaker.DOMAIN_SEPARATOR();
   }
 
-  function _min(uint256 _leftValue, uint256 _rightValue) internal pure returns (uint256) {
-    return _leftValue > _rightValue ? _rightValue : _leftValue;
-  }
-
-  function _jumpAhead(uint256 _seconds) public {
-    vm.warp(block.timestamp + _seconds);
-  }
-
-  function _boundMintAmount(uint256 _amount) internal pure returns (uint256) {
-    return bound(_amount, 0, 100_000_000e18);
-  }
-
-  function _mintGovToken(address _to, uint256 _amount) internal {
-    vm.assume(_to != address(0));
-    govToken.mint(_to, _amount);
-  }
-
-  function _boundToRealisticStake(uint256 _stakeAmount)
-    public
-    pure
-    returns (uint256 _boundedStakeAmount)
-  {
-    _boundedStakeAmount = bound(_stakeAmount, 0.1e18, 25_000_000e18);
-  }
-
-  // Remember each depositor and surrogate (as they're deployed) and ensure that there is
-  // no overlap between them. This is to prevent the fuzzer from selecting a surrogate as a
-  // depositor or vice versa.
-  function _assumeSafeDepositorAndSurrogate(address _depositor, address _delegatee) internal {
-    DelegationSurrogate _surrogate = govStaker.surrogates(_delegatee);
-    isKnownDepositor[_depositor] = true;
-    isKnownSurrogate[_surrogate] = true;
-
-    vm.assume(
-      (!isKnownSurrogate[DelegationSurrogate(_depositor)])
-        && (!isKnownDepositor[address(_surrogate)])
-    );
-  }
-
-  function _setClaimFeeAndCollector(uint96 _amount, address _collector) internal {
-    Staker.ClaimFeeParameters memory _params =
-      Staker.ClaimFeeParameters({feeAmount: _amount, feeCollector: _collector});
-
-    vm.prank(admin);
-    govStaker.setClaimFeeParameters(_params);
-  }
-
-  function _stake(address _depositor, uint256 _amount, address _delegatee)
-    internal
-    returns (Staker.DepositIdentifier _depositId)
-  {
-    vm.assume(_delegatee != address(0));
-
-    vm.startPrank(_depositor);
-    govToken.approve(address(govStaker), _amount);
-    _depositId = govStaker.stake(_amount, _delegatee);
-    vm.stopPrank();
-
-    // Called after the stake so the surrogate will exist
-    _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
-  }
-
-  function _stake(address _depositor, uint256 _amount, address _delegatee, address _claimer)
-    internal
-    returns (Staker.DepositIdentifier _depositId)
-  {
-    vm.assume(_delegatee != address(0) && _claimer != address(0));
-
-    vm.startPrank(_depositor);
-    govToken.approve(address(govStaker), _amount);
-    _depositId = govStaker.stake(_amount, _delegatee, _claimer);
-    vm.stopPrank();
-
-    // Called after the stake so the surrogate will exist
-    _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
-  }
-
-  function _fetchDeposit(Staker.DepositIdentifier _depositId)
-    internal
-    view
-    returns (Staker.Deposit memory)
-  {
-    (
-      uint96 _balance,
-      address _owner,
-      uint96 _earningPower,
-      address _delegatee,
-      address _claimer,
-      uint256 _rewardPerTokenCheckpoint,
-      uint256 _scaledUnclaimedRewardCheckpoint
-    ) = govStaker.deposits(_depositId);
-    return Staker.Deposit({
-      balance: _balance,
-      owner: _owner,
-      delegatee: _delegatee,
-      claimer: _claimer,
-      earningPower: _earningPower,
-      rewardPerTokenCheckpoint: _rewardPerTokenCheckpoint,
-      scaledUnclaimedRewardCheckpoint: _scaledUnclaimedRewardCheckpoint
-    });
-  }
-
-  function _boundMintAndStake(address _depositor, uint256 _amount, address _delegatee)
-    internal
-    returns (uint256 _boundedAmount, Staker.DepositIdentifier _depositId)
-  {
-    _boundedAmount = _boundMintAmount(_amount);
-    _mintGovToken(_depositor, _boundedAmount);
-    _depositId = _stake(_depositor, _boundedAmount, _delegatee);
-  }
-
-  function _boundMintAndStake(
-    address _depositor,
-    uint256 _amount,
-    address _delegatee,
-    address _claimer
-  ) internal returns (uint256 _boundedAmount, Staker.DepositIdentifier _depositId) {
-    _boundedAmount = _boundMintAmount(_amount);
-    _mintGovToken(_depositor, _boundedAmount);
-    _depositId = _stake(_depositor, _boundedAmount, _delegatee, _claimer);
-  }
-
-  // Scales first param and divides it by second
-  function _scaledDiv(uint256 _x, uint256 _y) public view returns (uint256) {
-    return (_x * SCALE_FACTOR) / _y;
+  function _deployStaker() public virtual override(StakerTestBase) returns (Staker _staker) {
+    return
+      new StakerHarness(rewardToken, govToken, earningPowerCalculator, maxBumpTip, admin, "Staker");
   }
 
   function _sign(uint256 _privateKey, bytes32 _messageHash) internal pure returns (bytes memory) {
@@ -2334,7 +2172,7 @@ contract SetRewardNotifier is StakerTest {
     public
   {
     vm.expectEmit();
-    emit RewardNotifierSet(_rewardNotifier, _isEnabled);
+    emit Staker.RewardNotifierSet(_rewardNotifier, _isEnabled);
     vm.prank(admin);
     govStaker.setRewardNotifier(_rewardNotifier, _isEnabled);
   }
@@ -2368,7 +2206,7 @@ contract SetAdmin is StakerTest {
     vm.assume(_newAdmin != address(0));
 
     vm.expectEmit();
-    emit AdminSet(admin, _newAdmin);
+    emit Staker.AdminSet(admin, _newAdmin);
 
     vm.prank(admin);
     govStaker.setAdmin(_newAdmin);
