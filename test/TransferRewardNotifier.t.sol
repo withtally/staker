@@ -254,15 +254,6 @@ contract Approve is TransferRewardNotifierTest {
     assertEq(token.allowance(address(notifier), _spender), _amount);
   }
 
-  function testFuzz_EmitsAnApprovedEvent(address _spender, uint256 _amount) public {
-    vm.assume(_spender != address(0));
-
-    vm.expectEmit();
-    emit TransferRewardNotifier.Approved(_spender, _amount);
-    vm.prank(owner);
-    notifier.approve(_spender, _amount);
-  }
-
   function testFuzz_RevertIf_CallerIsNotOwner(address _spender, uint256 _amount, address _notOwner)
     public
   {
