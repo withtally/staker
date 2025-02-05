@@ -1,42 +1,42 @@
 {
-  "generatedAt": 1738772416,
+  "generatedAt": 1738772511,
   "reportName:": "gov-stakerGasReport",
   "results": [
     {
       "scenarioName": "First stake to a new delegatee",
-      "gasUsed": 330405
+      "gasUsed": 331255
     },
     {
       "scenarioName": "Second stake to a existing delegatee",
-      "gasUsed": 164123
+      "gasUsed": 164973
     },
     {
       "scenarioName": "Second stake to a new delegatee",
-      "gasUsed": 296205
+      "gasUsed": 297055
     },
     {
       "scenarioName": "Stake more after initial stake",
-      "gasUsed": 101547
+      "gasUsed": 101818
     },
     {
       "scenarioName": "Alter delegatee with new delegatee",
-      "gasUsed": 218435
+      "gasUsed": 218712
     },
     {
       "scenarioName": "Alter delegatee with existing delegatee",
-      "gasUsed": 86329
+      "gasUsed": 86606
     },
     {
       "scenarioName": "Alter claimer to a new address",
-      "gasUsed": 69400
+      "gasUsed": 69683
     },
     {
       "scenarioName": "Withdraw full stake",
-      "gasUsed": 110554
+      "gasUsed": 110825
     },
     {
       "scenarioName": "Withdraw partial stake",
-      "gasUsed": 124954
+      "gasUsed": 125225
     },
     {
       "scenarioName": "Claim reward when no reward",
@@ -44,7 +44,7 @@
     },
     {
       "scenarioName": "Claim reward when reward",
-      "gasUsed": 164840
+      "gasUsed": 165132
     },
     {
       "scenarioName": "Notify reward",

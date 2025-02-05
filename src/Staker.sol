@@ -34,26 +34,45 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Emitted when stake is deposited by a depositor, either to a new deposit or one that
   /// already exists.
   event StakeDeposited(
-    address owner, DepositIdentifier indexed depositId, uint256 amount, uint256 depositBalance
+    address owner,
+    DepositIdentifier indexed depositId,
+    uint256 amount,
+    uint256 depositBalance,
+    uint256 earningPower
   );
 
   /// @notice Emitted when a depositor withdraws some portion of stake from a given deposit.
   event StakeWithdrawn(
-    address owner, DepositIdentifier indexed depositId, uint256 amount, uint256 depositBalance
+    address owner,
+    DepositIdentifier indexed depositId,
+    uint256 amount,
+    uint256 depositBalance,
+    uint256 earningPower
   );
 
   /// @notice Emitted when a deposit's delegatee is changed.
   event DelegateeAltered(
-    DepositIdentifier indexed depositId, address oldDelegatee, address newDelegatee
+    DepositIdentifier indexed depositId,
+    address oldDelegatee,
+    address newDelegatee,
+    uint256 earningPower
   );
 
   /// @notice Emitted when a deposit's claimer is changed.
   event ClaimerAltered(
-    DepositIdentifier indexed depositId, address indexed oldClaimer, address indexed newClaimer
+    DepositIdentifier indexed depositId,
+    address indexed oldClaimer,
+    address indexed newClaimer,
+    uint256 earningPower
   );
 
   /// @notice Emitted when a claimer claims their earned reward.
-  event RewardClaimed(DepositIdentifier indexed depositId, address indexed claimer, uint256 amount);
+  event RewardClaimed(
+    DepositIdentifier indexed depositId,
+    address indexed claimer,
+    uint256 amount,
+    uint256 earningPower
+  );
 
   /// @notice Emitted when this contract is notified of a new reward.
   event RewardNotified(uint256 amount, address notifier);
@@ -82,6 +101,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     DepositIdentifier indexed depositId,
     uint256 oldEarningPower,
     uint256 newEarningPower,
+    address bumper,
     address tipReceiver,
     uint256 tipAmount
   );
@@ -504,7 +524,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     }
 
     emit EarningPowerBumped(
-      _depositId, deposit.earningPower, _newEarningPower, _tipReceiver, _requestedTip
+      _depositId, deposit.earningPower, _newEarningPower, msg.sender, _tipReceiver, _requestedTip
     );
 
     // Update global earning power & deposit earning power based on this bump
@@ -592,9 +612,9 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
       scaledUnclaimedRewardCheckpoint: 0
     });
     _stakeTokenSafeTransferFrom(_depositor, address(_surrogate), _amount);
-    emit StakeDeposited(_depositor, _depositId, _amount, _amount);
-    emit ClaimerAltered(_depositId, address(0), _claimer);
-    emit DelegateeAltered(_depositId, address(0), _delegatee);
+    emit StakeDeposited(_depositor, _depositId, _amount, _amount, _earningPower);
+    emit ClaimerAltered(_depositId, address(0), _claimer, _earningPower);
+    emit DelegateeAltered(_depositId, address(0), _delegatee, _earningPower);
   }
 
   /// @notice Internal convenience method which adds more stake to an existing deposit.
@@ -623,7 +643,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.earningPower = _newEarningPower.toUint96();
     deposit.balance = _newBalance.toUint96();
     _stakeTokenSafeTransferFrom(deposit.owner, address(_surrogate), _amount);
-    emit StakeDeposited(deposit.owner, _depositId, _amount, deposit.balance);
+    emit StakeDeposited(deposit.owner, _depositId, _amount, _newBalance, _newEarningPower);
   }
 
   /// @notice Internal convenience method which alters the delegatee of an existing deposit.
@@ -648,7 +668,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
       deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
 
-    emit DelegateeAltered(_depositId, deposit.delegatee, _newDelegatee);
+    emit DelegateeAltered(_depositId, deposit.delegatee, _newDelegatee, _newEarningPower);
     deposit.delegatee = _newDelegatee;
     deposit.earningPower = _newEarningPower.toUint96();
     DelegationSurrogate _newSurrogate = _fetchOrDeploySurrogate(_newDelegatee);
@@ -678,7 +698,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
     deposit.earningPower = _newEarningPower.toUint96();
 
-    emit ClaimerAltered(_depositId, deposit.claimer, _newClaimer);
+    emit ClaimerAltered(_depositId, deposit.claimer, _newClaimer, _newEarningPower);
     deposit.claimer = _newClaimer;
   }
 
@@ -708,7 +728,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.balance = _newBalance.toUint96();
     deposit.earningPower = _newEarningPower.toUint96();
     _stakeTokenSafeTransferFrom(address(surrogates(deposit.delegatee)), deposit.owner, _amount);
-    emit StakeWithdrawn(deposit.owner, _depositId, _amount, deposit.balance);
+    emit StakeWithdrawn(deposit.owner, _depositId, _amount, _newBalance, _newEarningPower);
   }
 
   /// @notice Internal convenience method which claims earned rewards.
@@ -731,10 +751,11 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     // retain sub-wei dust that would be left due to the precision loss
     deposit.scaledUnclaimedRewardCheckpoint =
       deposit.scaledUnclaimedRewardCheckpoint - (_reward * SCALE_FACTOR);
-    emit RewardClaimed(_depositId, _claimer, _payout);
 
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
+
+    emit RewardClaimed(_depositId, _claimer, _payout, _newEarningPower);
 
     totalEarningPower =
       _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
