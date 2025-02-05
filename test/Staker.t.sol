@@ -2865,6 +2865,48 @@ contract BumpEarningPower is StakerRewardsTest {
     assertEq(govStaker.unclaimedReward(_depositId), _unclaimedRewards - _requestedTip);
   }
 
+  function testFuzz_EmitsAnEarningPowerBumpedEventWhenEarningPowerIsBumpedUp(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint96 _earningPowerIncrease
+  ) public {
+    vm.assume(_tipReceiver != address(0) && _tipReceiver != address(govStaker));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    uint256 _initialTipReceiverBalance = rewardToken.balanceOf(_tipReceiver);
+    _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
+
+    // A user deposits staking tokens
+    (, Staker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    // Tip must be less than the max bump, but also less than rewards for the sake of this test
+    _requestedTip = bound(_requestedTip, 0, _min(maxBumpTip, govStaker.unclaimedReward(_depositId)));
+
+    // The staker's earning power increases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount + _earningPowerIncrease
+    );
+    uint256 _oldEarningPower = _stakeAmount;
+    uint256 _newEarningPower = _stakeAmount + _earningPowerIncrease;
+
+    // Bump earning power is called
+    vm.prank(_bumpCaller);
+    vm.expectEmit();
+    emit Staker.EarningPowerBumped(
+      _depositId, _oldEarningPower, _newEarningPower, _tipReceiver, _requestedTip
+    );
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+  }
+
   function testFuzz_BumpsTheDepositsEarningPowerDown(
     address _depositor,
     address _delegatee,
@@ -3053,6 +3095,48 @@ contract BumpEarningPower is StakerRewardsTest {
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
 
     assertEq(govStaker.unclaimedReward(_depositId), _unclaimedReward - _requestedTip);
+  }
+
+  function testFuzz_EmitsAnEarningPowerBumpedEventWhenEarningPowerIsBumpedDown(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    address _bumpCaller,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _earningPowerDecrease
+  ) public {
+    vm.assume(_tipReceiver != address(0) && _tipReceiver != address(govStaker));
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = bound(_rewardAmount, maxBumpTip + 1, 10_000_000e18);
+    _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
+
+    // A user deposits staking tokens
+    (, Staker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+    // The contract is notified of a reward
+    _mintTransferAndNotifyReward(_rewardAmount);
+    // The full duration passes
+    _jumpAheadByPercentOfRewardDuration(101);
+    uint256 _unclaimedReward = govStaker.unclaimedReward(_depositId);
+    // Tip must be less than the max bump, but also less than rewards for the sake of this test
+    _requestedTip = bound(_requestedTip, 0, _min(maxBumpTip, _unclaimedReward - maxBumpTip));
+
+    // The staker's earning power decreases
+    earningPowerCalculator.__setEarningPowerForDelegatee(
+      _delegatee, _stakeAmount - _earningPowerDecrease
+    );
+    uint256 _oldEarningPower = _stakeAmount;
+    uint256 _newEarningPower = _stakeAmount - _earningPowerDecrease;
+
+    // Bump earning power is called
+    vm.prank(_bumpCaller);
+    vm.expectEmit();
+    emit Staker.EarningPowerBumped(
+      _depositId, _oldEarningPower, _newEarningPower, _tipReceiver, _requestedTip
+    );
+    govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
 
   function testFuzz_RevertIf_RequestedTipIsGreaterThanTheMaxTip(

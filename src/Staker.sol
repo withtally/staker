@@ -77,6 +77,15 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Emitted when a reward notifier address is enabled or disabled.
   event RewardNotifierSet(address indexed account, bool isEnabled);
 
+  /// @notice Emitted when a deposit's earning power is changed via bumping.
+  event EarningPowerBumped(
+    DepositIdentifier indexed depositId,
+    uint256 oldEarningPower,
+    uint256 newEarningPower,
+    address tipReceiver,
+    uint256 tipAmount
+  );
+
   /// @notice Thrown when an account attempts a call for which it lacks appropriate permission.
   /// @param reason Human readable code explaining why the call is unauthorized.
   /// @param caller The address that attempted the unauthorized call.
@@ -493,6 +502,10 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     {
       revert Staker__InsufficientUnclaimedRewards();
     }
+
+    emit EarningPowerBumped(
+      _depositId, deposit.earningPower, _newEarningPower, _tipReceiver, _requestedTip
+    );
 
     // Update global earning power & deposit earning power based on this bump
     totalEarningPower =
