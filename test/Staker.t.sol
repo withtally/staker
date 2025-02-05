@@ -142,6 +142,7 @@ contract Stake is StakerTest {
       _depositor,
       Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
       _amount,
+      _amount,
       _amount
     );
 
@@ -166,7 +167,8 @@ contract Stake is StakerTest {
     emit Staker.ClaimerAltered(
       Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
       address(0),
-      _depositor
+      _depositor,
+      _amount
     );
 
     govStaker.stake(_amount, _delegatee);
@@ -190,7 +192,8 @@ contract Stake is StakerTest {
     emit Staker.DelegateeAltered(
       Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
       address(0),
-      _delegatee
+      _delegatee,
+      _amount
     );
 
     govStaker.stake(_amount, _delegatee);
@@ -234,6 +237,7 @@ contract Stake is StakerTest {
       _depositor,
       Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
       _amount,
+      _amount,
       _amount
     );
 
@@ -259,7 +263,8 @@ contract Stake is StakerTest {
     emit Staker.ClaimerAltered(
       Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
       address(0),
-      _claimer
+      _claimer,
+      _amount
     );
 
     govStaker.stake(_amount, _delegatee, _claimer);
@@ -284,7 +289,8 @@ contract Stake is StakerTest {
     emit Staker.DelegateeAltered(
       Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
       address(0),
-      _delegatee
+      _delegatee,
+      _amount
     );
 
     govStaker.stake(_amount, _delegatee, _claimer);
@@ -1014,10 +1020,10 @@ contract StakeMore is StakerTest {
 
     govStaker.stakeMore(_depositId, _addAmount);
 
+    uint256 _total = _depositAmount + _totalAdditionalStake;
+
     vm.expectEmit();
-    emit Staker.StakeDeposited(
-      _depositor, _depositId, _addAmount, _depositAmount + _totalAdditionalStake
-    );
+    emit Staker.StakeDeposited(_depositor, _depositId, _addAmount, _total, _total);
 
     govStaker.stakeMore(_depositId, _addAmount);
     vm.stopPrank();
@@ -1496,7 +1502,7 @@ contract AlterDelegatee is StakerTest {
       _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _claimer);
 
     vm.expectEmit();
-    emit Staker.DelegateeAltered(_depositId, _firstDelegatee, _newDelegatee);
+    emit Staker.DelegateeAltered(_depositId, _firstDelegatee, _newDelegatee, _depositAmount);
 
     vm.prank(_depositor);
     govStaker.alterDelegatee(_depositId, _newDelegatee);
@@ -1742,7 +1748,7 @@ contract AlterClaimer is StakerTest {
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstClaimer);
 
     vm.expectEmit();
-    emit Staker.ClaimerAltered(_depositId, _firstClaimer, _newClaimer);
+    emit Staker.ClaimerAltered(_depositId, _firstClaimer, _newClaimer, _depositAmount);
 
     vm.prank(_depositor);
     govStaker.alterClaimer(_depositId, _newClaimer);
@@ -2065,10 +2071,10 @@ contract Withdraw is StakerTest {
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
     _withdrawalAmount = bound(_withdrawalAmount, 0, _depositAmount);
 
+    uint256 _newAmount = _depositAmount - _withdrawalAmount;
+
     vm.expectEmit();
-    emit Staker.StakeWithdrawn(
-      _depositor, _depositId, _withdrawalAmount, _depositAmount - _withdrawalAmount
-    );
+    emit Staker.StakeWithdrawn(_depositor, _depositId, _withdrawalAmount, _newAmount, _newAmount);
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId, _withdrawalAmount);
@@ -2878,7 +2884,6 @@ contract BumpEarningPower is StakerRewardsTest {
     vm.assume(_tipReceiver != address(0) && _tipReceiver != address(govStaker));
     _stakeAmount = _boundToRealisticStake(_stakeAmount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
-    uint256 _initialTipReceiverBalance = rewardToken.balanceOf(_tipReceiver);
     _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
@@ -2902,7 +2907,7 @@ contract BumpEarningPower is StakerRewardsTest {
     vm.prank(_bumpCaller);
     vm.expectEmit();
     emit Staker.EarningPowerBumped(
-      _depositId, _oldEarningPower, _newEarningPower, _tipReceiver, _requestedTip
+      _depositId, _oldEarningPower, _newEarningPower, _bumpCaller, _tipReceiver, _requestedTip
     );
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
@@ -3134,7 +3139,7 @@ contract BumpEarningPower is StakerRewardsTest {
     vm.prank(_bumpCaller);
     vm.expectEmit();
     emit Staker.EarningPowerBumped(
-      _depositId, _oldEarningPower, _newEarningPower, _tipReceiver, _requestedTip
+      _depositId, _oldEarningPower, _newEarningPower, _bumpCaller, _tipReceiver, _requestedTip
     );
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
@@ -4876,7 +4881,7 @@ contract ClaimReward is StakerRewardsTest {
     uint256 _earned = govStaker.unclaimedReward(_depositId);
 
     vm.expectEmit();
-    emit Staker.RewardClaimed(_depositId, _depositor, _earned);
+    emit Staker.RewardClaimed(_depositId, _depositor, _earned, _stakeAmount);
 
     vm.prank(_depositor);
     govStaker.claimReward(_depositId);
@@ -4904,7 +4909,7 @@ contract ClaimReward is StakerRewardsTest {
     uint256 _earned = govStaker.unclaimedReward(_depositId);
 
     vm.expectEmit();
-    emit Staker.RewardClaimed(_depositId, _claimer, _earned);
+    emit Staker.RewardClaimed(_depositId, _claimer, _earned, _stakeAmount);
 
     vm.prank(_claimer);
     govStaker.claimReward(_depositId);
@@ -5012,7 +5017,7 @@ contract ClaimReward is StakerRewardsTest {
 
     vm.prank(_depositor);
     vm.expectEmit();
-    emit Staker.RewardClaimed(_depositId, _depositor, _earned - _feeAmount);
+    emit Staker.RewardClaimed(_depositId, _depositor, _earned - _feeAmount, _stakeAmount);
     govStaker.claimReward(_depositId);
   }
 
