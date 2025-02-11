@@ -7,7 +7,11 @@ import {Staker, IERC20, IEarningPowerCalculator} from "src/Staker.sol";
 import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
 import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
 import {StakerHarness} from "test/harnesses/StakerHarness.sol";
-import {MockStakerHarness, StakerDelegateSurrogateVotes, StakerPermitAndStake} from "test/mocks/MockStakerHarness.sol";
+import {
+  MockStakerHarness,
+  StakerDelegateSurrogateVotes,
+  StakerPermitAndStake
+} from "test/mocks/MockStakerHarness.sol";
 import {IERC20Errors} from "openzeppelin/interfaces/draft-IERC6093.sol";
 
 contract StakerTest is StakerTestBase {
