@@ -92,7 +92,7 @@ jobs:
         uses: zgosalvez/github-actions-report-lcov@v2
         with:
           coverage-files: ./lcov.info
-          minimum-coverage: 97.9
+          minimum-coverage: 99.5
 
   lint:
     runs-on: ubuntu-latest
