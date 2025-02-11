@@ -7,6 +7,11 @@ import {Staker, IERC20, IEarningPowerCalculator} from "../src/Staker.sol";
 import {IERC20Staking} from "../src/interfaces/IERC20Staking.sol";
 import {DelegationSurrogate} from "../src/DelegationSurrogate.sol";
 import {StakerHarness} from "./harnesses/StakerHarness.sol";
+import {
+  MockStakerHarness,
+  StakerDelegateSurrogateVotes,
+  StakerPermitAndStake
+} from "./mocks/MockStakerHarness.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 contract StakerTest is StakerTestBase {
@@ -87,6 +92,52 @@ contract Constructor is StakerTest {
     assertEq(address(_govStaker.earningPowerCalculator()), address(_earningPowerCalculator));
     assertEq(_govStaker.maxBumpTip(), _maxBumpTip);
     assertEq(_govStaker.admin(), _admin);
+  }
+
+  function testFuzz_RevertIf_StakeTokenMismatchBetweenStakerAndDelegateSurrogate(
+    address _rewardToken,
+    address _stakerStateToken,
+    address _delegateSurrogateStakeToken,
+    address _earningPowerCalculator,
+    uint256 _maxBumpTip,
+    address _admin
+  ) public {
+    vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
+    vm.assume(address(_stakerStateToken) != address(_delegateSurrogateStakeToken));
+    vm.expectRevert(
+      StakerDelegateSurrogateVotes.StakerDelegateSurrogateVotes__UnauthorizedToken.selector
+    );
+    new MockStakerHarness(
+      IERC20(_rewardToken),
+      IERC20Staking(_stakerStateToken),
+      IERC20Staking(_stakerStateToken),
+      IERC20Staking(_delegateSurrogateStakeToken),
+      IEarningPowerCalculator(_earningPowerCalculator),
+      _maxBumpTip,
+      _admin
+    );
+  }
+
+  function testFuzz_RevertIf_StakeTokenMismatchBetweenStakerAndPermitAndStake(
+    address _rewardToken,
+    address _stakerStateToken,
+    address _permitAndStakeStakeToken,
+    address _earningPowerCalculator,
+    uint256 _maxBumpTip,
+    address _admin
+  ) public {
+    vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
+    vm.assume(address(_stakerStateToken) != address(_permitAndStakeStakeToken));
+    vm.expectRevert(StakerPermitAndStake.StakerPermitAndStake__UnauthorizedToken.selector);
+    new MockStakerHarness(
+      IERC20(_rewardToken),
+      IERC20Staking(_stakerStateToken),
+      IERC20Staking(_permitAndStakeStakeToken),
+      IERC20Staking(_stakerStateToken),
+      IEarningPowerCalculator(_earningPowerCalculator),
+      _maxBumpTip,
+      _admin
+    );
   }
 }
 
@@ -2278,6 +2329,33 @@ contract SetEarningPowerCalculator is StakerTest {
     vm.prank(admin);
     vm.expectRevert(Staker.Staker__InvalidAddress.selector);
     govStaker.setEarningPowerCalculator(address(0));
+  }
+}
+
+contract SetMaxBumpTip is StakerTest {
+  function testFuzz_AllowsAdminToSetMaxBumpTip(uint256 _newMaxBumpTip) public {
+    vm.prank(admin);
+    govStaker.setMaxBumpTip(_newMaxBumpTip);
+
+    assertEq(govStaker.maxBumpTip(), _newMaxBumpTip);
+  }
+
+  function testFuzz_EmitsEventWhenMaxBumpTipIsSet(uint256 _newMaxBumpTip) public {
+    vm.expectEmit();
+    emit Staker.MaxBumpTipSet(govStaker.maxBumpTip(), _newMaxBumpTip);
+
+    vm.prank(admin);
+    govStaker.setMaxBumpTip(_newMaxBumpTip);
+  }
+
+  function testFuzz_RevertIf_TheCallerIsNotTheAdmin(address _caller, uint256 _newMaxBumpTip) public {
+    vm.assume(_caller != admin);
+
+    vm.prank(_caller);
+    vm.expectRevert(
+      abi.encodeWithSelector(Staker.Staker__Unauthorized.selector, bytes32("not admin"), _caller)
+    );
+    govStaker.setMaxBumpTip(_newMaxBumpTip);
   }
 }
 
