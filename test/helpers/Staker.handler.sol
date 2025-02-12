@@ -116,7 +116,7 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
 
     // update handler state
     _depositIds[_currentActor].push(ghost_depositCount);
-    _depositIdSet.add(GovernanceStaker.DepositIdentifier.wrap(ghost_depositCount));
+    _depositIdSet.add(Staker.DepositIdentifier.wrap(ghost_depositCount));
     ghost_depositCount++;
     _surrogates.add(address(govStaker.surrogates(_delegatee)));
     ghost_stakeSum += _amount;
@@ -213,7 +213,7 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
 
   function reduceDeposits(
     uint256 acc,
-    function(uint256,GovernanceStaker.DepositIdentifier) external returns (uint256) func
+    function(uint256,Staker.DepositIdentifier) external returns (uint256) func
   ) public returns (uint256) {
     return _depositIdSet.reduce(acc, func);
   }

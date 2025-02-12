@@ -105,7 +105,7 @@ contract StakerInvariants is Test {
 
   function accumulateUnclaimedReward(
     uint256 unclaimedReward,
-    GovernanceStakerHarness.DepositIdentifier depositId
+    StakerHarness.DepositIdentifier depositId
   ) external view returns (uint256) {
     return unclaimedReward + govStaker.unclaimedReward(depositId);
   }
