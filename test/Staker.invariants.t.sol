@@ -64,7 +64,9 @@ contract StakerInvariants is Test {
   }
 
   function invariant_Sum_of_depositor_earning_power_equals_total_earning_power() public {
-    assertEq(govStaker.totalEarningPower(), handler.reduceDepositors(0, this.accumulateEarningPower));
+    assertEq(
+      govStaker.totalEarningPower(), handler.reduceDepositors(0, this.accumulateEarningPower)
+    );
   }
 
   function invariant_Cumulative_staked_minus_withdrawals_equals_total_stake() public view {
@@ -100,7 +102,11 @@ contract StakerInvariants is Test {
     return balance + govStaker.depositorTotalStaked(depositor);
   }
 
-  function accumulateEarningPower(uint256 earningPower, address depositor) external view returns (uint256) {
+  function accumulateEarningPower(uint256 earningPower, address depositor)
+    external
+    view
+    returns (uint256)
+  {
     return earningPower + govStaker.depositorTotalEarningPower(depositor);
   }
 
