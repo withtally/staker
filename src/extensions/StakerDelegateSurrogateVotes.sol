@@ -18,9 +18,11 @@ abstract contract StakerDelegateSurrogateVotes is Staker {
   /// the staked tokens from deposits which assign voting weight to said delegate.
   mapping(address delegatee => DelegationSurrogate surrogate) private storedSurrogates;
 
-  /// @notice Thrown if an inheritor uses a seperate staking token.
+  /// @notice Thrown if an inheritor misconfigures the staking token on deployment.
   error StakerDelegateSurrogateVotes__UnauthorizedToken();
 
+  /// @param _votingToken The token that is used for voting, which must be the same as the parent
+  /// Staker's STAKE_TOKEN.
   constructor(IERC20Delegates _votingToken) {
     if (address(STAKE_TOKEN) != address(_votingToken)) {
       revert StakerDelegateSurrogateVotes__UnauthorizedToken();

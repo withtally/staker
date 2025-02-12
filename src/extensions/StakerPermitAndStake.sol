@@ -9,12 +9,14 @@ import {IERC20Permit} from "openzeppelin/token/ERC20/extensions/IERC20Permit.sol
 /// @notice This contract extension adds permit functionality to the Staker base contract,
 /// allowing token approvals to happen via signatures rather than requiring a separate transaction.
 /// The permit functionality is used in conjunction with staking operations, improving UX by
-/// enabling users to approve and stake tokens in a single transaction.
-/// Note that this extension requires the stake token to support EIP-2612 permit functionality.
+/// enabling users to approve and stake tokens in a single transaction. Note that this extension
+/// requires the stake token to support EIP-2612 permit functionality.
 abstract contract StakerPermitAndStake is Staker {
-  /// @notice Thrown if an inheritor uses a seperate staking token.
+  /// @notice Thrown if an inheritor misconfigures the staking token on deployment.
   error StakerPermitAndStake__UnauthorizedToken();
 
+  /// @param _permitToken The token that is used for staking, which must support EIP-2612. It also
+  /// must be the same as the parent Staker's STAKE_TOKEN.
   constructor(IERC20Permit _permitToken) {
     if (address(STAKE_TOKEN) != address(_permitToken)) {
       revert StakerPermitAndStake__UnauthorizedToken();
@@ -26,7 +28,7 @@ abstract contract StakerPermitAndStake is Staker {
   /// of the token.
   /// @param _amount Quantity of the staking token to stake.
   /// @param _delegatee Address to assign the governance voting weight of the staked tokens.
-  /// @param _claimer Address that will accrue rewards for this stake.
+  /// @param _claimer Address that will have the right to claim rewards for this stake.
   /// @param _deadline The timestamp after which the permit signature should expire.
   /// @param _v ECDSA signature component: Parity of the `y` coordinate of point `R`
   /// @param _r ECDSA signature component: x-coordinate of `R`

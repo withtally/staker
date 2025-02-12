@@ -62,7 +62,7 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
   /// would-be staked amount of the token.
   /// @param _amount Quantity of the staking token to stake.
   /// @param _delegatee Address to assign the governance voting weight of the staked tokens.
-  /// @param _claimer Address that will accrue rewards for this stake.
+  /// @param _claimer Address that will have the right to claim rewards for this stake.
   /// @param _depositor Address of the user on whose behalf this stake is being made.
   /// @param _deadline The timestamp after which the signature should expire.
   /// @param _signature Signature of the user authorizing this stake.
@@ -99,7 +99,9 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
 
   /// @notice Add more staking tokens to an existing deposit on behalf of a user, using a signature
   /// to validate the user's intent. A staker should call this method when they have an existing
-  /// deposit, and wish to stake more while retaining the same delegatee and claimer.
+  /// deposit, and wish to stake more while retaining the same delegatee and claimer. The caller
+  /// must pre-approve the staking contract to spend at least the would-be staked amount of the
+  /// token.
   /// @param _depositId Unique identifier of the deposit to which stake will be added.
   /// @param _amount Quantity of stake to be added.
   /// @param _depositor Address of the user on whose behalf this stake is being made.
@@ -134,7 +136,7 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
   /// assigned on behalf of a user, using a signature to validate the user's intent.
   /// @param _depositId Unique identifier of the deposit which will have its delegatee altered.
   /// @param _newDelegatee Address of the new governance delegate.
-  /// @param _depositor Address of the user on whose behalf this stake is being made.
+  /// @param _depositor Address of the user on whose behalf this action is being taken.
   /// @param _deadline The timestamp after which the signature should expire.
   /// @param _signature Signature of the user authorizing this stake.
   /// @dev The new delegatee may not be the zero address.
@@ -173,7 +175,7 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
   /// user's intent.
   /// @param _depositId Unique identifier of the deposit which will have its claimer altered.
   /// @param _newClaimer Address of the new claimer.
-  /// @param _depositor Address of the user on whose behalf this stake is being made.
+  /// @param _depositor Address of the user on whose behalf this action is being taken.
   /// @param _deadline The timestamp after which the signature should expire.
   /// @param _signature Signature of the user authorizing this stake.
   /// @dev The new claimer may not be the zero address.
@@ -211,7 +213,7 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
   /// signature to validate the user's intent.
   /// @param _depositId Unique identifier of the deposit from which stake will be withdrawn.
   /// @param _amount Quantity of staked token to withdraw.
-  /// @param _depositor Address of the user on whose behalf this stake is being made.
+  /// @param _depositor Address of the user on whose behalf this action is being taken.
   /// @param _deadline The timestamp after which the signature should expire.
   /// @param _signature Signature of the user authorizing this stake.
   /// @dev Stake is withdrawn to the deposit owner's account.
@@ -245,7 +247,7 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
   /// the claimer.
   /// @param _depositId The identifier for the deposit for which to claim rewards.
   /// @param _deadline The timestamp after which the signature should expire.
-  /// @param _signature Signature of the claimer authorizing this reward claim.
+  /// @param _signature Signature of the claimer or owner authorizing this reward claim.
   /// @return Amount of reward tokens claimed, after the fee has been assessed.
   function claimRewardOnBehalf(
     DepositIdentifier _depositId,
@@ -273,7 +275,8 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
     return _claimReward(_depositId, deposit, deposit.owner);
   }
 
-  /// @notice Internal helper method which reverts if the provided deadline has passed.
+  /// @notice Internal helper method which reverts with StakerOnBehalf__ExpiredDeadline if the
+  /// provided deadline has passed.
   /// @param _deadline The timestamp that represents when the operation should no longer be valid.
   function _revertIfPastDeadline(uint256 _deadline) internal view virtual {
     if (block.timestamp > _deadline) revert StakerOnBehalf__ExpiredDeadline();
