@@ -7,7 +7,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 /// @author [ScopeLift](https://scopelift.co)
 /// @notice The communication interface between contracts that distribute rewards and the
 /// Staker contract. In particular, said contracts only need to know the staker
-/// implements the specified method in order to forward payouts to the staker contract. The
+/// implements the specified methods in order to forward payouts to the staker contract. The
 /// Staker contract receives the rewards and abstracts the distribution mechanics.
 interface INotifiableRewardReceiver {
   /// @notice ERC20 token in which rewards are denominated and distributed.

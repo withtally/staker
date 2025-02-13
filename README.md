@@ -1,18 +1,18 @@
 # Staker
 
-Staker is a flexible, configurable staking contract. Staker makes it easy to distribute onchain staking rewards for any ERC20 token.
+Staker is a flexible, configurable staking contract. Staker makes it easy to distribute onchain staking rewards for any ERC20 token, including DAO governance tokens.
 
 ## How it works:
 
 ### 1. Deploy and configure a Staker
-- Staker is deployed with a single staking token
+- Staker is deployed with a single staking token.
 - Staker is deployed with an admin, such as a DAO.
-- Staker is configured to distribute one or more reward tokens
+- Staker is configured to collect and distribute reward tokens.
 
 ### 2. Tokenholders stake
 - Tokenholders of the staking token can deposit those tokens in Staker.
 - There is no delay to deposit or withdraw.
-- If the staking token is a governance token, depositors can delegate their staked tokens' voting power to themselves or someone else
+- If the staking token is a governance token, depositors can delegate their staked tokens' voting power to themselves or someone else.
 - The depositor sets a claimer who can claim the staking rewards, such as themselves or someone else.
 
 ### 3. Staker distributes rewards
@@ -28,17 +28,17 @@ When Staker is used for a protocol or DAO, the rewards are generally funded by p
 
 Staker can be deployed as an immutable contract with minimal governance. It does have some admin functions:
 
-- Adding a new source of rewards
-- Changing the eligibility oracle or the emergency pause guardian
-- Overriding eligibility for a particular address
+- Adding a new source of rewards.
+- Changing the eligibility oracle or the emergency pause guardian.
+- Overriding eligibility for a particular address.
 
 The staking token can be an `ERC20` token, including `ERC20Votes` governance tokens. Staker splits up all voting power in Staker by creating a surrogate contract for each delegate.
 
-Staker distributes rewards over a fixed period of time. That gives everyone a chance to stake and minimizes discontinuities from flash staking.
+Staker distributes rewards over a fixed period of time. This minimizes discontinuities from flash staking, and prevents frontrunning attacks, aimed at gaining a disproportionate share of rewards, ahead of reward distributions.
 
 ### Staking system
 
-The staking system accepts user stake, delegates their voting power, and distributes rewards for eligibile stakers.
+The staking system accepts user stake, delegates their voting power, and distributes rewards for eligible stakers.
 
 ```mermaid
 
@@ -83,7 +83,7 @@ stateDiagram-v2
 
 ### Earning Power Calculator
 
-The earning power calculator determines which stakers are eligible for a reward. This implementation uses an oracle. An oracle is needed because eligibility depends on off-chain behavior.
+The earning power calculator determines which depositors are eligible for rewards—and the rate at which those rewards are earned—based on their stake and their governance delegatee. The calculator is a modular component of the staker, which can be customized and updated by owner of the Staker, such as a DAO. One provided implementation uses an oracle. An oracle is needed because eligibility depends on the off-chain behavior of DAO delegates.
 
 ```mermaid
 stateDiagram-v2
@@ -165,4 +165,4 @@ This command will use the names of the contract's unit tests to generate a human
 
 The code in this repository is licensed under the [GNU Affero General Public License](LICENSE) unless otherwise indicated.
 
-Copyright (C) 2024 Tally
+Copyright (C) 2025 Tally

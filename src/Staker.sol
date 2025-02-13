@@ -26,9 +26,18 @@ import {SafeCast} from "openzeppelin/utils/math/SafeCast.sol";
 /// received, the reward duration restarts, and the rate at which rewards are streamed is updated
 /// to include the newly received rewards along with any remaining rewards that have finished
 /// streaming since the last time a reward was received.
+///
+/// The rate at which a depositor earns rewards is proportional to their earning power. Earning
+/// power is based on the amount the depositor has staked and the activity of their delegatee.
+/// The calculation of earning power is handled by a separate module called the earning power
+/// calculator. This module is set by the owner, and can be updated by the owner. If the owner of
+/// the Staker contract is a DAO, which is the expected common case, this means the DAO has
+/// the ability to define and iterate on its own definition of active, aligned participation,
+/// and to decide how to reward it.
 abstract contract Staker is INotifiableRewardReceiver, Multicall {
   using SafeCast for uint256;
 
+  /// @notice A unique identifier assigned to each deposit.
   type DepositIdentifier is uint256;
 
   /// @notice Emitted when stake is deposited by a depositor, either to a new deposit or one that
@@ -119,8 +128,8 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// duration.
   error Staker__InsufficientRewardBalance();
 
-  /// @notice Thrown if the unclaimed rewards are insufficient to cover a bumpers requested tip or
-  /// in the case of an earning power decrease the tip of a subsequent earning power increase.
+  /// @notice Thrown if the unclaimed rewards are insufficient to cover a bumper's requested tip,
+  /// or in the case of an earning power decrease the tip of a subsequent earning power increase.
   error Staker__InsufficientUnclaimedRewards();
 
   /// @notice Thrown if a caller attempts to specify address zero for certain designated addresses.
@@ -139,6 +148,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   error Staker__InvalidSignature();
 
   /// @notice Thrown if an earning power update is unqualified to be bumped.
+  /// @param score The would-be new earning power which did not qualify.
   error Staker__Unqualified(uint256 score);
 
   /// @notice Metadata associated with a discrete staking deposit.
@@ -171,7 +181,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
   /// @notice Parameters associated with the fee assessed when rewards are claimed.
   /// @param feeAmount The absolute amount of the reward token that is taken as a fee when rewards
-  /// claimed for a given deposit.
+  /// are claimed for a given deposit.
   /// @param feeCollector The address to which reward token fees are sent.
   struct ClaimFeeParameters {
     uint96 feeAmount;
@@ -199,7 +209,8 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @dev Unique identifier that will be used for the next deposit.
   DepositIdentifier private nextDepositId;
 
-  /// @notice Permissioned actor that can enable/disable `rewardNotifier` addresses.
+  /// @notice Permissioned actor that can enable/disable `rewardNotifier` addresses, set the max
+  /// bump tip, set the claim fee parameters, and update the earning power calculator.
   address public admin;
 
   /// @notice Maximum tip a bumper can request.
@@ -212,7 +223,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   uint256 public totalEarningPower;
 
   /// @notice Contract that determines a deposit's earning power based on their delegatee.
-  /// @dev An earning power calculator should take into account that a deposit's earning power is an
+  /// @dev An earning power calculator should take into account that a deposit's earning power is a
   /// uint96. There may be overflow issues within governance staker if this is not taken into
   /// account. Also, there should be some mechanism to prevent the deposit from frequently being
   /// bumpable: if earning power changes frequently, this will eat into a users unclaimed rewards.
@@ -250,7 +261,8 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
   /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
   /// earning power for the staker system.
-  /// @param _admin Address which will have permission to manage rewardNotifiers.
+  /// @param _admin Address which will have permission to manage reward notifiers, claim fee
+  /// parameters, the max bump tip, and the reward calculator.
   constructor(
     IERC20 _rewardToken,
     IERC20 _stakeToken,
@@ -305,12 +317,12 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     _setClaimFeeParameters(_params);
   }
 
-  /// @notice A method to get a delegation surrogate contract for a given delegate.
-  /// @param _delegatee The address the delegation surrogate is delegating voting power.
+  /// @notice A method to get the delegation surrogate contract for a given delegate.
+  /// @param _delegatee The address to which the delegation surrogate is delegating voting power.
   /// @return The delegation surrogate.
   /// @dev A concrete implementation should return a delegate surrogate address for a given
   /// delegatee. In practice this may be as simple as returning an address stored in a mapping or
-  /// computing it's create2 address.
+  /// computing its create2 address.
   function surrogates(address _delegatee) public view virtual returns (DelegationSurrogate);
 
   /// @notice Timestamp representing the last time at which rewards have been distributed, which is
@@ -367,7 +379,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// contract to spend at least the would-be staked amount of the token.
   /// @param _amount Quantity of the staking token to stake.
   /// @param _delegatee Address to assign the governance voting weight of the staked tokens.
-  /// @param _claimer Address that will accrue rewards for this stake.
+  /// @param _claimer Address that will have the right to claim rewards for this stake.
   /// @return _depositId Unique identifier for this deposit.
   /// @dev Neither the delegatee nor the claimer may be the zero address. The deposit will be
   /// owned by the message sender.
@@ -427,7 +439,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   }
 
   /// @notice Claim reward tokens earned by a given deposit. Message sender must be the claimer
-  /// address of the deposit. Tokens are sent to the claimer address.
+  /// address of the deposit or the owner of the deposit. Tokens are sent to the caller.
   /// @param _depositId Identifier of the deposit from which accrued rewards will be claimed.
   /// @return Amount of reward tokens claimed, after the fee has been assessed.
   function claimReward(DepositIdentifier _depositId) external virtual returns (uint256) {
@@ -825,6 +837,8 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     maxBumpTip = _newMaxTip;
   }
 
+  /// @notice Internal helper method which sets the claim fee parameters.
+  /// @param _params The new fee parameters.
   function _setClaimFeeParameters(ClaimFeeParameters memory _params) internal virtual {
     if (
       _params.feeAmount > MAX_CLAIM_FEE
@@ -848,12 +862,11 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   }
 
   /// @notice Internal helper method which reverts Staker__Unauthorized if the alleged
-  /// owner is
-  /// not the true owner of the deposit.
+  /// owner is not the true owner of the deposit.
   /// @param deposit Deposit to validate.
-  /// @param owner Alleged owner of deposit.
-  function _revertIfNotDepositOwner(Deposit storage deposit, address owner) internal view virtual {
-    if (owner != deposit.owner) revert Staker__Unauthorized("not owner", owner);
+  /// @param _owner Alleged owner of deposit.
+  function _revertIfNotDepositOwner(Deposit storage deposit, address _owner) internal view virtual {
+    if (_owner != deposit.owner) revert Staker__Unauthorized("not owner", _owner);
   }
 
   /// @notice Internal helper method which reverts with Staker__InvalidAddress if the

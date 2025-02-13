@@ -7,6 +7,14 @@ import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.so
 /// @title BinaryEligibilityOracleEarningPowerCalculator
 /// @author [ScopeLift](https://scopelift.co)
 /// @notice This contract calculates the earning power of a staker based on their delegatee's score.
+/// The score is provided by a permissioned oracle, that can be updated by the contract owner. The
+/// oracle can also be paused by a permissioned pauser role. The contract ensures the oracle
+/// remains fresh. The contract allows the owner to set a threshold score over which staker's
+/// receive earning power equal to the amount they've staked, and below which they receive no
+/// earning power at all. The contract enforces a grace period before which a staker's earning
+/// power does not qualify for being bumped. The contract also allows the owner to override a
+/// score for a given delegatee. Note that, in practice, it is expected that the owner will be the
+/// DAO itself.
 contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPowerCalculator {
   /// @notice Emitted when a delegatee's score is updated.
   /// @param delegatee The address of the delegatee whose score was updated.
@@ -99,7 +107,6 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// @notice Mapping to store the lock status of delegate scores.
   mapping(address delegate => bool isLocked) public delegateeScoreLockStatus;
 
-  /// @notice Initializes the EarningPowerCalculator contract.
   /// @param _owner The DAO governor address.
   /// @param _scoreOracle The address of the trusted oracle address.
   /// @param _delegateeScoreEligibilityThreshold The threshold for delegatee score eligibility to
@@ -122,11 +129,7 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     lastOracleUpdateTime = block.timestamp;
   }
 
-  /// @notice Calculates the earning power for a given delegatee and staking amount.
-  /// @param _amountStaked The amount of tokens staked.
-  /// @param /* _staker */ The address of the staker.
-  /// @param _delegatee The address of the delegatee.
-  /// @return The calculated earning power.
+  /// @inheritdoc IEarningPowerCalculator
   function getEarningPower(uint256 _amountStaked, address, /* _staker */ address _delegatee)
     external
     view
@@ -136,13 +139,7 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     return _isDelegateeEligible(_delegatee) ? _amountStaked : 0;
   }
 
-  /// @notice Calculates the new earning power and determines if it qualifies for an update.`
-  /// @param _amountStaked The amount of tokens staked.
-  /// @param /* _staker */ The address of the staker.
-  /// @param _delegatee The address of the delegatee.
-  /// @param /* _oldEarningPower */ The previous earning power value.
-  /// @return The newly calculated earning power.
-  /// @return Boolean indicating if the new earning power qualifies for an update.
+  /// @inheritdoc IEarningPowerCalculator
   function getNewEarningPower(
     uint256 _amountStaked,
     address, /* _staker */
@@ -163,6 +160,7 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// @notice Updates the eligibility score of a delegatee.
   /// @dev This function can only be called by the authorized `scoreOracle` address.
   /// @dev If the delegatee's score is locked, the update will be reverted.
+  /// @dev If the oracle is paused, the update will be reverted.
   /// @param _delegatee The address of the delegatee whose score is being updated.
   /// @param _newScore The new score to be assigned to the delegatee.
   function updateDelegateeScore(address _delegatee, uint256 _newScore) public {
