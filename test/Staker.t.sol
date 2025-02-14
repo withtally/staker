@@ -747,6 +747,50 @@ contract PermitAndStake is StakerTest {
     assertEq(_deposit.claimer, _claimer);
   }
 
+  function testFuzz_FrontRunsTheApprovalByCallingPermitOnTheTokenDirectlyThenPerformsStake(
+    uint256 _depositorPrivateKey,
+    uint256 _depositAmount,
+    address _caller,
+    address _delegatee,
+    address _claimer,
+    uint256 _deadline,
+    uint256 _currentNonce
+  ) public {
+    vm.assume(_delegatee != address(0) && _claimer != address(0));
+    _deadline = bound(_deadline, block.timestamp, type(uint256).max);
+    _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
+    address _depositor = vm.addr(_depositorPrivateKey);
+    _depositAmount = _boundMintAmount(_depositAmount);
+    _mintGovToken(_depositor, _depositAmount);
+
+    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor).checked_write(
+      _currentNonce
+    );
+
+    bytes32 _message = keccak256(
+      abi.encode(
+        PERMIT_TYPEHASH,
+        _depositor,
+        address(govStaker),
+        _depositAmount,
+        govToken.nonces(_depositor),
+        _deadline
+      )
+    );
+
+    bytes32 _messageHash =
+      keccak256(abi.encodePacked("\x19\x01", govToken.DOMAIN_SEPARATOR(), _message));
+    (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(_depositorPrivateKey, _messageHash);
+
+    vm.prank(_caller);
+    govToken.permit(_depositor, address(govStaker), _depositAmount, _deadline, _v, _r, _s);
+
+    vm.prank(_depositor);
+    Staker.DepositIdentifier _depositId =
+      govStaker.permitAndStake(_depositAmount, _delegatee, _claimer, _deadline, _v, _r, _s);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+  }
+
   function testFuzz_SuccessfullyStakeWhenApprovalExistsAndPermitSignatureIsInvalid(
     uint256 _depositorPrivateKey,
     uint256 _depositAmount,
@@ -1256,6 +1300,57 @@ contract PermitAndStakeMore is StakerTest {
     assertEq(_deposit.owner, _depositor);
     assertEq(_deposit.delegatee, _delegatee);
     assertEq(_deposit.claimer, _claimer);
+  }
+
+  function testFuzz_FrontRunsTheApprovalByCallingPermitOnTheTokenDirectlyThenPerformsStakeMore(
+    uint256 _depositorPrivateKey,
+    uint256 _initialDepositAmount,
+    uint256 _stakeMoreAmount,
+    // address _caller,
+    address _delegatee,
+    address _claimer,
+    uint256 _currentNonce,
+    uint256 _deadline
+  ) public {
+    vm.assume(_delegatee != address(0) && _claimer != address(0));
+    _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
+    address _depositor = vm.addr(_depositorPrivateKey);
+    _deadline = bound(_deadline, block.timestamp, type(uint256).max);
+
+    Staker.DepositIdentifier _depositId;
+    (_initialDepositAmount, _depositId) =
+      _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
+
+    _stakeMoreAmount = _boundToRealisticStake(_stakeMoreAmount);
+    _mintGovToken(_depositor, _stakeMoreAmount);
+
+    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor).checked_write(
+      _currentNonce
+    );
+
+    // Separate scope to avoid stack to deep errors
+    {
+      bytes32 _message = keccak256(
+        abi.encode(
+          PERMIT_TYPEHASH,
+          _depositor,
+          address(govStaker),
+          _stakeMoreAmount,
+          govToken.nonces(_depositor),
+          _deadline
+        )
+      );
+
+      bytes32 _messageHash =
+        keccak256(abi.encodePacked("\x19\x01", govToken.DOMAIN_SEPARATOR(), _message));
+      (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(_depositorPrivateKey, _messageHash);
+
+      vm.prank(vm.randomAddress());
+      govToken.permit(_depositor, address(govStaker), _stakeMoreAmount, _deadline, _v, _r, _s);
+
+      vm.prank(_depositor);
+      govStaker.permitAndStakeMore(_depositId, _stakeMoreAmount, _deadline, _v, _r, _s);
+    }
   }
 
   function testFuzz_SuccessfullyStakeMoreWhenApprovalExistsAndPermitSignatureIsInvalid(
