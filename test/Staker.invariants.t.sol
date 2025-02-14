@@ -77,7 +77,9 @@ contract StakerInvariants is Test {
     );
   }
 
-  function invariant_Sum_of_unclaimed_reward_should_be_less_than_or_equal_to_total_rewards() public {
+  function invariant_Sum_of_unclaimed_reward_should_be_less_than_or_equal_to_total_rewards_balance()
+    public
+  {
     assertLe(
       handler.reduceDeposits(0, this.accumulateUnclaimedReward),
       rewardToken.balanceOf(address(govStaker))
