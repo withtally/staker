@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {IMintable} from "src/interfaces/IMintable.sol";
+import {IMintable} from "../../src/interfaces/IMintable.sol";
 
 contract FakeMinter is IMintable {
   IMintable public parentMinter;

@@ -2,11 +2,13 @@
 pragma solidity ^0.8.23;
 
 import {
-  ERC20, ERC20Permit, IERC20Permit
-} from "openzeppelin/token/ERC20/extensions/ERC20Permit.sol";
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
-import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
-import {IMintable} from "src/interfaces/IMintable.sol";
+  ERC20,
+  ERC20Permit,
+  IERC20Permit
+} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
+import {IMintable} from "../../src/interfaces/IMintable.sol";
 
 /// @dev An ERC20Permit token that allows for public minting and mocks the delegation methods used
 /// in ERC20Votes governance tokens. It does not included check pointing functionality. This

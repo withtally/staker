@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
+import {DelegationSurrogateVotes} from "../src/DelegationSurrogateVotes.sol";
 import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
 
 contract DelegationSurrogateVotesTest is Test {

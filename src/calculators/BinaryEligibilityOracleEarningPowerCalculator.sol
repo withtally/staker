@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
+import {IEarningPowerCalculator} from "../interfaces/IEarningPowerCalculator.sol";
 
 /// @title BinaryEligibilityOracleEarningPowerCalculator
 /// @author [ScopeLift](https://scopelift.co)

@@ -2,11 +2,11 @@
 pragma solidity ^0.8.23;
 
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
-import {StakerOnBehalf} from "src/extensions/StakerOnBehalf.sol";
+import {StakerOnBehalf} from "../src/extensions/StakerOnBehalf.sol";
 import {StakerTest, StakerRewardsTest} from "test/Staker.t.sol";
 import {StakerHarness} from "test/harnesses/StakerHarness.sol";
-import {Staker, IERC20, IEarningPowerCalculator} from "src/Staker.sol";
-import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
+import {Staker, IERC20, IEarningPowerCalculator} from "../src/Staker.sol";
+import {IERC20Staking} from "../src/interfaces/IERC20Staking.sol";
 
 contract Domain_Separator is StakerTest {
   function _buildDomainSeparator(string memory _name, string memory _version, address _contract)

@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {DelegationSurrogateVotes} from "src/DelegationSurrogateVotes.sol";
-import {Staker} from "src/Staker.sol";
-import {StakerPermitAndStake} from "src/extensions/StakerPermitAndStake.sol";
-import {StakerOnBehalf} from "src/extensions/StakerOnBehalf.sol";
-import {StakerDelegateSurrogateVotes} from "src/extensions/StakerDelegateSurrogateVotes.sol";
+import {DelegationSurrogateVotes} from "../../src/DelegationSurrogateVotes.sol";
+import {Staker} from "../../src/Staker.sol";
+import {StakerPermitAndStake} from "../../src/extensions/StakerPermitAndStake.sol";
+import {StakerOnBehalf} from "../../src/extensions/StakerOnBehalf.sol";
+import {StakerDelegateSurrogateVotes} from "../../src/extensions/StakerDelegateSurrogateVotes.sol";
 
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
-import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
-import {IERC20Staking} from "src/interfaces/IERC20Staking.sol";
-import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
-import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
+import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
+import {DelegationSurrogate} from "../../src/DelegationSurrogate.sol";
 
 contract StakerHarness is
   Staker,

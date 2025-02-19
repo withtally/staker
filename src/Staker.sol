@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
-import {INotifiableRewardReceiver} from "src/interfaces/INotifiableRewardReceiver.sol";
-import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
-import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
-import {Multicall} from "openzeppelin/utils/Multicall.sol";
-import {SafeCast} from "openzeppelin/utils/math/SafeCast.sol";
+import {DelegationSurrogate} from "./DelegationSurrogate.sol";
+import {INotifiableRewardReceiver} from "./interfaces/INotifiableRewardReceiver.sol";
+import {IEarningPowerCalculator} from "./interfaces/IEarningPowerCalculator.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @title Staker
 /// @author [ScopeLift](https://scopelift.co)
