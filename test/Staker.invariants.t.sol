@@ -63,6 +63,12 @@ contract StakerInvariants is Test {
     assertEq(govStaker.totalStaked(), handler.reduceDelegates(0, this.accumulateSurrogateBalance));
   }
 
+  function invariant_Sum_of_depositor_earning_power_equals_total_earning_power() public {
+    assertEq(
+      govStaker.totalEarningPower(), handler.reduceDepositors(0, this.accumulateEarningPower)
+    );
+  }
+
   function invariant_Cumulative_staked_minus_withdrawals_equals_total_stake() public view {
     assertEq(govStaker.totalStaked(), handler.ghost_stakeSum() - handler.ghost_stakeWithdrawn());
   }
@@ -110,6 +116,14 @@ contract StakerInvariants is Test {
     StakerHarness.DepositIdentifier depositId
   ) external view returns (uint256) {
     return unclaimedReward + govStaker.unclaimedReward(depositId);
+  }
+
+  function accumulateEarningPower(uint256 earningPower, address depositor)
+    external
+    view
+    returns (uint256)
+  {
+    return earningPower + govStaker.depositorTotalEarningPower(depositor);
   }
 
   function accumulateSurrogateBalance(uint256 balance, address delegate)
