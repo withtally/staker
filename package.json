@@ -16,7 +16,6 @@
   },
   "homepage": "https://github.com/ScopeLift/staker#readme",
   "dependencies": {
-    "forge-std": "latest",
-    "openzeppelin-contracts": "latest"
+    "@openzeppelin/contracts": "^5.0.2"
   }
 }
