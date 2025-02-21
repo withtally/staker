@@ -3,7 +3,7 @@ pragma solidity ^0.8.23;
 
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
 import {GasReport} from "test/lib/GasReport.sol";
-import {Staker} from "src/Staker.sol";
+import {Staker} from "../../src/Staker.sol";
 import {StakerTest} from "test/Staker.t.sol";
 
 contract StakerGasReport is StakerTest, GasReport {

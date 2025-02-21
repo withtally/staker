@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {INotifiableRewardReceiver, IERC20} from "src/interfaces/INotifiableRewardReceiver.sol";
+import {
+  INotifiableRewardReceiver, IERC20
+} from "../../src/interfaces/INotifiableRewardReceiver.sol";
 
 contract MockNotifiableRewardReceiver is INotifiableRewardReceiver {
   IERC20 public immutable REWARD_TOKEN;

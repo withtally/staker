@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {IEarningPowerCalculator} from "src/interfaces/IEarningPowerCalculator.sol";
+import {IEarningPowerCalculator} from "../interfaces/IEarningPowerCalculator.sol";
 
 /// @title IdentityEarningPowerCalculator
 /// @author [ScopeLift](https://scopelift.co)

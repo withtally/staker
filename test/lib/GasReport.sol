@@ -5,7 +5,7 @@ import {Test, console2} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 import {VmSafe} from "forge-std/Vm.sol";
-import {Strings} from "openzeppelin/utils/Strings.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 // Abstract class for building deterministic, repeatable gas reports. These can be checked in
 // alongside changes to the

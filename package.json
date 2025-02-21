@@ -1,0 +1,21 @@
+{
+  "name": "staker",
+  "version": "1.0.1",
+  "description": "Staker is a flexible, configurable staking contract. Staker makes it easy to distribute onchain staking rewards for any ERC20 token, including DAO governance tokens. This file is included for compatibility with npm based development frameworks such as Hardhat.",
+  "author": "Contributors to https://github.com/ScopeLift/staker",
+  "files": [
+    "src/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ScopeLift/staker.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ScopeLift/staker/issues"
+  },
+  "homepage": "https://github.com/ScopeLift/staker#readme",
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2"
+  }
+}

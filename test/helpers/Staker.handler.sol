@@ -7,8 +7,8 @@ import {StdUtils} from "forge-std/StdUtils.sol";
 import {console} from "forge-std/console.sol";
 import {AddressSet, LibAddressSet} from "../helpers/AddressSet.sol";
 import {DepositIdSet, LibDepositIdSet} from "../helpers/DepositIdSet.sol";
-import {Staker} from "src/Staker.sol";
-import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {Staker} from "../../src/Staker.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract StakerHandler is CommonBase, StdCheats, StdUtils {
   using LibAddressSet for AddressSet;
