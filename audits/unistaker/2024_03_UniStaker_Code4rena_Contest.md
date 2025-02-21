@@ -21,53 +21,53 @@ During the audit outlined in this document, C4 conducted an analysis of the UniS
 
 54 Wardens contributed reports to UniStaker Infrastructure:
 
-1. [CodeWasp](https://code4rena.com/@CodeWasp) ([slylandro_star](https://code4rena.com/@slylandro_star), [kuprum](https://code4rena.com/@kuprum), [audithare](https://code4rena.com/@audithare) and [spaghetticode_sentinel](https://code4rena.com/@spaghetticode_sentinel))
-2. [Al-Qa-qa](https://code4rena.com/@Al-Qa-qa)
-3. [DadeKuma](https://code4rena.com/@DadeKuma)
-4. [Trust](https://code4rena.com/@Trust)
-5. [0xlemon](https://code4rena.com/@0xlemon)
-6. [Shield](https://code4rena.com/@Shield) ([Viraz](https://code4rena.com/@Viraz), [0xA5DF](https://code4rena.com/@0xA5DF), [Dravee](https://code4rena.com/@Dravee) and [Udsen](https://code4rena.com/@Udsen))
-7. [lsaudit](https://code4rena.com/@lsaudit)
-8. [Breeje](https://code4rena.com/@Breeje)
-9. [osmanozdemir1](https://code4rena.com/@osmanozdemir1)
-10. [SpicyMeatball](https://code4rena.com/@SpicyMeatball)
-11. [peanuts](https://code4rena.com/@peanuts)
-12. [Aamir](https://code4rena.com/@Aamir)
-13. [ZanyBonzy](https://code4rena.com/@ZanyBonzy)
-14. [AlexCzm](https://code4rena.com/@AlexCzm)
-15. [0xdice91](https://code4rena.com/@0xdice91)
-16. [gesha17](https://code4rena.com/@gesha17)
-17. [marchev](https://code4rena.com/@marchev)
-18. [kutugu](https://code4rena.com/@kutugu)
-19. [haxatron](https://code4rena.com/@haxatron)
-20. [cheatc0d3](https://code4rena.com/@cheatc0d3)
-21. [visualbits](https://code4rena.com/@visualbits)
-22. [radev_sw](https://code4rena.com/@radev_sw)
-23. [imare](https://code4rena.com/@imare)
-24. [nnez](https://code4rena.com/@nnez)
-25. [PetarTolev](https://code4rena.com/@PetarTolev)
-26. [BAHOZ](https://code4rena.com/@BAHOZ)
-27. [Bauchibred](https://code4rena.com/@Bauchibred)
-28. [jesjupyter](https://code4rena.com/@jesjupyter)
-29. [twicek](https://code4rena.com/@twicek)
-30. [Fassi_Security](https://code4rena.com/@Fassi_Security) ([bronze_pickaxe](https://code4rena.com/@bronze_pickaxe) and [mxuse](https://code4rena.com/@mxuse))
-31. [merlinboii](https://code4rena.com/@merlinboii)
-32. [roguereggiant](https://code4rena.com/@roguereggiant)
-33. [hunter_w3b](https://code4rena.com/@hunter_w3b)
-34. [kaveyjoe](https://code4rena.com/@kaveyjoe)
-35. [McToady](https://code4rena.com/@McToady)
-36. [Sathish9098](https://code4rena.com/@Sathish9098)
-37. [0xepley](https://code4rena.com/@0xepley)
-38. [fouzantanveer](https://code4rena.com/@fouzantanveer)
-39. [hassanshakeel13](https://code4rena.com/@hassanshakeel13)
-40. [MSK](https://code4rena.com/@MSK)
-41. [LinKenji](https://code4rena.com/@LinKenji)
-42. [SAQ](https://code4rena.com/@SAQ)
-43. [Myd](https://code4rena.com/@Myd)
-44. [ihtishamsudo](https://code4rena.com/@ihtishamsudo)
-45. [emerald7017](https://code4rena.com/@emerald7017)
-46. [aariiif](https://code4rena.com/@aariiif)
-47. [cudo](https://code4rena.com/@cudo)
+  1. [CodeWasp](https://code4rena.com/@CodeWasp) ([slylandro\_star](https://code4rena.com/@slylandro_star), [kuprum](https://code4rena.com/@kuprum), [audithare](https://code4rena.com/@audithare) and [spaghetticode\_sentinel](https://code4rena.com/@spaghetticode_sentinel))
+  2. [Al-Qa-qa](https://code4rena.com/@Al-Qa-qa)
+  3. [DadeKuma](https://code4rena.com/@DadeKuma)
+  4. [Trust](https://code4rena.com/@Trust)
+  5. [0xlemon](https://code4rena.com/@0xlemon)
+  6. [Shield](https://code4rena.com/@Shield) ([Viraz](https://code4rena.com/@Viraz), [0xA5DF](https://code4rena.com/@0xA5DF), [Dravee](https://code4rena.com/@Dravee) and [Udsen](https://code4rena.com/@Udsen))
+  7. [lsaudit](https://code4rena.com/@lsaudit)
+  8. [Breeje](https://code4rena.com/@Breeje)
+  9. [osmanozdemir1](https://code4rena.com/@osmanozdemir1)
+  10. [SpicyMeatball](https://code4rena.com/@SpicyMeatball)
+  11. [peanuts](https://code4rena.com/@peanuts)
+  12. [Aamir](https://code4rena.com/@Aamir)
+  13. [ZanyBonzy](https://code4rena.com/@ZanyBonzy)
+  14. [AlexCzm](https://code4rena.com/@AlexCzm)
+  15. [0xdice91](https://code4rena.com/@0xdice91)
+  16. [gesha17](https://code4rena.com/@gesha17)
+  17. [marchev](https://code4rena.com/@marchev)
+  18. [kutugu](https://code4rena.com/@kutugu)
+  19. [haxatron](https://code4rena.com/@haxatron)
+  20. [cheatc0d3](https://code4rena.com/@cheatc0d3)
+  21. [visualbits](https://code4rena.com/@visualbits)
+  22. [radev\_sw](https://code4rena.com/@radev_sw)
+  23. [imare](https://code4rena.com/@imare)
+  24. [nnez](https://code4rena.com/@nnez)
+  25. [PetarTolev](https://code4rena.com/@PetarTolev)
+  26. [BAHOZ](https://code4rena.com/@BAHOZ)
+  27. [Bauchibred](https://code4rena.com/@Bauchibred)
+  28. [jesjupyter](https://code4rena.com/@jesjupyter)
+  29. [twicek](https://code4rena.com/@twicek)
+  30. [Fassi\_Security](https://code4rena.com/@Fassi_Security) ([bronze\_pickaxe](https://code4rena.com/@bronze_pickaxe) and [mxuse](https://code4rena.com/@mxuse))
+  31. [merlinboii](https://code4rena.com/@merlinboii)
+  32. [roguereggiant](https://code4rena.com/@roguereggiant)
+  33. [hunter\_w3b](https://code4rena.com/@hunter_w3b)
+  34. [kaveyjoe](https://code4rena.com/@kaveyjoe)
+  35. [McToady](https://code4rena.com/@McToady)
+  36. [Sathish9098](https://code4rena.com/@Sathish9098)
+  37. [0xepley](https://code4rena.com/@0xepley)
+  38. [fouzantanveer](https://code4rena.com/@fouzantanveer)
+  39. [hassanshakeel13](https://code4rena.com/@hassanshakeel13)
+  40. [MSK](https://code4rena.com/@MSK)
+  41. [LinKenji](https://code4rena.com/@LinKenji)
+  42. [SAQ](https://code4rena.com/@SAQ)
+  43. [Myd](https://code4rena.com/@Myd)
+  44. [ihtishamsudo](https://code4rena.com/@ihtishamsudo)
+  45. [emerald7017](https://code4rena.com/@emerald7017)
+  46. [aariiif](https://code4rena.com/@aariiif)
+  47. [cudo](https://code4rena.com/@cudo)
 
 This audit was judged by [0xTheC0der](https://code4rena.com/@0xTheC0der).
 
@@ -104,7 +104,7 @@ For more information regarding the severity criteria referenced throughout the s
 
 For this audit, 31 reports were submitted by wardens detailing low risk and non-critical issues. The [report highlighted below](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/299) by **CodeWasp** received the top score from the judge.
 
-_The following wardens also submitted reports: [DadeKuma](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/380), [Trust](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/331), [0xlemon](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/255), [Shield](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/169), [lsaudit](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/168), [Breeje](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/107), [Al-Qa-qa](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/90), [osmanozdemir1](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/45), [SpicyMeatball](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/8), [AlexCzm](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/415), [peanuts](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/414), [0xdice91](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/413), [gesha17](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/410), [Aamir](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/409), [marchev](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/379), [kutugu](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/372), [haxatron](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/368), [cheatc0d3](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/355), [visualbits](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/345), [radev_sw](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/237), [imare](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/230), [nnez](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/201), [ZanyBonzy](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/151), [PetarTolev](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/141), [BAHOZ](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/130), [Bauchibred](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/115), [jesjupyter](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/99), [twicek](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/73), [Fassi_Security](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/67), and [merlinboii](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/59)._
+*The following wardens also submitted reports: [DadeKuma](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/380), [Trust](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/331), [0xlemon](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/255), [Shield](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/169), [lsaudit](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/168), [Breeje](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/107), [Al-Qa-qa](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/90), [osmanozdemir1](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/45), [SpicyMeatball](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/8), [AlexCzm](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/415), [peanuts](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/414), [0xdice91](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/413), [gesha17](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/410), [Aamir](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/409), [marchev](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/379), [kutugu](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/372), [haxatron](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/368), [cheatc0d3](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/355), [visualbits](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/345), [radev\_sw](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/237), [imare](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/230), [nnez](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/201), [ZanyBonzy](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/151), [PetarTolev](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/141), [BAHOZ](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/130), [Bauchibred](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/115), [jesjupyter](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/99), [twicek](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/73), [Fassi\_Security](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/67), and [merlinboii](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/59).*
 
 ## [01] Adapting UniStaker test infrastructure to UNI token
 
@@ -142,12 +142,12 @@ This is the simplest of undertaken activities, which amounted in fixing a couple
 +// To make the tests pass. For the original version see "Uni.sol.orig"
 +pragma solidity 0.8.23;
  pragma experimental ABIEncoderV2;
-
+ 
 +import {IERC20Delegates} from "src/interfaces/IERC20Delegates.sol";
 +
  // From https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/math/Math.sol
 @@ -188,3 +192,3 @@
-
+ 
 -contract Uni {
 +contract Uni  is IERC20Delegates {
      /// @notice EIP-20 token name for this token
@@ -171,7 +171,7 @@ This is the simplest of undertaken activities, which amounted in fixing a couple
 +            amount = type(uint96).max;
          } else {
 @@ -345,2 +349,6 @@
-
+ 
 +    function DOMAIN_SEPARATOR() external view virtual returns (bytes32) {
 +        return keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), getChainId(), address(this)));
 +    }
@@ -188,9 +188,9 @@ This is the simplest of undertaken activities, which amounted in fixing a couple
          require(signatory == owner, "Uni::permit: unauthorized");
 -        require(now <= deadline, "Uni::permit: signature expired");
 +        require(block.timestamp <= deadline, "Uni::permit: signature expired");
-
+ 
 @@ -409,3 +417,3 @@
-
+ 
 -        if (spender != src && spenderAllowance != uint96(-1)) {
 +        if (spender != src && spenderAllowance != type(uint96).max) {
              uint96 newAllowance = sub96(spenderAllowance, amount, "Uni::transferFrom: transfer amount exceeds spender allowance");
@@ -200,7 +200,7 @@ This is the simplest of undertaken activities, which amounted in fixing a couple
 +        require(block.timestamp <= expiry, "Uni::delegateBySig: signature expired");
          return _delegate(signatory, delegatee);
 @@ -572,3 +580,3 @@
-
+ 
 -    function getChainId() internal pure returns (uint) {
 +    function getChainId() internal view returns (uint) {
          uint256 chainId;
@@ -210,9 +210,9 @@ This is the simplest of undertaken activities, which amounted in fixing a couple
 
 We don't list here the whole diff, only the most important parts of it; also omitting duplicate changes in multiple places.
 
-### Preamble and set up: replace `ERC20VotesMock` with `Uni`\*\*
+### Preamble and set up: replace `ERC20VotesMock` with `Uni`**
 
-```diff
+```diff 
 diff --git a/test/UniStaker.t.sol b/test/UniStaker.t.sol
 index 89124f8..22e0534 100644
 --- a/test/UniStaker.t.sol
@@ -220,22 +220,22 @@ index 89124f8..22e0534 100644
 @@ -9,2 +9,3 @@ import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
  import {PercentAssertions} from "test/helpers/PercentAssertions.sol";
 +import {Uni} from "test/mocks/Uni.sol";
-
+ 
 @@ -12,3 +13,3 @@ contract UniStakerTest is Test, PercentAssertions {
    ERC20Fake rewardToken;
 -  ERC20VotesMock govToken;
 +  Uni govToken;
    address admin;
 @@ -38,4 +39,6 @@ contract UniStakerTest is Test, PercentAssertions {
-
+ 
 -    govToken = new ERC20VotesMock();
 +    admin = makeAddr("admin");
 +    govToken = new Uni(admin, admin, 2000);
      vm.label(address(govToken), "Governance Token");
 +    _jumpAhead(1234);
-
+ 
 @@ -44,4 +47,2 @@ contract UniStakerTest is Test, PercentAssertions {
-
+ 
 -    admin = makeAddr("admin");
 -
      uniStaker = new UniStakerHarness(rewardToken, govToken, admin);
@@ -284,7 +284,7 @@ index 89124f8..22e0534 100644
 +      "Uni::permit: unauthorized"
      );
 @@ -4670,5 +4682,5 @@ contract _FetchOrDeploySurrogate is UniStakerRewardsTest {
-
+ 
 -    assertEq(logs[1].topics[0], keccak256("SurrogateDeployed(address,address)"));
 -    assertEq(logs[1].topics[1], bytes32(uint256(uint160(_delegatee))));
 -    assertEq(logs[1].topics[2], bytes32(uint256(uint160(address(_surrogate)))));
@@ -312,15 +312,15 @@ An example of one of the modified tests is below:
 +    _amount = bound(_amount, 1, type(uint88).max);
      _mintGovToken(_depositor, _amount);
      _stake(_depositor, _amount, _delegatee);
-
+ 
      DelegationSurrogate _surrogate = uniStaker.surrogates(_delegatee);
-
+ 
      assertEq(govToken.balanceOf(address(_surrogate)), _amount);
      assertEq(govToken.delegates(address(_surrogate)), _delegatee);
      assertEq(govToken.balanceOf(_depositor), 0);
 +    assertEq(govToken.getCurrentVotes(_delegatee), _amount);
    }
-```
+ ```
 
 ## [05] Add `Uni.handler.sol`, the wrapper around `Uni`, allowing to call its functions from fuzz/invariant tests
 
@@ -343,7 +343,7 @@ contract UniHandler is CommonBase, StdCheats, StdUtils {
 
   // delegator -> delegatee
   mapping(address => address) private _delegatee;
-
+  
   // delegatee -> delegators
   mapping(address => AddressSet) private _delegators;
 
@@ -373,7 +373,7 @@ contract UniHandler is CommonBase, StdCheats, StdUtils {
   }
 
   // Track delegations performed by users directly via the UNI token
-  function delegate(address delegatee)  public
+  function delegate(address delegatee)  public  
   {
     address prev_delegatee = _delegatee[msg.sender];
     _delegators[prev_delegatee].remove(msg.sender);
@@ -385,9 +385,9 @@ contract UniHandler is CommonBase, StdCheats, StdUtils {
     vm.stopPrank();
   }
 
-  // Advance the specified number of blocks.
+  // Advance the specified number of blocks. 
   // Needed to trigger UNI's block-numbers-based votes accounting
-  function roll(uint16 advance) public
+  function roll(uint16 advance) public  
   {
     vm.roll(block.number + advance);
   }
@@ -401,7 +401,7 @@ contract UniHandler is CommonBase, StdCheats, StdUtils {
     returns (uint256)
   {
     return _delegators[delegatee].reduce(0, this.addDelegator);
-  }
+  }  
 }
 ```
 
@@ -415,7 +415,7 @@ index f8fe335..9622571 100644
 --- a/test/helpers/UniStaker.handler.sol
 +++ b/test/helpers/UniStaker.handler.sol
 @@ -10,2 +10,3 @@ import {UniStaker} from "src/UniStaker.sol";
- import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 +import {Uni} from "test/mocks/Uni.sol";
 -  IERC20 public stakeToken;
 +  Uni public stakeToken;
@@ -438,7 +438,7 @@ index f8fe335..9622571 100644
 +    vm.assume(_beneficiary != address(0));
      _createDepositor();
 @@ -185,4 +190,4 @@ contract UniStakerHandler is CommonBase, StdCheats, StdUtils {
-
+ 
 -  function reduceDepositors(uint256 acc, function(uint256,address) external returns (uint256) func)
 -    public
 +  function reduceDepositors(uint256 acc, function(uint256,address) external view returns (uint256) func)
@@ -452,7 +452,7 @@ index f8fe335..9622571 100644
 +  ) public view returns (uint256) {
      return _beneficiaries.reduce(acc, func);
 @@ -199,4 +204,4 @@ contract UniStakerHandler is CommonBase, StdCheats, StdUtils {
-
+ 
 -  function reduceDelegates(uint256 acc, function(uint256,address) external returns (uint256) func)
 -    public
 +  function reduceDelegates(uint256 acc, function(uint256,address) external view returns (uint256) func)
@@ -503,9 +503,9 @@ index 4c80ce1..5148548 100644
 +    govToken.mint(_to, _amount);
 +    vm.stopPrank();
 +  }
-
+ 
 @@ -22,4 +42,22 @@ contract UniStakerInvariants is Test {
-
+ 
 -    govToken = new ERC20VotesMock();
 -    vm.label(address(govToken), "Governance Token");
 +    _jumpAhead(1234);
@@ -528,7 +528,7 @@ index 4c80ce1..5148548 100644
 +    _mintGovToken(dave, 1e27);
 +    _mintGovToken(eve, 1e27);
 +    _mintGovToken(frank, 1e27);
-
+ 
 @@ -42,2 +80,19 @@ contract UniStakerInvariants is Test {
      targetContract(address(handler));
 +
@@ -550,9 +550,9 @@ index 4c80ce1..5148548 100644
 +    targetSender(frank);
    }
 @@ -84,2 +139,23 @@ contract UniStakerInvariants is Test {
-
+ 
 +  function invariant_Total_stake_plus_direct_delegations_equals_current_votes() public {
-+    assertEq(uniStaker.totalStaked() + handler.reduceDelegates(0, this.accumulateDirectDelegateVotes),
++    assertEq(uniStaker.totalStaked() + handler.reduceDelegates(0, this.accumulateDirectDelegateVotes), 
 +      handler.reduceDelegates(0, this.accumulateCurrentDelegateVotes));
 +  }
 +
@@ -589,7 +589,7 @@ index 83327a7..323ed2c 100644
 @@ -17,6 +17,20 @@ library LibAddressSet {
      }
    }
-
+ 
 +  function remove(AddressSet storage s, address addr) internal {
 +    if (s.saved[addr]) {
 +      uint256 len = s.addrs.length;
@@ -622,7 +622,7 @@ index 83327a7..323ed2c 100644
 
 ## [09] Necessary changes to `foundry.toml`
 
-We had to introduce a few changes to `foundry.toml`. On the one hand, a couple of dependencies were missing, so we've introduced them for the project to compile. On the other hand, the fuzzing/invariant test settings have been in our opinion very low, so we increased the number or the depth of the runs in order to increase the coverage.
+We had to introduce a few changes to `foundry.toml`. On the one hand, a couple of dependencies were missing, so we've introduced them for the project to compile. On the other hand, the fuzzing/invariant test settings have been in our opinion very low, so we increased the number or the depth of the runs in order to increase the coverage. 
 
 ```diff
 diff --git a/foundry.toml b/foundry.toml
@@ -643,12 +643,12 @@ index a3031f2..64d0f63 100644
    verbosity = 3
 +  fuzz = { runs = 500 }
 +  invariant = { runs = 100, depth = 100 }
-
+ 
  [profile.ci]
    fuzz = { runs = 5000 }
 -  invariant = { runs = 1000 }
 +  invariant = { runs = 1000, depth = 100 }
-
+ 
  [profile.lite]
    fuzz = { runs = 50 }
 -  invariant = { runs = 10 }
@@ -703,7 +703,7 @@ forge test -vvvv --nmp '*integration*' --match-test invariant_Total_stake_plus_d
 
 ## [[11] Small stakes reward griefing due to rounding, and actions by anyone with nothing at stake](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/388)
 
-_Note: At the judge’s request [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/299#issuecomment-1997457762), this downgraded issue from the same warden has been included in this report for completeness._
+*Note: At the judge’s request [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/299#issuecomment-1997457762), this downgraded issue from the same warden has been included in this report for completeness.*
 
 https://github.com/code-423n4/2024-02-uniswap-foundation/blob/491c7f63e5799d95a181be4a978b2f074dc219a5/src/UniStaker.sol#L256-L261<br>
 https://github.com/code-423n4/2024-02-uniswap-foundation/blob/491c7f63e5799d95a181be4a978b2f074dc219a5/src/UniStaker.sol#L292-L303<br>
@@ -743,7 +743,7 @@ The last aspect is controllable by any external user (an attacker), which may ha
 - `alterBeneficiary()`, `alterBeneficiaryOnBehalf()`: allow to change deposit beneficiary to an arbitrary user, while checkpointing two users simultaneously (the old and the new beneficiary).
 - `withdraw()`, `withdrawOnBehalf()`: allow to withdraw a zero amount, also from a zero stake.
 
-Any of those functions can be called by an attacker who doesn't need to stake anything (nothing at stake). As a result, the attacked user will be eligible to disproportionately smaller rewards than other users that staked the same amounts, over the same period of time.
+Any of those functions can be called by an attacker who doesn't need to stake anything (nothing at stake).  As a result, the attacked user will be eligible to disproportionately smaller rewards than other users that staked the same amounts, over the same period of time.
 
 ### Proof of Concept
 
@@ -873,11 +873,11 @@ index babdc1a..237b833 100644
 @@ -746,7 +746,7 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
      unclaimedRewardCheckpoint[_beneficiary] = 0;
      emit RewardClaimed(_beneficiary, _reward);
-
+ 
 -    SafeERC20.safeTransfer(REWARD_TOKEN, _beneficiary, _reward);
 +    SafeERC20.safeTransfer(REWARD_TOKEN, _beneficiary, _reward / SCALE_FACTOR);
    }
-
+ 
    /// @notice Checkpoints the global reward per token accumulator.
 @@ -762,7 +762,11 @@ contract UniStaker is INotifiableRewardReceiver, Multicall, EIP712, Nonces {
    /// accumulator has been checkpointed. It assumes the global `rewardPerTokenCheckpoint` is up to
@@ -920,7 +920,7 @@ This change alleviates the problem completely. Now, the output from the previous
     │   └─ ← 1543
     └─ ← ()
 
-Test result: ok. 1 passed; 0 failed; 0 skipped; finished in 247.92ms
+Test result: ok. 1 passed; 0 failed; 0 skipped; finished in 247.92ms    
 ```
 
 Besides that, we recommend to apply minimal input validation to all vulnerable functions listed above: allow to stake only above some minimal amount (no zero stakes), disallow to alter beneficiary to the same address, disallow withdrawing zero amounts, etc. While in itself such actions may seem harmless, leaving functions that accept insensible inputs in the system, in combination with other potential problems, may open the way to exploits.
@@ -930,20 +930,19 @@ Besides that, we recommend to apply minimal input validation to all vulnerable f
 Math
 
 **[wildmolasses (Uniswap) acknowledged and commented](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/299#issuecomment-1992314009):**
-
-> Some decent callouts here; although nothing was found, we appreciate the rigor. I think we would like to mark high quality, thanks warden!
+ > Some decent callouts here; although nothing was found, we appreciate the rigor. I think we would like to mark high quality, thanks warden!
 
 **[0xTheC0der (judge) commented](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/299#issuecomment-1997621087):**
+ > The majority of initial H/M findings which were downgraded to QA exceed the present QA reports in value provided, and none of the present QA reports stand out enough in terms of valid and valuable Low findings to be selected for report. As a consequence, the current report was selected due to its high quality, diligence and value provided to the sponsor.
 
-> The majority of initial H/M findings which were downgraded to QA exceed the present QA reports in value provided, and none of the present QA reports stand out enough in terms of valid and valuable Low findings to be selected for report. As a consequence, the current report was selected due to its high quality, diligence and value provided to the sponsor.
-
----
+***
 
 # Audit Analysis
 
 For this audit, 20 analysis reports were submitted by wardens. An analysis report examines the codebase as a whole, providing observations and advice on such topics as architecture, mechanism, or approach. The [report highlighted below](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312) by **roguereggiant** received the top score from the judge.
 
-_The following wardens also submitted reports: [hunter_w3b](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/341), [kaveyjoe](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/110), [McToady](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/58), [peanuts](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/399), [Sathish9098](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/389), [0xepley](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/347), [Aamir](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/322), [fouzantanveer](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/320), [hassanshakeel13](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/310), [MSK](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/307), [LinKenji](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/298), [SAQ](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/285), [Myd](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/279), [ihtishamsudo](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/278), [emerald7017](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/266), [aariiif](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/252), [ZanyBonzy](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/153), [cudo](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/139), and [Al-Qa-qa](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/100)._
+*The following wardens also submitted reports: [hunter\_w3b](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/341), [kaveyjoe](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/110), [McToady](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/58), [peanuts](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/399), [Sathish9098](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/389), [0xepley](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/347), [Aamir](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/322), [fouzantanveer](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/320), [hassanshakeel13](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/310), [MSK](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/307), [LinKenji](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/298), [SAQ](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/285), [Myd](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/279), [ihtishamsudo](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/278), [emerald7017](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/266), [aariiif](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/252), [ZanyBonzy](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/153), [cudo](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/139), and [Al-Qa-qa](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/100).*
+
 
 ## Project Overview
 
@@ -951,17 +950,17 @@ UniStaker is a mechanism designed to facilitate the collection and distribution 
 
 The operational framework of UniStaker is built around two core contracts: V3FactoryOwner.sol and UniStaker.sol. The V3FactoryOwner contract functions as the new owner of the Uniswap V3 Factory, allowing governance to transfer factory ownership to this contract while retaining control over fee settings through a governance mechanism. On the other hand, the UniStaker contract is responsible for the distribution of staking rewards, employing a mechanism that allows rewards to drip over a fixed period, similar to the Synthetix StakingRewards.sol model. This contract enables UNI stakers to maintain their governance rights, designate beneficiaries for their rewards, and manage their stakes on a per-deposit basis, introducing efficiencies in terms of precision, gas usage, and code clarity. Additionally, UniStaker is designed to accommodate rewards from various sources, with the potential for future expansion beyond Uniswap V3 protocol fees, under the administration of Uniswap Governance.
 
-| File Name               | Description                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| UniStaker.sol           | The code defines a smart contract, UniStaker, responsible for managing the distribution of staking rewards in the form of ERC20 tokens to participants who deposit a specific governance token. It allows for flexible management of staking positions, enabling users to delegate voting power, specify reward beneficiaries, and alter these designations while participating in a reward distribution mechanism inspired by Synthetix's model. |
-| V3FactoryOwner.sol      | The code defines V3FactoryOwner, a contract serving as the owner of the Uniswap v3 factory, allowing an admin (expected to be Uniswap Governance) to manage fee settings on pools and the factory itself. It enables a public function for collecting protocol fees from pools in exchange for a specified token, aiming to create a competitive market for fee collection.                                                                       |
-| DelegationSurrogate.sol | DelegationSurrogate is a streamlined contract designed to hold governance tokens on behalf of users while delegating their voting power to a specified delegatee. This approach enables individual token holders to maintain their governance rights by using a separate surrogate for each delegatee, even when their tokens are pooled together under a single contract.                                                                        |
+| File Name | Description |
+| -- | -- | 
+| UniStaker.sol | The code defines a smart contract, UniStaker, responsible for managing the distribution of staking rewards in the form of ERC20 tokens to participants who deposit a specific governance token. It allows for flexible management of staking positions, enabling users to delegate voting power, specify reward beneficiaries, and alter these designations while participating in a reward distribution mechanism inspired by Synthetix's model. |
+| V3FactoryOwner.sol | The code defines V3FactoryOwner, a contract serving as the owner of the Uniswap v3 factory, allowing an admin (expected to be Uniswap Governance) to manage fee settings on pools and the factory itself. It enables a public function for collecting protocol fees from pools in exchange for a specified token, aiming to create a competitive market for fee collection. |
+| DelegationSurrogate.sol | DelegationSurrogate is a streamlined contract designed to hold governance tokens on behalf of users while delegating their voting power to a specified delegatee. This approach enables individual token holders to maintain their governance rights by using a separate surrogate for each delegatee, even when their tokens are pooled together under a single contract. |
 
 ## Architecture Diagram
 
 The architecture diagram below illustrates the interaction between various components of the system, focusing on governance token delegation and staking rewards distribution. This system allows governance token holders to stake their tokens, delegate their voting power, and earn rewards, all while maintaining their governance rights.
 
-_Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312)._
+*Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312).*
 
 ### Architecture Overview
 
@@ -984,7 +983,7 @@ _Note: to view the provided image, please see the original submission [here](htt
 This architecture enables a decentralized and democratic governance system where token holders can earn rewards while participating in the governance of the protocol or ecosystem they are invested in. It balances the need for efficient governance token management with the desire to empower individual token holders.
 Below is a sequence diagram illustrating the interactions within the system, focusing on the process of staking tokens, delegating voting power, and distributing rewards.
 
-_Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312)._
+*Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312).*
 
 ### Sequence Diagram Overview
 
@@ -1006,7 +1005,7 @@ This sequence outlines the flow of actions from staking tokens to receiving rewa
 
 ## Overview of Functions in the UniStaker Smart Contract
 
-_Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312)._
+*Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312).*
 
 ### Admin and Reward Notifier Management
 
@@ -1100,7 +1099,7 @@ This contract facilitates complex staking, delegation, and rewards management op
 
 This smart contract introduces a comprehensive system for staking governance tokens, managing voting power delegation, and distributing rewards. It emphasizes user autonomy by allowing stakers to retain their governance rights through delegation and to designate beneficiaries for their rewards. The contract's security measures, including checks for unauthorized access and signature validation, ensure the integrity of its operations.
 
-_Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312)._
+*Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312).*
 
 This sequence diagram outlines the interactions between a user, the UniStaker contract, ERC20 tokens, the Delegation Surrogate, and a reward notifier within the UniStaker system. It demonstrates the flow of stake deposits, stake modifications, withdrawals, reward claims, and reward notifications, emphasizing the contract's role in managing staked tokens, delegating voting power, and distributing rewards.
 
@@ -1110,7 +1109,7 @@ This sequence diagram outlines the interactions between a user, the UniStaker co
 
 The V3FactoryOwner contract acts as the owner of the Uniswap V3 factory, enabling privileged control over factory and pool settings, including fee management. It also allows the collection of protocol fees from pools through a public function, facilitating an arbitrage opportunity by trading a designated token amount for pool fees.
 
-_Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312)._
+*Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312).*
 
 ### Key Functionalities
 
@@ -1131,7 +1130,6 @@ _Note: to view the provided image, please see the original submission [here](htt
 **Constructor and Initialization**
 
 Upon deployment, the constructor initializes the contract by setting:
-
 - The admin address, who will have exclusive rights to perform certain actions within the contract.
 - The Uniswap V3 Factory contract instance, which this contract will own and manage.
 - The payout token, used as payment for claiming pool fees.
@@ -1159,7 +1157,7 @@ Upon deployment, the constructor initializes the contract by setting:
 
 The V3FactoryOwner contract is a critical component for managing Uniswap V3 factory settings, including fee structures and protocol fee collection. Its design focuses on providing administrative control over key parameters while enabling an innovative mechanism for protocol fee collection. Through its public claim fees function, it incentivizes external parties to participate in protocol fee collection, creating a competitive market dynamic. This sequence diagram shows the over all flow of the functionality:
 
-_Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312)._
+*Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312).*
 
 ## DelegationSurrogate Smart Contract Functionalities Detailed Overview
 
@@ -1167,7 +1165,7 @@ _Note: to view the provided image, please see the original submission [here](htt
 
 The `DelegationSurrogate` contract is designed to facilitate governance participation for token holders whose tokens are pooled. It addresses the challenge of maintaining individual governance rights in a pooled environment by allowing the delegation of voting power from pooled tokens to a specified delegatee.
 
-_Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312)._
+*Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312).*
 
 ### Key Functionalities
 
@@ -1196,7 +1194,7 @@ Upon deployment, the constructor performs crucial initializations to set up the 
 
 The `DelegationSurrogate` contract is a streamlined solution designed to preserve the governance rights of token holders within pooled environments. Through its straightforward mechanism of delegating voting power and setting up token approvals at deployment, it ensures that governance participation remains effective and that token management remains efficient.
 
-_Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312)._
+*Note: to view the provided image, please see the original submission [here](https://github.com/code-423n4/2024-02-uniswap-foundation-findings/issues/312).*
 
 ## Centralization Risks
 
@@ -1232,7 +1230,7 @@ The UniStaker system presents an innovative approach to staking, voting delegati
 
 28 hours
 
----
+***
 
 # Disclosures
 
