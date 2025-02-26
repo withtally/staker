@@ -3,7 +3,7 @@ pragma solidity ^0.8.23;
 
 import {INotifiableRewardReceiver} from "../interfaces/INotifiableRewardReceiver.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
-import {RewardTokenNotifierBase} from "../notifiers/RewardTokenNotifierBase.sol";
+import {RewardTokenNotifierBase} from "./RewardTokenNotifierBase.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title MintRewardNotifier

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import {IERC20Delegates} from "../interfaces/IERC20Delegates.sol";
+import {IERC20Delegates} from "./IERC20Delegates.sol";
 
 /// @notice The interface of an ERC20 that supports a governor staker and all of the created
 /// extensions.

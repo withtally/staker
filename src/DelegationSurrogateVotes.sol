@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {DelegationSurrogate} from "../src/DelegationSurrogate.sol";
-import {IERC20Delegates} from "../src/interfaces/IERC20Delegates.sol";
+import {DelegationSurrogate} from "./DelegationSurrogate.sol";
+import {IERC20Delegates} from "./interfaces/IERC20Delegates.sol";
 
 /// @title DelegationSurrogateVotes
 /// @author [ScopeLift](https://scopelift.co)
