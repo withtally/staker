@@ -2,8 +2,8 @@
 pragma solidity ^0.8.23;
 
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
-import {Staker} from "src/Staker.sol";
-import {DelegationSurrogate} from "src/DelegationSurrogate.sol";
+import {Staker} from "../src/Staker.sol";
+import {DelegationSurrogate} from "../src/DelegationSurrogate.sol";
 import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
 import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
 import {MockFullEarningPowerCalculator} from "test/mocks/MockFullEarningPowerCalculator.sol";

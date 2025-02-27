@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {Staker} from "src/Staker.sol";
-import {SignatureChecker} from "openzeppelin/utils/cryptography/SignatureChecker.sol";
-import {EIP712} from "openzeppelin/utils/cryptography/EIP712.sol";
-import {Nonces} from "openzeppelin/utils/Nonces.sol";
+import {Staker} from "../Staker.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 /// @title StakerOnBehalf
 /// @author [ScopeLift](https://scopelift.co)
