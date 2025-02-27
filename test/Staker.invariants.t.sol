@@ -5,11 +5,11 @@ import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {IEarningPowerCalculator} from "../src/Staker.sol";
-import {StakerHandler} from "test/helpers/Staker.handler.sol";
-import {StakerHarness} from "test/harnesses/StakerHarness.sol";
-import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
-import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
-import {MockFullEarningPowerCalculator} from "test/mocks/MockFullEarningPowerCalculator.sol";
+import {StakerHandler} from "../test/helpers/Staker.handler.sol";
+import {StakerHarness} from "../test/harnesses/StakerHarness.sol";
+import {ERC20VotesMock} from "../test/mocks/MockERC20Votes.sol";
+import {ERC20Fake} from "../test/fakes/ERC20Fake.sol";
+import {MockFullEarningPowerCalculator} from "../test/mocks/MockFullEarningPowerCalculator.sol";
 
 contract StakerInvariants is Test {
   StakerHandler public handler;

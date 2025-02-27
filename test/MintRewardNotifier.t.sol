@@ -5,10 +5,10 @@ import {Vm, Test, stdStorage, StdStorage, console2, console, stdError} from "for
 import {MintRewardNotifier, IMintable} from "../src/notifiers/MintRewardNotifier.sol";
 import {RewardTokenNotifierBase} from "../src/notifiers/RewardTokenNotifierBase.sol";
 import {INotifiableRewardReceiver} from "../src/interfaces/INotifiableRewardReceiver.sol";
-import {MockNotifiableRewardReceiver} from "test/mocks/MockNotifiableRewardReceiver.sol";
-import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
-import {FakeMinter} from "test/fakes/FakeMinter.sol";
-import {TestHelpers} from "test/helpers/TestHelpers.sol";
+import {MockNotifiableRewardReceiver} from "../test/mocks/MockNotifiableRewardReceiver.sol";
+import {ERC20VotesMock} from "../test/mocks/MockERC20Votes.sol";
+import {FakeMinter} from "../test/fakes/FakeMinter.sol";
+import {TestHelpers} from "../test/helpers/TestHelpers.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MintRewardNotifierTest is Test, TestHelpers {

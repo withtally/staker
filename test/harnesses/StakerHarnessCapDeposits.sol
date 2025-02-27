@@ -3,7 +3,7 @@ pragma solidity ^0.8.23;
 
 import {Staker} from "../../src/Staker.sol";
 import {StakerCapDeposits} from "../../src/extensions/StakerCapDeposits.sol";
-import {StakerHarness} from "test/harnesses/StakerHarness.sol";
+import {StakerHarness} from "../../test/harnesses/StakerHarness.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
