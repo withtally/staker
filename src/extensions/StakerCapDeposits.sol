@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {Staker} from "src/Staker.sol";
+import {Staker} from "../Staker.sol";
 
 /// @title StakerCapDeposits
 /// @author [ScopeLift](https://scopelift.co)

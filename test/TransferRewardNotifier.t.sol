@@ -2,13 +2,13 @@
 pragma solidity ^0.8.23;
 
 import {Vm, Test, stdStorage, StdStorage, console2, console, stdError} from "forge-std/Test.sol";
-import {TransferRewardNotifier} from "src/notifiers/TransferRewardNotifier.sol";
-import {RewardTokenNotifierBase} from "src/notifiers/RewardTokenNotifierBase.sol";
-import {INotifiableRewardReceiver} from "src/interfaces/INotifiableRewardReceiver.sol";
+import {TransferRewardNotifier} from "../src/notifiers/TransferRewardNotifier.sol";
+import {RewardTokenNotifierBase} from "../src/notifiers/RewardTokenNotifierBase.sol";
+import {INotifiableRewardReceiver} from "../src/interfaces/INotifiableRewardReceiver.sol";
 import {MockNotifiableRewardReceiver} from "test/mocks/MockNotifiableRewardReceiver.sol";
-import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
-import {TestHelpers} from "test/helpers/TestHelpers.sol";
-import {Ownable} from "openzeppelin/access/Ownable.sol";
+import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
+import {TestHelpers} from "./helpers/TestHelpers.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TransferRewardNotifierTest is Test, TestHelpers {
   ERC20VotesMock token;

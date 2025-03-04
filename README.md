@@ -117,6 +117,96 @@ stateDiagram-v2
     PF --> Staker: Returns earning power to staking system
 ```
 
+## Usage
+
+The Staker repository is designed to be used as a library. Once added to your project, it can be used to assemble, configure, and deploy an instance of Staker appropriate for your project.
+
+### Installation
+
+#### Foundry
+
+Add Staker as a dependency:
+
+```bash
+forge install withtally/staker
+```
+
+#### Hardhat
+
+Staker is not currently distributed as a package on npm, but it can still be added to a HardHat project by referencing the github repository directly.
+
+Add the following lines to to your `package.json` in the `dependencies` key:
+
+```json
+"dependencies": {
+    "@openzeppelin/contracts": "^5.0.2",
+    "staker": "github:withtally/staker#v1.0.1"
+  }
+```
+
+Note that because the `staker` package is pinned to a version branch on GitHub. To upgrade to a new version of Staker in the future, you cannot expect an upgrade to a new version simply by running `npm upgrade`. Instead, you will have to update the tag referenced in the `pacakage.json` and re-run `npm install`.
+
+### Import and Assemble a Staker
+
+To create a concrete implementation, import Staker and the desired extensions. Create a new contract that inherits from Staker and the extensions of choice, and implement the constructor, along with any method overrides in accordance with your desired set of features and customizations.
+
+For example, here is a concrete implementation of the Staker that:
+
+* Uses an [ERC20Votes](https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#ERC20Votes) style governance token as its staking token (via the `StakerDelegateSurrogateVotes` extension)
+* Uses a staking token that includes permit functionality, and provides convenience staking methods that use this functionality (via the `StakerPermitAndStake` extension)
+* Allows users to take actions via EIP712 signatures (via the `StakerOnBehalf` extension)
+* Allows a maximum claim fee of 1 (18 decimal) reward token, but configures the Staker with claim fees turned off to start
+
+```solidity
+pragma solidity 0.8.28;
+
+import {Staker} staker/Staker.sol;
+import {StakerDelegateSurrogateVotes} from "staker/extensions/StakerDelegateSurrogateVotes.sol";
+import {StakerPermitAndStake} from "staker/extensions/StakerPermitAndStake.sol";
+import {StakerOnBehalf} from "staker/extensions/StakerOnBehalf.sol";
+
+contract MyStaker is
+  Staker,
+  StakerDelegateSurrogateVotes,
+  StakerPermitAndStake
+  StakerOnBehalf
+{
+  constructor(
+    IERC20 _rewardsToken,
+    IERC20Staking _stakeToken,
+    IEarningPowerCalculator _earningPowerCalculator,
+    uint256 _maxBumpTip,
+    address _admin
+  )
+    Staker(_rewardsToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin)
+    StakerPermitAndStake(_stakeToken)
+    StakerDelegateSurrogateVotes(_stakeToken)
+    EIP712("MyStaker", "1")
+  {
+    // Override the maximum reward token fee for claiming rewards
+    MAX_CLAIM_FEE = 1e18;
+    // At deployment, there should be no reward claiming fee
+    _setClaimFeeParameters(ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)}));
+  }
+}
+```
+
+### Testing
+
+Foundry users can also import test-related contracts into their own tests if desired:
+
+```solidity
+pragma solidity 0.8.28;
+
+import {StakerTestBase} from "staker-test/StakerTestBase.sol";
+
+contract MyStakerTest is StakerTestBase {
+    // ... Your test implementations
+}
+```
+
+Hardhat users cannot, by definition, import test contracts into their own tests. Any testing infrastructure for JavaScript tests must be written by the downstream consumer of the Staker package.
+
 ## Development
 
 These contracts were built and tested with care by the team at [ScopeLift](https://scopelift.co).

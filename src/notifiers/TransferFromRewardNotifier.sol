@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {INotifiableRewardReceiver, IERC20} from "src/interfaces/INotifiableRewardReceiver.sol";
-import {RewardTokenNotifierBase} from "src/notifiers/RewardTokenNotifierBase.sol";
-import {Ownable} from "openzeppelin/access/Ownable.sol";
-import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import {INotifiableRewardReceiver, IERC20} from "../interfaces/INotifiableRewardReceiver.sol";
+import {RewardTokenNotifierBase} from "../notifiers/RewardTokenNotifierBase.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title TransferFromRewardNotifier
 /// @author [ScopeLift](https://scopelift.co)
