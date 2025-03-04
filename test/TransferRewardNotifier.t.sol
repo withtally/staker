@@ -6,8 +6,8 @@ import {TransferRewardNotifier} from "../src/notifiers/TransferRewardNotifier.so
 import {RewardTokenNotifierBase} from "../src/notifiers/RewardTokenNotifierBase.sol";
 import {INotifiableRewardReceiver} from "../src/interfaces/INotifiableRewardReceiver.sol";
 import {MockNotifiableRewardReceiver} from "test/mocks/MockNotifiableRewardReceiver.sol";
-import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
-import {TestHelpers} from "test/helpers/TestHelpers.sol";
+import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
+import {TestHelpers} from "./helpers/TestHelpers.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TransferRewardNotifierTest is Test, TestHelpers {

@@ -9,7 +9,6 @@ import {Script} from "forge-std/Script.sol";
 import {DeployInput} from "./DeployInput.sol";
 import {StakerHarness} from "../../test/harnesses/StakerHarness.sol";
 import {IERC20Staking} from "../interfaces/IERC20Staking.sol";
-import {INotifiableRewardReceiver} from "../interfaces/INotifiableRewardReceiver.sol";
 import {IEarningPowerCalculator} from "../interfaces/IEarningPowerCalculator.sol";
 
 contract Deploy is Script, DeployInput {
