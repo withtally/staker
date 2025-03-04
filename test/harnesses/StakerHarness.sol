@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {DelegationSurrogateVotes} from "../../src/DelegationSurrogateVotes.sol";
 import {Staker} from "../../src/Staker.sol";
 import {StakerPermitAndStake} from "../../src/extensions/StakerPermitAndStake.sol";
 import {StakerOnBehalf} from "../../src/extensions/StakerOnBehalf.sol";

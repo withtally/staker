@@ -2,8 +2,8 @@
 pragma solidity ^0.8.23;
 
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
-import {StakerTestBase} from "test/StakerTestBase.sol";
-import {StakerHarnessCapDeposits} from "test/harnesses/StakerHarnessCapDeposits.sol";
+import {StakerTestBase} from "./StakerTestBase.sol";
+import {StakerHarnessCapDeposits} from "./harnesses/StakerHarnessCapDeposits.sol";
 import {Staker} from "../src/Staker.sol";
 import {StakerCapDeposits} from "../src/extensions/StakerCapDeposits.sol";
 import {DelegationSurrogate} from "../src/DelegationSurrogate.sol";

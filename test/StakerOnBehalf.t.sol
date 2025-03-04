@@ -3,8 +3,8 @@ pragma solidity ^0.8.23;
 
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {StakerOnBehalf} from "../src/extensions/StakerOnBehalf.sol";
-import {StakerTest, StakerRewardsTest} from "test/Staker.t.sol";
-import {StakerHarness} from "test/harnesses/StakerHarness.sol";
+import {StakerTest, StakerRewardsTest} from "./Staker.t.sol";
+import {StakerHarness} from "./harnesses/StakerHarness.sol";
 import {Staker, IERC20, IEarningPowerCalculator} from "../src/Staker.sol";
 import {IERC20Staking} from "../src/interfaces/IERC20Staking.sol";
 

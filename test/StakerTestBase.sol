@@ -4,10 +4,10 @@ pragma solidity ^0.8.23;
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
 import {Staker} from "../src/Staker.sol";
 import {DelegationSurrogate} from "../src/DelegationSurrogate.sol";
-import {ERC20VotesMock} from "test/mocks/MockERC20Votes.sol";
-import {ERC20Fake} from "test/fakes/ERC20Fake.sol";
-import {MockFullEarningPowerCalculator} from "test/mocks/MockFullEarningPowerCalculator.sol";
-import {PercentAssertions} from "test/helpers/PercentAssertions.sol";
+import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
+import {ERC20Fake} from "./fakes/ERC20Fake.sol";
+import {MockFullEarningPowerCalculator} from "./mocks/MockFullEarningPowerCalculator.sol";
+import {PercentAssertions} from "./helpers/PercentAssertions.sol";
 
 // Base utilities that can be used for testing concrete Staker implementations. Steps:
 // 1. Create a test file that inherits from StakerTestBase
