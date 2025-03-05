@@ -7,6 +7,11 @@ import {Staker, IERC20, IEarningPowerCalculator} from "../src/Staker.sol";
 import {IERC20Staking} from "../src/interfaces/IERC20Staking.sol";
 import {DelegationSurrogate} from "../src/DelegationSurrogate.sol";
 import {StakerHarness} from "./harnesses/StakerHarness.sol";
+import {
+  MockStakerHarness,
+  StakerDelegateSurrogateVotes,
+  StakerPermitAndStake
+} from "./mocks/MockStakerHarness.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 contract StakerTest is StakerTestBase {
@@ -87,6 +92,52 @@ contract Constructor is StakerTest {
     assertEq(address(_govStaker.earningPowerCalculator()), address(_earningPowerCalculator));
     assertEq(_govStaker.maxBumpTip(), _maxBumpTip);
     assertEq(_govStaker.admin(), _admin);
+  }
+
+  function testFuzz_RevertIf_StakeTokenMismatchBetweenStakerAndDelegateSurrogate(
+    address _rewardToken,
+    address _stakerStateToken,
+    address _delegateSurrogateStakeToken,
+    address _earningPowerCalculator,
+    uint256 _maxBumpTip,
+    address _admin
+  ) public {
+    vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
+    vm.assume(address(_stakerStateToken) != address(_delegateSurrogateStakeToken));
+    vm.expectRevert(
+      StakerDelegateSurrogateVotes.StakerDelegateSurrogateVotes__UnauthorizedToken.selector
+    );
+    new MockStakerHarness(
+      IERC20(_rewardToken),
+      IERC20Staking(_stakerStateToken),
+      IERC20Staking(_stakerStateToken),
+      IERC20Staking(_delegateSurrogateStakeToken),
+      IEarningPowerCalculator(_earningPowerCalculator),
+      _maxBumpTip,
+      _admin
+    );
+  }
+
+  function testFuzz_RevertIf_StakeTokenMismatchBetweenStakerAndPermitAndStake(
+    address _rewardToken,
+    address _stakerStateToken,
+    address _permitAndStakeStakeToken,
+    address _earningPowerCalculator,
+    uint256 _maxBumpTip,
+    address _admin
+  ) public {
+    vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
+    vm.assume(address(_stakerStateToken) != address(_permitAndStakeStakeToken));
+    vm.expectRevert(StakerPermitAndStake.StakerPermitAndStake__UnauthorizedToken.selector);
+    new MockStakerHarness(
+      IERC20(_rewardToken),
+      IERC20Staking(_stakerStateToken),
+      IERC20Staking(_permitAndStakeStakeToken),
+      IERC20Staking(_stakerStateToken),
+      IEarningPowerCalculator(_earningPowerCalculator),
+      _maxBumpTip,
+      _admin
+    );
   }
 }
 
@@ -696,6 +747,50 @@ contract PermitAndStake is StakerTest {
     assertEq(_deposit.claimer, _claimer);
   }
 
+  function testFuzz_FrontRunsTheApprovalByCallingPermitOnTheTokenDirectlyThenPerformsStake(
+    uint256 _depositorPrivateKey,
+    uint256 _depositAmount,
+    address _caller,
+    address _delegatee,
+    address _claimer,
+    uint256 _deadline,
+    uint256 _currentNonce
+  ) public {
+    vm.assume(_delegatee != address(0) && _claimer != address(0));
+    _deadline = bound(_deadline, block.timestamp, type(uint256).max);
+    _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
+    address _depositor = vm.addr(_depositorPrivateKey);
+    _depositAmount = _boundMintAmount(_depositAmount);
+    _mintGovToken(_depositor, _depositAmount);
+
+    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor).checked_write(
+      _currentNonce
+    );
+
+    bytes32 _message = keccak256(
+      abi.encode(
+        PERMIT_TYPEHASH,
+        _depositor,
+        address(govStaker),
+        _depositAmount,
+        govToken.nonces(_depositor),
+        _deadline
+      )
+    );
+
+    bytes32 _messageHash =
+      keccak256(abi.encodePacked("\x19\x01", govToken.DOMAIN_SEPARATOR(), _message));
+    (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(_depositorPrivateKey, _messageHash);
+
+    vm.prank(_caller);
+    govToken.permit(_depositor, address(govStaker), _depositAmount, _deadline, _v, _r, _s);
+
+    vm.prank(_depositor);
+    Staker.DepositIdentifier _depositId =
+      govStaker.permitAndStake(_depositAmount, _delegatee, _claimer, _deadline, _v, _r, _s);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+  }
+
   function testFuzz_SuccessfullyStakeWhenApprovalExistsAndPermitSignatureIsInvalid(
     uint256 _depositorPrivateKey,
     uint256 _depositAmount,
@@ -1205,6 +1300,57 @@ contract PermitAndStakeMore is StakerTest {
     assertEq(_deposit.owner, _depositor);
     assertEq(_deposit.delegatee, _delegatee);
     assertEq(_deposit.claimer, _claimer);
+  }
+
+  function testFuzz_FrontRunsTheApprovalByCallingPermitOnTheTokenDirectlyThenPerformsStakeMore(
+    uint256 _depositorPrivateKey,
+    uint256 _initialDepositAmount,
+    uint256 _stakeMoreAmount,
+    // address _caller,
+    address _delegatee,
+    address _claimer,
+    uint256 _currentNonce,
+    uint256 _deadline
+  ) public {
+    vm.assume(_delegatee != address(0) && _claimer != address(0));
+    _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
+    address _depositor = vm.addr(_depositorPrivateKey);
+    _deadline = bound(_deadline, block.timestamp, type(uint256).max);
+
+    Staker.DepositIdentifier _depositId;
+    (_initialDepositAmount, _depositId) =
+      _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
+
+    _stakeMoreAmount = _boundToRealisticStake(_stakeMoreAmount);
+    _mintGovToken(_depositor, _stakeMoreAmount);
+
+    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor).checked_write(
+      _currentNonce
+    );
+
+    // Separate scope to avoid stack to deep errors
+    {
+      bytes32 _message = keccak256(
+        abi.encode(
+          PERMIT_TYPEHASH,
+          _depositor,
+          address(govStaker),
+          _stakeMoreAmount,
+          govToken.nonces(_depositor),
+          _deadline
+        )
+      );
+
+      bytes32 _messageHash =
+        keccak256(abi.encodePacked("\x19\x01", govToken.DOMAIN_SEPARATOR(), _message));
+      (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(_depositorPrivateKey, _messageHash);
+
+      vm.prank(vm.randomAddress());
+      govToken.permit(_depositor, address(govStaker), _stakeMoreAmount, _deadline, _v, _r, _s);
+
+      vm.prank(_depositor);
+      govStaker.permitAndStakeMore(_depositId, _stakeMoreAmount, _deadline, _v, _r, _s);
+    }
   }
 
   function testFuzz_SuccessfullyStakeMoreWhenApprovalExistsAndPermitSignatureIsInvalid(
@@ -2278,6 +2424,33 @@ contract SetEarningPowerCalculator is StakerTest {
     vm.prank(admin);
     vm.expectRevert(Staker.Staker__InvalidAddress.selector);
     govStaker.setEarningPowerCalculator(address(0));
+  }
+}
+
+contract SetMaxBumpTip is StakerTest {
+  function testFuzz_AllowsAdminToSetMaxBumpTip(uint256 _newMaxBumpTip) public {
+    vm.prank(admin);
+    govStaker.setMaxBumpTip(_newMaxBumpTip);
+
+    assertEq(govStaker.maxBumpTip(), _newMaxBumpTip);
+  }
+
+  function testFuzz_EmitsEventWhenMaxBumpTipIsSet(uint256 _newMaxBumpTip) public {
+    vm.expectEmit();
+    emit Staker.MaxBumpTipSet(govStaker.maxBumpTip(), _newMaxBumpTip);
+
+    vm.prank(admin);
+    govStaker.setMaxBumpTip(_newMaxBumpTip);
+  }
+
+  function testFuzz_RevertIf_TheCallerIsNotTheAdmin(address _caller, uint256 _newMaxBumpTip) public {
+    vm.assume(_caller != admin);
+
+    vm.prank(_caller);
+    vm.expectRevert(
+      abi.encodeWithSelector(Staker.Staker__Unauthorized.selector, bytes32("not admin"), _caller)
+    );
+    govStaker.setMaxBumpTip(_newMaxBumpTip);
   }
 }
 
