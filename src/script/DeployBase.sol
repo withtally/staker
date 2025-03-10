@@ -40,7 +40,7 @@ abstract contract DeployBase is Script {
   //
   function _deployRewardNotifiers() internal virtual;
 
-  function run() public {
+  function run() public returns (IEarningPowerCalculator, Staker, RewardNotifier[] memory) {
     IEarningPowerCalculator _earningPowerCalculator = _deployEarningPowerCalculator();
     Staker _staker = _deployStaker(_earningPowerCalculator);
 
