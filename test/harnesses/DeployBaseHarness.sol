@@ -21,12 +21,12 @@ contract DeployBaseHarness is
   DeployMinterRewardNotifier,
   DeployIdentityEarningPowerCalculator
 {
-  address admin = makeAddr("Staker admin");
-  address notifierReceiver = makeAddr("Notifier receiver");
-  address notifierOwner = makeAddr("Notifier owner");
-  address notifierMinter = makeAddr("Notifier minter");
-  IERC20 rewardToken;
-  IERC20 stakeToken;
+  address public admin = makeAddr("Staker admin");
+  address public notifierReceiver = makeAddr("Notifier receiver");
+  address public notifierOwner = makeAddr("Notifier owner");
+  address public notifierMinter = makeAddr("Notifier minter");
+  IERC20 public rewardToken;
+  IERC20 public stakeToken;
 
   constructor(IERC20 _rewardToken, IERC20 _stakeToken) {
     rewardToken = _rewardToken;
@@ -44,7 +44,6 @@ contract DeployBaseHarness is
     returns (MinterRewardNotifierConfiguration memory)
   {
     return MinterRewardNotifierConfiguration({
-      receiver: INotifiableRewardReceiver(notifierReceiver),
       initialRewardAmount: 10e18,
       initialRewardInterval: 30 days,
       initialOwner: notifierOwner,
@@ -62,8 +61,7 @@ contract DeployBaseHarness is
       rewardToken: rewardToken,
       stakeToken: stakeToken,
       earningPowerCalculator: _earningPowerCalculator,
-      maxBumpTip: 1e18,
-      admin: makeAddr("Admin")
+      maxBumpTip: 1e18
     });
   }
 
@@ -79,7 +77,7 @@ contract DeployBaseHarness is
       IERC20Staking(address(_config.stakeToken)),
       _config.earningPowerCalculator,
       _config.maxBumpTip,
-      _config.admin,
+      deployer,
       "Harness"
     );
   }

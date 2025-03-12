@@ -13,7 +13,6 @@ abstract contract DeployStaker is DeployBase {
     IERC20 stakeToken;
     IEarningPowerCalculator earningPowerCalculator;
     uint256 maxBumpTip;
-    address admin;
   }
 
   function _deployStakerConfiguration(IEarningPowerCalculator _earningPowerCalculator)

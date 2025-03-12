@@ -3,6 +3,7 @@
 
 pragma solidity ^0.8.23;
 
+import {Vm, Test, stdStorage, StdStorage, console2, console, stdError} from "forge-std/Test.sol";
 import {Script} from "forge-std/Script.sol";
 
 import {IEarningPowerCalculator} from "../interfaces/IEarningPowerCalculator.sol";
@@ -10,22 +11,11 @@ import {Staker} from "../Staker.sol";
 
 abstract contract DeployBase is Script {
   uint256 deployerPrivateKey;
-  RewardNotifier[] internal rewardNotifiers;
+  address[] internal rewardNotifiers;
+  address deployer;
 
   struct BaseConfiguration {
     address admin;
-  }
-
-  struct RewardNotifier {
-    address rewardNotifier;
-    bool isEnabled;
-  }
-
-  function setUp() public {
-    deployerPrivateKey = vm.envOr(
-      "DEPLOYER_PRIVATE_KEY",
-      uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
-    );
   }
 
   function _deployBaseConfiguration() internal virtual returns (BaseConfiguration memory);
@@ -38,18 +28,27 @@ abstract contract DeployBase is Script {
   function _deployEarningPowerCalculator() internal virtual returns (IEarningPowerCalculator);
 
   //
-  function _deployRewardNotifiers() internal virtual;
+  function _deployRewardNotifiers(Staker _staker) internal virtual;
 
-  function run() public returns (IEarningPowerCalculator, Staker, RewardNotifier[] memory) {
+  function run() public returns (IEarningPowerCalculator, Staker, address[] memory) {
+    deployerPrivateKey = vm.envOr(
+      "DEPLOYER_PRIVATE_KEY",
+      uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
+    );
+
+    deployer = vm.rememberKey(deployerPrivateKey);
+	vm.startBroadcast(deployer);
     IEarningPowerCalculator _earningPowerCalculator = _deployEarningPowerCalculator();
     Staker _staker = _deployStaker(_earningPowerCalculator);
 
+	_deployRewardNotifiers(_staker);
     for (uint256 i = 0; i < rewardNotifiers.length; i++) {
-      _staker.setRewardNotifier(rewardNotifiers[i].rewardNotifier, rewardNotifiers[i].isEnabled);
+      _staker.setRewardNotifier(rewardNotifiers[i], true);
     }
 
     BaseConfiguration memory _baseConfig = _deployBaseConfiguration();
-    vm.broadcast(deployerPrivateKey);
     _staker.setAdmin(_baseConfig.admin);
+	vm.stopBroadcast();
+	return (_earningPowerCalculator, _staker, rewardNotifiers);
   }
 }

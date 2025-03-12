@@ -5,10 +5,10 @@ import {INotifiableRewardReceiver} from "../../interfaces/INotifiableRewardRecei
 import {IMintable} from "../../interfaces/IMintable.sol";
 import {DeployBase} from "../DeployBase.sol";
 import {MintRewardNotifier} from "../../notifiers/MintRewardNotifier.sol";
+import {Staker} from "../../Staker.sol";
 
 abstract contract DeployMinterRewardNotifier is DeployBase {
   struct MinterRewardNotifierConfiguration {
-    INotifiableRewardReceiver receiver;
     uint256 initialRewardAmount;
     uint256 initialRewardInterval;
     address initialOwner;
@@ -20,16 +20,15 @@ abstract contract DeployMinterRewardNotifier is DeployBase {
     virtual
     returns (MinterRewardNotifierConfiguration memory);
 
-  function _deployRewardNotifiers() internal virtual override {
+  function _deployRewardNotifiers(Staker _staker) internal virtual override {
     MinterRewardNotifierConfiguration memory _config = _deployMinterRewardNotifierConfiguration();
     MintRewardNotifier _notifier = new MintRewardNotifier(
-      _config.receiver,
+      INotifiableRewardReceiver(address(_staker)),
       _config.initialRewardAmount,
       _config.initialRewardInterval,
       _config.initialOwner,
       _config.minter
     );
-    rewardNotifiers[rewardNotifiers.length] =
-      RewardNotifier({rewardNotifier: address(_notifier), isEnabled: true});
+    rewardNotifiers.push(address(_notifier));
   }
 }
