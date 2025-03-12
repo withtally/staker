@@ -33,25 +33,27 @@ contract DeployBaseTest is Test {
 
 contract Run is DeployBaseTest {
   function test_StakingSystemDeploy() public {
-    (IEarningPowerCalculator _calculator, Staker _staker, address[] memory _notifiers) = deployScript.run();
-	MintRewardNotifier _mintNotifier = MintRewardNotifier(_notifiers[0]);
-	assertEq(address(_staker), address(_mintNotifier.RECEIVER()));
-	assertEq(10e18, _mintNotifier.rewardAmount());
-	assertEq(30 days, _mintNotifier.rewardInterval());
-	assertEq(deployScript.notifierOwner(), _mintNotifier.owner());
-	assertEq(address(deployScript.notifierMinter()), address(_mintNotifier.minter()));
+    (IEarningPowerCalculator _calculator, Staker _staker, address[] memory _notifiers) =
+      deployScript.run();
+    MintRewardNotifier _mintNotifier = MintRewardNotifier(_notifiers[0]);
+    assertEq(address(_staker), address(_mintNotifier.RECEIVER()));
+    assertEq(10e18, _mintNotifier.rewardAmount());
+    assertEq(30 days, _mintNotifier.rewardInterval());
+    assertEq(deployScript.notifierOwner(), _mintNotifier.owner());
+    assertEq(address(deployScript.notifierMinter()), address(_mintNotifier.minter()));
 
-	// Staker params
-	assertTrue(_staker.isRewardNotifier(_notifiers[0]));
-	assertEq(address(_calculator), address(_staker.earningPowerCalculator()));
-	assertEq(address(rewardToken), address(_staker.REWARD_TOKEN()));
-	assertEq(address(govToken), address(_staker.STAKE_TOKEN()));
-	assertEq(address(deployScript.admin()), _staker.admin());
+    // Staker params
+    assertTrue(_staker.isRewardNotifier(_notifiers[0]));
+    assertEq(address(_calculator), address(_staker.earningPowerCalculator()));
+    assertEq(address(rewardToken), address(_staker.REWARD_TOKEN()));
+    assertEq(address(govToken), address(_staker.STAKE_TOKEN()));
+    assertEq(address(deployScript.admin()), _staker.admin());
   }
 
   function testfuzz_StakingSystemDeployWithMockStakerConfiguration() public {
-		  //
-    (IEarningPowerCalculator _calculator, Staker _staker, address[] memory _notifiers) = deployScript.run();
+    //
+    (IEarningPowerCalculator _calculator, Staker _staker, address[] memory _notifiers) =
+      deployScript.run();
     console2.logUint(_notifiers.length);
     assertEq(address(_calculator), address(_staker.earningPowerCalculator()));
     assertTrue(_staker.isRewardNotifier(_notifiers[0]));
@@ -59,5 +61,4 @@ contract Run is DeployBaseTest {
     assertEq(address(govToken), address(_staker.STAKE_TOKEN()));
     assertEq(address(deployScript.admin()), _staker.admin());
   }
-
 }

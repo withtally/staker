@@ -37,18 +37,18 @@ abstract contract DeployBase is Script {
     );
 
     deployer = vm.rememberKey(deployerPrivateKey);
-	vm.startBroadcast(deployer);
+    vm.startBroadcast(deployer);
     IEarningPowerCalculator _earningPowerCalculator = _deployEarningPowerCalculator();
     Staker _staker = _deployStaker(_earningPowerCalculator);
 
-	_deployRewardNotifiers(_staker);
+    _deployRewardNotifiers(_staker);
     for (uint256 i = 0; i < rewardNotifiers.length; i++) {
       _staker.setRewardNotifier(rewardNotifiers[i], true);
     }
 
     BaseConfiguration memory _baseConfig = _deployBaseConfiguration();
     _staker.setAdmin(_baseConfig.admin);
-	vm.stopBroadcast();
-	return (_earningPowerCalculator, _staker, rewardNotifiers);
+    vm.stopBroadcast();
+    return (_earningPowerCalculator, _staker, rewardNotifiers);
   }
 }
