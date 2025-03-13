@@ -43,4 +43,4 @@ contract Run is DeployBaseTest {
     assertEq(address(govToken), address(_staker.STAKE_TOKEN()));
     assertEq(address(deployScript.admin()), _staker.admin());
   }
- }
+}

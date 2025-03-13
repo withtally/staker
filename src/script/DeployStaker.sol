@@ -8,6 +8,11 @@ import {IEarningPowerCalculator} from "../interfaces/IEarningPowerCalculator.sol
 import {Staker} from "../Staker.sol";
 
 abstract contract DeployStaker is DeployBase {
+  /// @notice The configuration for the Staker contract.
+  /// @param rewardToken The reward token for Staker.
+  /// @param stakeToken The stake token for Staker.
+  /// @param earningPowerCalculator The earning power calculator for Staker.
+  /// @param maxBumpTip The max bump tip for Staker.
   struct StakerConfiguration {
     IERC20 rewardToken;
     IERC20 stakeToken;
@@ -15,6 +20,9 @@ abstract contract DeployStaker is DeployBase {
     uint256 maxBumpTip;
   }
 
+  /// @notice An interface method that returns a the configuration for the Staker contract.
+  /// @param _earningPowerCalculator The deployed earning power calculator.
+  /// @return The staker configration.
   function _deployStakerConfiguration(IEarningPowerCalculator _earningPowerCalculator)
     internal
     virtual
