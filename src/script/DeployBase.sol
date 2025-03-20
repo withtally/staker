@@ -21,7 +21,7 @@ abstract contract DeployBase is Script {
 
   /// @notice An interface method that returns a set configuration for the base script.
   /// @return The base configuration for the staking system.
-  function _deployBaseConfiguration() internal virtual returns (BaseConfiguration memory);
+  function _baseConfiguration() internal virtual returns (BaseConfiguration memory);
 
   /// @notice An interface method that deploys the Staker contract for the staking system.
   /// @param _earningPowerCalculator The address of the deployed earning power calculator.
@@ -58,7 +58,7 @@ abstract contract DeployBase is Script {
       _staker.setRewardNotifier(rewardNotifiers[i], true);
     }
 
-    BaseConfiguration memory _baseConfig = _deployBaseConfiguration();
+    BaseConfiguration memory _baseConfig = _baseConfiguration();
     _staker.setAdmin(_baseConfig.admin);
     vm.stopBroadcast();
     return (_earningPowerCalculator, _staker, rewardNotifiers);

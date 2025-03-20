@@ -5,14 +5,14 @@ import {Test} from "forge-std/Test.sol";
 import {IEarningPowerCalculator} from "../src/interfaces/IEarningPowerCalculator.sol";
 import {MintRewardNotifier} from "../src/notifiers/MintRewardNotifier.sol";
 import {Staker} from "../src/Staker.sol";
-import {DeployBaseHarness} from "./harnesses/DeployBaseHarness.sol";
+import {DeployBaseFake} from "./fakes/DeployBaseFake.sol";
 import {ERC20Fake} from "./fakes/ERC20Fake.sol";
 import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
 
 contract DeployBaseTest is Test {
   ERC20Fake rewardToken;
   ERC20VotesMock govToken;
-  DeployBaseHarness deployScript;
+  DeployBaseFake deployScript;
 
   function setUp() public {
     rewardToken = new ERC20Fake();
@@ -21,7 +21,7 @@ contract DeployBaseTest is Test {
     govToken = new ERC20VotesMock();
     vm.label(address(govToken), "Governance Token");
 
-    deployScript = new DeployBaseHarness(rewardToken, govToken);
+    deployScript = new DeployBaseFake(rewardToken, govToken);
   }
 }
 

@@ -11,11 +11,11 @@ import {INotifiableRewardReceiver} from "../../src/interfaces/INotifiableRewardR
 
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
 import {Staker} from "../../src/Staker.sol";
-import {StakerHarness} from "./StakerHarness.sol";
+import {StakerHarness} from "../harnesses/StakerHarness.sol";
 import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract DeployBaseHarness is
+contract DeployBaseFake is
   DeployBase,
   DeployStaker,
   DeployMinterRewardNotifier,
@@ -33,11 +33,11 @@ contract DeployBaseHarness is
     stakeToken = _stakeToken;
   }
 
-  function _deployBaseConfiguration() internal virtual override returns (BaseConfiguration memory) {
+  function _baseConfiguration() internal virtual override returns (BaseConfiguration memory) {
     return BaseConfiguration({admin: admin});
   }
 
-  function _deployMinterRewardNotifierConfiguration()
+  function _minterRewardNotifierConfiguration()
     internal
     virtual
     override
@@ -51,7 +51,7 @@ contract DeployBaseHarness is
     });
   }
 
-  function _deployStakerConfiguration(IEarningPowerCalculator _earningPowerCalculator)
+  function _stakerConfiguration(IEarningPowerCalculator _earningPowerCalculator)
     internal
     virtual
     override
@@ -71,7 +71,7 @@ contract DeployBaseHarness is
     override
     returns (Staker)
   {
-    StakerConfiguration memory _config = _deployStakerConfiguration(_earningPowerCalculator);
+    StakerConfiguration memory _config = _stakerConfiguration(_earningPowerCalculator);
     return new StakerHarness(
       _config.rewardToken,
       IERC20Staking(address(_config.stakeToken)),

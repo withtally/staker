@@ -25,7 +25,7 @@ abstract contract DeployMinterRewardNotifier is DeployBase {
   }
 
   /// @notice An interface method that returns the configuration for the minter reward notifier.
-  function _deployMinterRewardNotifierConfiguration()
+  function _minterRewardNotifierConfiguration()
     internal
     virtual
     returns (MinterRewardNotifierConfiguration memory);
@@ -35,7 +35,7 @@ abstract contract DeployMinterRewardNotifier is DeployBase {
   /// @dev When this method is overridden make sure to call super so it is added to the reward
   /// notifiers array.
   function _deployRewardNotifiers(Staker _staker) internal virtual override {
-    MinterRewardNotifierConfiguration memory _config = _deployMinterRewardNotifierConfiguration();
+    MinterRewardNotifierConfiguration memory _config = _minterRewardNotifierConfiguration();
     MintRewardNotifier _notifier = new MintRewardNotifier(
       INotifiableRewardReceiver(address(_staker)),
       _config.initialRewardAmount,

@@ -23,7 +23,7 @@ abstract contract DeployStaker is DeployBase {
   /// @notice An interface method that returns a the configuration for the Staker contract.
   /// @param _earningPowerCalculator The deployed earning power calculator.
   /// @return The staker configration.
-  function _deployStakerConfiguration(IEarningPowerCalculator _earningPowerCalculator)
+  function _stakerConfiguration(IEarningPowerCalculator _earningPowerCalculator)
     internal
     virtual
     returns (StakerConfiguration memory);
