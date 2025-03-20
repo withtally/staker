@@ -8,14 +8,12 @@ import {Staker} from "../../Staker.sol";
 
 abstract contract DeployTransferFromRewardNotifier is DeployBase {
   /// @notice The configuration for the transferFrom reward notifier.
-  /// @param _receiver The contract that will receive reward notifications, typically an instance
-  /// of Staker.
-  /// @param _initialRewardAmount The initial amount of reward tokens to be distributed per
+  /// @param initialRewardAmount The initial amount of reward tokens to be distributed per
   /// notification.
-  /// @param _initialRewardInterval The initial minimum time that must elapse between
+  /// @param initialRewardInterval The initial minimum time that must elapse between
   /// notifications.
-  /// @param _initialOwner The address that will have permission to update contract parameters.
-  /// @param _initialRewardSource The initial source of reward tokens.
+  /// @param initialOwner The address that will have permission to update contract parameters.
+  /// @param initialRewardSource The initial source of reward tokens.
   struct TransferFromRewardNotifierConfiguration {
     uint256 initialRewardAmount;
     uint256 initialRewardInterval;
@@ -25,7 +23,7 @@ abstract contract DeployTransferFromRewardNotifier is DeployBase {
 
   /// @notice An interface method that returns the configuration for the transferFrom reward
   /// notifier.
-  function _deployTransferFromRewardNotifierConfiguration()
+  function _transferFromRewardNotifierConfiguration()
     internal
     virtual
     returns (TransferFromRewardNotifierConfiguration memory);
@@ -36,7 +34,7 @@ abstract contract DeployTransferFromRewardNotifier is DeployBase {
   /// notifiers array.
   function _deployRewardNotifiers(Staker _staker) internal virtual override {
     TransferFromRewardNotifierConfiguration memory _config =
-      _deployTransferFromRewardNotifierConfiguration();
+      _transferFromRewardNotifierConfiguration();
     TransferFromRewardNotifier _notifier = new TransferFromRewardNotifier(
       INotifiableRewardReceiver(address(_staker)),
       _config.initialRewardAmount,

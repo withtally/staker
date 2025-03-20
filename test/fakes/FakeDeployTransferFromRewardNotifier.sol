@@ -10,11 +10,11 @@ import {DeployIdentityEarningPowerCalculator} from
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
 import {INotifiableRewardReceiver} from "../../src/interfaces/INotifiableRewardReceiver.sol";
 import {Staker} from "../../src/Staker.sol";
-import {StakerHarness} from "./StakerHarness.sol";
+import {StakerHarness} from "../harnesses/StakerHarness.sol";
 import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract DeployTransferFromRewardNotifierHarness is
+contract FakeDeployTransferFromRewardNotifier is
   DeployBase,
   DeployStaker,
   DeployTransferFromRewardNotifier,
@@ -37,10 +37,10 @@ contract DeployTransferFromRewardNotifierHarness is
   }
 
   function deployTransferFromRewardNotifierConfiguration() public {
-    _deployTransferFromRewardNotifierConfiguration();
+    _transferFromRewardNotifierConfiguration();
   }
 
-  function _deployTransferFromRewardNotifierConfiguration()
+  function _transferFromRewardNotifierConfiguration()
     internal
     virtual
     override
