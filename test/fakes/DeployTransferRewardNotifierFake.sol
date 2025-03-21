@@ -8,13 +8,12 @@ import {DeployTransferRewardNotifier} from
 import {DeployIdentityEarningPowerCalculator} from
   "../../src/script/calculators/DeployIdentityEarningPowerCalculator.sol";
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
-import {INotifiableRewardReceiver} from "../../src/interfaces/INotifiableRewardReceiver.sol";
 import {Staker} from "../../src/Staker.sol";
-import {StakerHarness} from "./StakerHarness.sol";
+import {StakerHarness} from "../harnesses/StakerHarness.sol";
 import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract DeployTransferRewardNotifierHarness is
+contract DeployTransferRewardNotifierFake is
   DeployBase,
   DeployStaker,
   DeployTransferRewardNotifier,
@@ -32,15 +31,11 @@ contract DeployTransferRewardNotifierHarness is
     stakeToken = _stakeToken;
   }
 
-  function _deployBaseConfiguration() internal virtual override returns (BaseConfiguration memory) {
+  function _baseConfiguration() internal virtual override returns (BaseConfiguration memory) {
     return BaseConfiguration({admin: admin});
   }
 
-  function deployTransferRewardNotifierConfiguration() public {
-    _deployTransferRewardNotifierConfiguration();
-  }
-
-  function _deployTransferRewardNotifierConfiguration()
+  function _transferRewardNotifierConfiguration()
     internal
     virtual
     override
@@ -53,7 +48,7 @@ contract DeployTransferRewardNotifierHarness is
     });
   }
 
-  function _deployStakerConfiguration(IEarningPowerCalculator _earningPowerCalculator)
+  function _stakerConfiguration(IEarningPowerCalculator _earningPowerCalculator)
     internal
     virtual
     override
@@ -73,7 +68,7 @@ contract DeployTransferRewardNotifierHarness is
     override
     returns (Staker)
   {
-    StakerConfiguration memory _config = _deployStakerConfiguration(_earningPowerCalculator);
+    StakerConfiguration memory _config = _stakerConfiguration(_earningPowerCalculator);
     return new StakerHarness(
       _config.rewardToken,
       IERC20Staking(address(_config.stakeToken)),

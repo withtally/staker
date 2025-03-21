@@ -21,7 +21,7 @@ abstract contract DeployTransferRewardNotifier is DeployBase {
 
   /// @notice An interface method that returns the configuration for the transfer reward
   /// notifier.
-  function _deployTransferRewardNotifierConfiguration()
+  function _transferRewardNotifierConfiguration()
     internal
     virtual
     returns (TransferRewardNotifierConfiguration memory);
@@ -31,8 +31,7 @@ abstract contract DeployTransferRewardNotifier is DeployBase {
   /// @dev When this method is overridden make sure to call super so it is added to the reward
   /// notifiers array.
   function _deployRewardNotifiers(Staker _staker) internal virtual override {
-    TransferRewardNotifierConfiguration memory _config =
-      _deployTransferRewardNotifierConfiguration();
+    TransferRewardNotifierConfiguration memory _config = _transferRewardNotifierConfiguration();
     TransferRewardNotifier _notifier = new TransferRewardNotifier(
       INotifiableRewardReceiver(address(_staker)),
       _config.initialRewardAmount,
