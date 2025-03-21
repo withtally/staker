@@ -18,7 +18,6 @@ abstract contract DeployBinaryEligibilityOracleEarningPowerCalculator is DeployB
   /// have the full earning power.
   /// @param updateEligibilityDelay The delay required between delegatee earning power updates after
   /// falling below the eligibility threshold.
-
   struct BinaryEligibilityOracleEarningPowerCalculatorConfiguration {
     address owner;
     address scoreOracle;
@@ -30,7 +29,7 @@ abstract contract DeployBinaryEligibilityOracleEarningPowerCalculator is DeployB
 
   /// @notice An interface method that returns the configuration for the binary eligibility oracle
   /// earning power calculator.
-  function _deployBinaryEligibilityOracleEarningPowerCalculatorConfiguration()
+  function _binaryEligibilityOracleEarningPowerCalculatorConfiguration()
     internal
     virtual
     returns (BinaryEligibilityOracleEarningPowerCalculatorConfiguration memory);
@@ -44,7 +43,7 @@ abstract contract DeployBinaryEligibilityOracleEarningPowerCalculator is DeployB
     returns (IEarningPowerCalculator)
   {
     BinaryEligibilityOracleEarningPowerCalculatorConfiguration memory _config =
-      _deployBinaryEligibilityOracleEarningPowerCalculatorConfiguration();
+      _binaryEligibilityOracleEarningPowerCalculatorConfiguration();
     return new BinaryEligibilityOracleEarningPowerCalculator(
       _config.owner,
       _config.scoreOracle,

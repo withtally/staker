@@ -3,26 +3,26 @@ pragma solidity ^0.8.23;
 
 import {DeployBase} from "../../src/script/DeployBase.sol";
 import {DeployStaker} from "../../src/script/DeployStaker.sol";
-import {DeployTransferFromRewardNotifier} from
-  "../../src/script/notifiers/DeployTransferFromRewardNotifier.sol";
+import {DeployMinterRewardNotifier} from "../../src/script/notifiers/DeployMinterRewardNotifier.sol";
 import {DeployBinaryEligibilityOracleEarningPowerCalculator} from
   "../../src/script/calculators/DeployBinaryEligibilityOracleEarningPowerCalculator.sol";
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
+import {IMintable} from "../../src/interfaces/IMintable.sol";
 import {Staker} from "../../src/Staker.sol";
-import {StakerHarness} from "./StakerHarness.sol";
+import {StakerHarness} from "../harnesses/StakerHarness.sol";
 import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract DeployBinaryEligibilityOracleEarningPowerCalculatorHarness is
+contract DeployBinaryEligibilityOracleEarningPowerCalculatorFake is
   DeployBase,
   DeployStaker,
-  DeployTransferFromRewardNotifier,
+  DeployMinterRewardNotifier,
   DeployBinaryEligibilityOracleEarningPowerCalculator
 {
   address public admin = makeAddr("Staker admin");
   address public owner = makeAddr("owner");
   address public notifierOwner = makeAddr("Notifier owner");
-  address public notifierRewardSource = makeAddr("Notifier reward source");
+  address public notifierMinter = makeAddr("Notifier minter");
   address public scoreOracle = makeAddr("scoreOracle");
   address public oraclePauseGuardian = makeAddr("oraclePauseGuardian");
 
@@ -34,25 +34,25 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorHarness is
     stakeToken = _stakeToken;
   }
 
-  function _deployBaseConfiguration() internal virtual override returns (BaseConfiguration memory) {
+  function _baseConfiguration() internal virtual override returns (BaseConfiguration memory) {
     return BaseConfiguration({admin: admin});
   }
 
-  function _deployTransferFromRewardNotifierConfiguration()
+  function _minterRewardNotifierConfiguration()
     internal
     virtual
     override
-    returns (TransferFromRewardNotifierConfiguration memory)
+    returns (MinterRewardNotifierConfiguration memory)
   {
-    return TransferFromRewardNotifierConfiguration({
+    return MinterRewardNotifierConfiguration({
       initialRewardAmount: 10e18,
       initialRewardInterval: 30 days,
       initialOwner: notifierOwner,
-      initialRewardSource: notifierRewardSource
+      minter: IMintable(notifierMinter)
     });
   }
 
-  function _deployBinaryEligibilityOracleEarningPowerCalculatorConfiguration()
+  function _binaryEligibilityOracleEarningPowerCalculatorConfiguration()
     internal
     virtual
     override
@@ -68,7 +68,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorHarness is
     });
   }
 
-  function _deployStakerConfiguration(IEarningPowerCalculator _earningPowerCalculator)
+  function _stakerConfiguration(IEarningPowerCalculator _earningPowerCalculator)
     internal
     virtual
     override
@@ -88,7 +88,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorHarness is
     override
     returns (Staker)
   {
-    StakerConfiguration memory _config = _deployStakerConfiguration(_earningPowerCalculator);
+    StakerConfiguration memory _config = _stakerConfiguration(_earningPowerCalculator);
     return new StakerHarness(
       _config.rewardToken,
       IERC20Staking(address(_config.stakeToken)),

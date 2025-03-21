@@ -3,8 +3,8 @@ pragma solidity ^0.8.23;
 
 import {Test} from "forge-std/Test.sol";
 import {Staker} from "../src/Staker.sol";
-import {DeployBinaryEligibilityOracleEarningPowerCalculatorHarness} from
-  "./harnesses/DeployBinaryEligibilityOracleEarningPowerCalculatorHarness.sol";
+import {DeployBinaryEligibilityOracleEarningPowerCalculatorFake} from
+  "./fakes/DeployBinaryEligibilityOracleEarningPowerCalculatorFake.sol";
 import {IEarningPowerCalculator} from "../src/interfaces/IEarningPowerCalculator.sol";
 import {ERC20Fake} from "./fakes/ERC20Fake.sol";
 import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
@@ -15,7 +15,7 @@ import {BinaryEligibilityOracleEarningPowerCalculator} from
 contract DeployBinaryEligibilityOracleEarningPowerCalculatorTest is Test {
   ERC20Fake rewardToken;
   ERC20VotesMock govToken;
-  DeployBinaryEligibilityOracleEarningPowerCalculatorHarness deployScript;
+  DeployBinaryEligibilityOracleEarningPowerCalculatorFake deployScript;
 
   function setUp() public {
     rewardToken = new ERC20Fake();
@@ -25,7 +25,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorTest is Test {
     vm.label(address(govToken), "Governance Token");
 
     deployScript =
-      new DeployBinaryEligibilityOracleEarningPowerCalculatorHarness(rewardToken, govToken);
+      new DeployBinaryEligibilityOracleEarningPowerCalculatorFake(rewardToken, govToken);
   }
 }
 
