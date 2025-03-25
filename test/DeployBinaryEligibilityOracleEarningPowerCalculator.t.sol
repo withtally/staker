@@ -29,7 +29,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorTest is Test {
   }
 }
 
-contract run is DeployBinaryEligibilityOracleEarningPowerCalculatorTest {
+contract Run is DeployBinaryEligibilityOracleEarningPowerCalculatorTest {
   function test_DeployBinaryEligibilityOracleEarningPowerCalculatorHarness() public {
     (IEarningPowerCalculator _calculator, Staker _staker,) = deployScript.run();
     BinaryEligibilityOracleEarningPowerCalculator _binaryEligibilityOracleCalculator =
