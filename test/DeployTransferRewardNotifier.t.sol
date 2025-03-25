@@ -25,7 +25,7 @@ contract DeployTransferRewardNotifierTest is Test {
   }
 }
 
-contract run is DeployTransferRewardNotifierTest {
+contract Run is DeployTransferRewardNotifierTest {
   function test_DeployTransferRewardNotifier() public {
     (, Staker _staker, address[] memory _notifiers) = deployScript.run();
     TransferRewardNotifier _transferNotifier = TransferRewardNotifier(_notifiers[0]);
