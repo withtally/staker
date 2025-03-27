@@ -47,7 +47,8 @@ contract Run is DeployBaseTest {
   }
 
   function test_StakingSystemMultipleRewardNotifiersDeploy() public {
-    DeployMultipleRewardNotifiersFake _deployScript = new DeployMultipleRewardNotifiersFake(rewardToken, govToken);
+    DeployMultipleRewardNotifiersFake _deployScript =
+      new DeployMultipleRewardNotifiersFake(rewardToken, govToken);
     (IEarningPowerCalculator _calculator, Staker _staker, address[] memory _notifiers) =
       _deployScript.run();
     MintRewardNotifier _mintNotifier = MintRewardNotifier(_notifiers[0]);
@@ -70,6 +71,5 @@ contract Run is DeployBaseTest {
     assertEq(address(rewardToken), address(_staker.REWARD_TOKEN()));
     assertEq(address(govToken), address(_staker.STAKE_TOKEN()));
     assertEq(address(deployScript.admin()), _staker.admin());
-
   }
 }
