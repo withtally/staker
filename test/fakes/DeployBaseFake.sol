@@ -7,7 +7,6 @@ import {DeployMinterRewardNotifier} from "../../src/script/notifiers/DeployMinte
 import {DeployIdentityEarningPowerCalculator} from
   "../../src/script/calculators/DeployIdentityEarningPowerCalculator.sol";
 import {IMintable} from "../../src/interfaces/IMintable.sol";
-import {INotifiableRewardReceiver} from "../../src/interfaces/INotifiableRewardReceiver.sol";
 
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
 import {Staker} from "../../src/Staker.sol";
