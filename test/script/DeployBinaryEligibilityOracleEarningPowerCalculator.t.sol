@@ -2,15 +2,15 @@
 pragma solidity ^0.8.23;
 
 import {Test} from "forge-std/Test.sol";
-import {Staker} from "../src/Staker.sol";
+import {Staker} from "../../src/Staker.sol";
 import {DeployBinaryEligibilityOracleEarningPowerCalculatorFake} from
-  "./fakes/DeployBinaryEligibilityOracleEarningPowerCalculatorFake.sol";
-import {IEarningPowerCalculator} from "../src/interfaces/IEarningPowerCalculator.sol";
-import {ERC20Fake} from "./fakes/ERC20Fake.sol";
-import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
+  "../fakes/DeployBinaryEligibilityOracleEarningPowerCalculatorFake.sol";
+import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
+import {ERC20Fake} from "../fakes/ERC20Fake.sol";
+import {ERC20VotesMock} from "../mocks/MockERC20Votes.sol";
 
 import {BinaryEligibilityOracleEarningPowerCalculator} from
-  "../src/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
+  "../../src/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
 
 contract DeployBinaryEligibilityOracleEarningPowerCalculatorTest is Test {
   ERC20Fake rewardToken;

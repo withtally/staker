@@ -2,7 +2,8 @@
 pragma solidity ^0.8.23;
 
 import {Test} from "forge-std/Test.sol";
-import {IdentityEarningPowerCalculator} from "../src/calculators/IdentityEarningPowerCalculator.sol";
+import {IdentityEarningPowerCalculator} from
+  "../../src/calculators/IdentityEarningPowerCalculator.sol";
 
 contract IdentityEarningPowerCalculatorTest is Test {
   IdentityEarningPowerCalculator calculator;

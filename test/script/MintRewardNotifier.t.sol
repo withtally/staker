@@ -2,13 +2,13 @@
 pragma solidity ^0.8.23;
 
 import {Vm, Test, stdStorage, StdStorage, console2, console, stdError} from "forge-std/Test.sol";
-import {MintRewardNotifier, IMintable} from "../src/notifiers/MintRewardNotifier.sol";
-import {RewardTokenNotifierBase} from "../src/notifiers/RewardTokenNotifierBase.sol";
-import {INotifiableRewardReceiver} from "../src/interfaces/INotifiableRewardReceiver.sol";
-import {MockNotifiableRewardReceiver} from "./mocks/MockNotifiableRewardReceiver.sol";
-import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
-import {FakeMinter} from "./fakes/FakeMinter.sol";
-import {TestHelpers} from "./helpers/TestHelpers.sol";
+import {MintRewardNotifier, IMintable} from "../../src/notifiers/MintRewardNotifier.sol";
+import {RewardTokenNotifierBase} from "../../src/notifiers/RewardTokenNotifierBase.sol";
+import {INotifiableRewardReceiver} from "../../src/interfaces/INotifiableRewardReceiver.sol";
+import {MockNotifiableRewardReceiver} from "../mocks/MockNotifiableRewardReceiver.sol";
+import {ERC20VotesMock} from "../mocks/MockERC20Votes.sol";
+import {FakeMinter} from "../fakes/FakeMinter.sol";
+import {TestHelpers} from "../helpers/TestHelpers.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MintRewardNotifierTest is Test, TestHelpers {

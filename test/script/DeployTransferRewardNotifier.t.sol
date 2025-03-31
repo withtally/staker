@@ -2,11 +2,11 @@
 pragma solidity ^0.8.23;
 
 import {Test} from "forge-std/Test.sol";
-import {Staker} from "../src/Staker.sol";
-import {TransferRewardNotifier} from "../src/notifiers/TransferRewardNotifier.sol";
-import {DeployTransferRewardNotifierFake} from "./fakes/DeployTransferRewardNotifierFake.sol";
-import {ERC20Fake} from "./fakes/ERC20Fake.sol";
-import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
+import {Staker} from "../../src/Staker.sol";
+import {TransferRewardNotifier} from "../../src/notifiers/TransferRewardNotifier.sol";
+import {DeployTransferRewardNotifierFake} from "../fakes/DeployTransferRewardNotifierFake.sol";
+import {ERC20Fake} from "../fakes/ERC20Fake.sol";
+import {ERC20VotesMock} from "../mocks/MockERC20Votes.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract DeployTransferRewardNotifierTest is Test {

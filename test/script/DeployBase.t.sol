@@ -2,14 +2,14 @@
 pragma solidity ^0.8.23;
 
 import {Test} from "forge-std/Test.sol";
-import {IEarningPowerCalculator} from "../src/interfaces/IEarningPowerCalculator.sol";
-import {MintRewardNotifier} from "../src/notifiers/MintRewardNotifier.sol";
-import {TransferRewardNotifier} from "../src/notifiers/TransferRewardNotifier.sol";
-import {Staker} from "../src/Staker.sol";
-import {DeployBaseFake} from "./fakes/DeployBaseFake.sol";
-import {DeployMultipleRewardNotifiersFake} from "./fakes/DeployMultipleRewardNotifiersFake.sol";
-import {ERC20Fake} from "./fakes/ERC20Fake.sol";
-import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
+import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
+import {MintRewardNotifier} from "../../src/notifiers/MintRewardNotifier.sol";
+import {TransferRewardNotifier} from "../../src/notifiers/TransferRewardNotifier.sol";
+import {Staker} from "../../src/Staker.sol";
+import {DeployBaseFake} from "../fakes/DeployBaseFake.sol";
+import {DeployMultipleRewardNotifiersFake} from "../fakes/DeployMultipleRewardNotifiersFake.sol";
+import {ERC20Fake} from "../fakes/ERC20Fake.sol";
+import {ERC20VotesMock} from "../mocks/MockERC20Votes.sol";
 
 contract DeployBaseTest is Test {
   ERC20Fake rewardToken;
