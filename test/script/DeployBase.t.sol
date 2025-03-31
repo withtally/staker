@@ -58,7 +58,7 @@ contract Run is DeployBaseTest {
     assertEq(deployScript.notifierOwner(), _mintNotifier.owner());
     assertEq(address(deployScript.notifierMinter()), address(_mintNotifier.minter()));
 
-    TransferRewardNotifier _transferNotifier = TransferRewardNotifier(_notifiers[0]);
+    TransferRewardNotifier _transferNotifier = TransferRewardNotifier(_notifiers[1]);
     assertEq(address(_staker), address(_transferNotifier.RECEIVER()));
     assertEq(10e18, _transferNotifier.rewardAmount());
     assertEq(30 days, _transferNotifier.rewardInterval());
