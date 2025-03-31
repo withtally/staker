@@ -20,9 +20,9 @@ abstract contract DeployStaker is DeployBase {
     uint256 maxBumpTip;
   }
 
-  /// @notice An interface method that returns a the configuration for the Staker contract.
+  /// @notice An interface method that returns the configuration for the Staker contract.
   /// @param _earningPowerCalculator The deployed earning power calculator.
-  /// @return The staker configration.
+  /// @return The staker configuration.
   function _stakerConfiguration(IEarningPowerCalculator _earningPowerCalculator)
     internal
     virtual

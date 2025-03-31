@@ -6,7 +6,7 @@ import {IdentityEarningPowerCalculator} from "../../calculators/IdentityEarningP
 import {IEarningPowerCalculator} from "../../interfaces/IEarningPowerCalculator.sol";
 
 abstract contract DeployIdentityEarningPowerCalculator is DeployBase {
-  /// @notice Deploys an identitiy earning power calculator.
+  /// @notice Deploys an identity earning power calculator.
   /// @inheritdoc DeployBase
   function _deployEarningPowerCalculator()
     internal
