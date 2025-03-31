@@ -22,13 +22,12 @@ contract DeployBaseTest is Test {
 
     govToken = new ERC20VotesMock();
     vm.label(address(govToken), "Governance Token");
-
-    deployScript = new DeployBaseFake(rewardToken, govToken);
   }
 }
 
 contract Run is DeployBaseTest {
   function test_StakingSystemDeploy() public {
+    deployScript = new DeployBaseFake(rewardToken, govToken);
     (IEarningPowerCalculator _calculator, Staker _staker, address[] memory _notifiers) =
       deployScript.run();
     MintRewardNotifier _mintNotifier = MintRewardNotifier(_notifiers[0]);
@@ -55,14 +54,14 @@ contract Run is DeployBaseTest {
     assertEq(address(_staker), address(_mintNotifier.RECEIVER()));
     assertEq(10e18, _mintNotifier.rewardAmount());
     assertEq(30 days, _mintNotifier.rewardInterval());
-    assertEq(deployScript.notifierOwner(), _mintNotifier.owner());
-    assertEq(address(deployScript.notifierMinter()), address(_mintNotifier.minter()));
+    assertEq(_deployScript.notifierOwner(), _mintNotifier.owner());
+    assertEq(address(_deployScript.notifierMinter()), address(_mintNotifier.minter()));
 
     TransferRewardNotifier _transferNotifier = TransferRewardNotifier(_notifiers[1]);
     assertEq(address(_staker), address(_transferNotifier.RECEIVER()));
     assertEq(10e18, _transferNotifier.rewardAmount());
     assertEq(30 days, _transferNotifier.rewardInterval());
-    assertEq(deployScript.notifierOwner(), _transferNotifier.owner());
+    assertEq(_deployScript.notifierOwner(), _transferNotifier.owner());
 
     // Staker params
     assertTrue(_staker.isRewardNotifier(_notifiers[0]));
@@ -70,6 +69,6 @@ contract Run is DeployBaseTest {
     assertEq(address(_calculator), address(_staker.earningPowerCalculator()));
     assertEq(address(rewardToken), address(_staker.REWARD_TOKEN()));
     assertEq(address(govToken), address(_staker.STAKE_TOKEN()));
-    assertEq(address(deployScript.admin()), _staker.admin());
+    assertEq(address(_deployScript.admin()), _staker.admin());
   }
 }
