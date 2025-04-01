@@ -55,10 +55,15 @@ abstract contract StakerTestBase is Test {
     vm.warp(block.timestamp + _seconds);
   }
 
+  function _jumpAheadByPercentOfRewardDuration(uint256 _percent) public {
+    uint256 _seconds = (_percent * staker.REWARD_DURATION()) / 100;
+    _jumpAhead(_seconds);
+  }
+
   function _boundToRealisticReward(uint256 _rewardAmount)
     public
     view
-	virtual
+    virtual
     returns (uint256 _boundedRewardAmount)
   {
     _boundedRewardAmount = bound(_rewardAmount, 200e6, 10_000_000e18);
@@ -66,8 +71,8 @@ abstract contract StakerTestBase is Test {
 
   function _boundToRealisticStake(uint256 _stakeAmount)
     public
-	view
-	virtual
+    view
+    virtual
     returns (uint256 _boundedStakeAmount)
   {
     _boundedStakeAmount = bound(_stakeAmount, 0.1e18, 25_000_000e18);
@@ -82,7 +87,6 @@ abstract contract StakerTestBase is Test {
     govToken.mint(_to, _amount);
   }
 
-
   // function _mintGovToken(address _to, uint256 _amount) internal {
   //   // vm.assume(_to != address(0));
   //   // govToken.mint(_to, _amount);
@@ -96,8 +100,10 @@ abstract contract StakerTestBase is Test {
   //   // baseStaker.setClaimFeeParameters(_params);
   // }
   //
+  // TODO: different earning power calculators would override this
   function _stake(address _depositor, uint256 _amount, address _delegatee)
     internal
+    virtual
     returns (Staker.DepositIdentifier _depositId)
   {
     vm.assume(_delegatee != address(0));
@@ -156,9 +162,9 @@ abstract contract StakerTestBase is Test {
     internal
     returns (uint256 _boundedAmount, Staker.DepositIdentifier _depositId)
   {
-     _boundedAmount = _boundMintAmount(_amount);
-     _mintGovToken(_depositor, uint96(_boundedAmount));
-     _depositId = _stake(_depositor, _boundedAmount, _delegatee);
+    _boundedAmount = _boundMintAmount(_amount);
+    _mintGovToken(_depositor, uint96(_boundedAmount));
+    _depositId = _stake(_depositor, _boundedAmount, _delegatee);
   }
 
   // function _boundMintAndStake(
@@ -190,6 +196,8 @@ abstract contract StakerTestBase is Test {
   //   govStaker.notifyRewardAmount(_amount);
   //   vm.stopPrank();
   // }
+
+  function _mintTransferAndNotifyReward(uint256 _amount) public virtual;
 
   function _assumeSafeDepositorAndSurrogate(address _depositor, address _delegatee) internal {
     DelegationSurrogate _surrogate = staker.surrogates(_delegatee);
