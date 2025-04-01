@@ -9,7 +9,8 @@ import {StakerTestBase} from "./StakerTestBase.sol";
 abstract contract Constructor is StakerTestBase {}
 
 // After deployment test that a stake event can occurj
-abstract contract Stake is StakerTestBase {
+abstract contract StakeBase is StakerTestBase {
+  // TODO: Maybe verify balances
   function testForkFuzz_CorrectlyStakeAndEarnRewardsAfterDuration(
     address _depositor,
     uint96 _amount,
@@ -22,25 +23,59 @@ abstract contract Stake is StakerTestBase {
     _mintGovToken(_depositor, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _percentDuration = bound(_percentDuration, 1, 100);
-    // _delegatee = _validateDelegatee(_delegatee);
 
-     Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
+    Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
     _mintTransferAndNotifyReward(_rewardAmount);
-	_jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 0, 100));
+    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 0, 100));
 
     uint256 unclaimedRewards = staker.unclaimedReward(_depositId);
+	Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
 
-	// TODO: Calculate rewards based on earning power compared to total earning power and duration.
+	uint256 _earnedRewards = _percentOf((_deposit.earningPower * _rewardAmount) / staker.totalEarningPower(), _percentDuration);
 
-    assertEq(unclaimedRewards, 0, "Should earn some rewards");
+    assertLteWithinOneUnit(unclaimedRewards, _earnedRewards);
   }
 }
+
+abstract contract Unstake is StakerTestBase {
+  function testForkFuzz_CorrectlyUnstakeAfterDuration(
+    address _depositor,
+    uint96 _amount,
+    address _delegatee,
+    uint256 _rewardAmount,
+    uint256 _withdrawAmount,
+    uint256 _percentDuration
+  ) public {
+    vm.assume(_depositor != address(0) && _delegatee != address(0) && _amount != 0);
+    vm.assume(_depositor != address(staker));
+    _mintGovToken(_depositor, _amount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _withdrawAmount = bound(_withdrawAmount, 0.1e18, _amount);
+    _percentDuration = bound(_percentDuration, 0, 100);
+
+    Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
+    _mintTransferAndNotifyReward(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 0, 100));
+
+    uint256 initialRewards = staker.unclaimedReward(_depositId);
+
+    (uint256 oldBalance, uint256 newBalance) =
+      _withdrawAndCheckBalance(_depositor, _depositId, _withdrawAmount);
+
+    // Check that tokens were withdrawn correctly
+    assertEq(newBalance - oldBalance, _withdrawAmount);
+
+    // If we have rewards accrued, check that they're consistent after withdrawal
+    uint256 currentRewards = staker.unclaimedReward(_depositId);
+    assertLe(currentRewards, initialRewards);
+  }
+
+}
+
 // Repeat Stake for stakeMore?
 // Bump earning power for other earning power calculator
-
 // abstract contract ClaimReward is StakerTestBase {}
 //
-// abstract contract Unstake is StakerTestBase {}
 //
 // abstract contract Withdraw is StakerTestBase {}
 //
