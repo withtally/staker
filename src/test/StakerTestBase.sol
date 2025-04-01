@@ -8,7 +8,7 @@ import {Staker} from "../Staker.sol";
 import {DelegationSurrogate} from "../DelegationSurrogate.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IERC20Mintable {
+interface IERC20Mintable is IERC20 {
   function mint(address _account, uint256 _value) external;
 }
 
@@ -157,7 +157,7 @@ abstract contract StakerTestBase is Test {
     returns (uint256 _boundedAmount, Staker.DepositIdentifier _depositId)
   {
      _boundedAmount = _boundMintAmount(_amount);
-     _mintGovToken(_depositor, _boundedAmount);
+     _mintGovToken(_depositor, uint96(_boundedAmount));
      _depositId = _stake(_depositor, _boundedAmount, _delegatee);
   }
 
