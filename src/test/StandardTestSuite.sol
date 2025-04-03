@@ -21,12 +21,12 @@ abstract contract StakeBase is StakerTestBase {
   ) public virtual {
     vm.assume(_depositor != address(0) && _delegatee != address(0) && _amount != 0);
     vm.assume(_depositor != address(staker));
-    _mintGovToken(_depositor, _amount);
+    _mintStakeToken(_depositor, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _percentDuration = bound(_percentDuration, 1, 100);
 
     Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
-    _mintTransferAndNotifyReward(_rewardAmount);
+    _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 0, 100));
 
     uint256 unclaimedRewards = staker.unclaimedReward(_depositId);
@@ -53,12 +53,12 @@ abstract contract WithdrawBase is StakerTestBase {
 
     _amount = uint96(_boundMintAmount(_amount));
     vm.assume(_amount != 0);
-    _mintGovToken(_depositor, _amount);
+    _mintStakeToken(_depositor, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _percentDuration = bound(_percentDuration, 1, 100);
 
     Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
-    _mintTransferAndNotifyReward(_rewardAmount);
+    _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
     uint256 initialRewards = staker.unclaimedReward(_depositId);
