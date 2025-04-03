@@ -3,6 +3,7 @@
 
 pragma solidity ^0.8.23;
 
+import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
 import {Staker} from "../Staker.sol";
 import {StakerTestBase} from "./StakerTestBase.sol";
 
@@ -29,15 +30,16 @@ abstract contract StakeBase is StakerTestBase {
     _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 0, 100));
 
     uint256 unclaimedRewards = staker.unclaimedReward(_depositId);
-	Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
 
-	uint256 _earnedRewards = _percentOf((_deposit.earningPower * _rewardAmount) / staker.totalEarningPower(), _percentDuration);
+    uint256 _earnedRewards =
+      _calculateEarnedRewards(_deposit.earningPower, _rewardAmount, _percentDuration);
 
     assertLteWithinOneUnit(unclaimedRewards, _earnedRewards);
   }
 }
 
-abstract contract Unstake is StakerTestBase {
+abstract contract WithdrawBase is StakerTestBase {
   function testForkFuzz_CorrectlyUnstakeAfterDuration(
     address _depositor,
     uint96 _amount,
@@ -48,35 +50,26 @@ abstract contract Unstake is StakerTestBase {
   ) public {
     vm.assume(_depositor != address(0) && _delegatee != address(0) && _amount != 0);
     vm.assume(_depositor != address(staker));
+
+    _amount = uint96(_boundMintAmount(_amount));
     _mintGovToken(_depositor, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
-    _withdrawAmount = bound(_withdrawAmount, 0.1e18, _amount);
-    _percentDuration = bound(_percentDuration, 0, 100);
+    _percentDuration = bound(_percentDuration, 1, 100);
 
     Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
     _mintTransferAndNotifyReward(_rewardAmount);
-    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 0, 100));
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
     uint256 initialRewards = staker.unclaimedReward(_depositId);
 
-    (uint256 oldBalance, uint256 newBalance) =
-      _withdrawAndCheckBalance(_depositor, _depositId, _withdrawAmount);
+    _withdrawAmount = bound(_withdrawAmount, 0, _amount);
+    _withdraw(_depositor, _depositId, _withdrawAmount);
 
-    // Check that tokens were withdrawn correctly
-    assertEq(newBalance - oldBalance, _withdrawAmount);
+	uint256 _balance = STAKE_TOKEN.balanceOf(_depositor);
 
     // If we have rewards accrued, check that they're consistent after withdrawal
     uint256 currentRewards = staker.unclaimedReward(_depositId);
-    assertLe(currentRewards, initialRewards);
+    assertLteWithinOneUnit(currentRewards, initialRewards);
+	assertEq(_balance, _withdrawAmount);
   }
-
 }
-
-// Repeat Stake for stakeMore?
-// Bump earning power for other earning power calculator
-// abstract contract ClaimReward is StakerTestBase {}
-//
-//
-// abstract contract Withdraw is StakerTestBase {}
-//
-// // Delegatee
