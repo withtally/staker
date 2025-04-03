@@ -8,11 +8,11 @@ import {MintRewardNotifier} from "../../src/notifiers/MintRewardNotifier.sol";
 import {DeployBaseFake} from "../fakes/DeployBaseFake.sol";
 import {ERC20Fake} from "../fakes/ERC20Fake.sol";
 import {ERC20VotesMock} from "../mocks/MockERC20Votes.sol";
+import {IERC20Mintable} from "../../src/test/interfaces/IERC20Mintable.sol";
 
 contract DeployBaseHarnessTestBase is StakerTestBase {
   DeployBaseFake immutable DEPLOY_SCRIPT;
   MintRewardNotifier immutable REWARD_NOTIFIER;
-  ERC20Fake REWARD_TOKEN;
 
   constructor() {
     REWARD_TOKEN = new ERC20Fake();
@@ -23,13 +23,9 @@ contract DeployBaseHarnessTestBase is StakerTestBase {
     staker = _staker;
   }
 
-  function _govToken() internal virtual override returns (IERC20Mintable) {
-    return IERC20Mintable(address(STAKE_TOKEN));
-  }
-
-  function _mintTransferAndNotifyReward(uint256 _amount) public virtual override {
+  function _notifyRewardAmount(uint256 _amount) public virtual override {
     vm.assume(address(REWARD_NOTIFIER) != address(0));
-    REWARD_TOKEN.mint(address(REWARD_NOTIFIER), _amount);
+    IERC20Mintable(address(REWARD_TOKEN)).mint(address(REWARD_NOTIFIER), _amount);
 
     vm.startPrank(address(REWARD_NOTIFIER));
     REWARD_TOKEN.transfer(address(staker), _amount);
