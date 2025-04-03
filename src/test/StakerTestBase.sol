@@ -15,6 +15,7 @@ interface IERC20Mintable is IERC20 {
 abstract contract StakerTestBase is Test {
   Staker staker;
   IERC20Mintable govToken;
+  IERC20 STAKE_TOKEN;
 
   mapping(DelegationSurrogate surrogate => bool isKnown) isKnownSurrogate;
   mapping(address depositor => bool isKnown) isKnownDepositor;
@@ -25,28 +26,8 @@ abstract contract StakerTestBase is Test {
     // based on a starting timestamp of 0, which is the default.
     _jumpAhead(1234);
 
-    // rewardToken = new ERC20Fake();
-    // vm.label(address(rewardToken), "Reward Token");
-
     govToken = _govToken();
     vm.label(address(govToken), "Governance Token");
-
-    // rewardNotifier = address(0xaffab1ebeef);
-    // vm.label(rewardNotifier, "Reward Notifier");
-
-    // earningPowerCalculator = new MockFullEarningPowerCalculator();
-    // vm.label(address(earningPowerCalculator), "Full Earning Power Calculator");
-
-    // admin = makeAddr("admin");
-
-    // baseStaker = _deployStaker();
-    // vm.label(address(baseStaker), "GovStaker");
-
-    // vm.prank(admin);
-    // baseStaker.setRewardNotifier(rewardNotifier, true);
-
-    // // Convenience for use in tests
-    // SCALE_FACTOR = baseStaker.SCALE_FACTOR();
   }
 
   function _govToken() internal virtual returns (IERC20Mintable);
@@ -87,19 +68,6 @@ abstract contract StakerTestBase is Test {
     govToken.mint(_to, _amount);
   }
 
-  // function _mintGovToken(address _to, uint256 _amount) internal {
-  //   // vm.assume(_to != address(0));
-  //   // govToken.mint(_to, _amount);
-  // }
-
-  // function _setClaimFeeAndCollector(uint96 _amount, address _collector) internal {
-  //   // Staker.ClaimFeeParameters memory _params =
-  //   //   Staker.ClaimFeeParameters({feeAmount: _amount, feeCollector: _collector});
-
-  //   // vm.prank(admin);
-  //   // baseStaker.setClaimFeeParameters(_params);
-  // }
-  //
   // TODO: different earning power calculators would override this
   function _stake(address _depositor, uint256 _amount, address _delegatee)
     internal
@@ -117,21 +85,13 @@ abstract contract StakerTestBase is Test {
     _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
   }
 
-  //
-  // function _stake(address _depositor, uint256 _amount, address _delegatee, address _claimer)
-  //   internal
-  //   returns (Staker.DepositIdentifier _depositId)
-  // {
-  //   // vm.assume(_delegatee != address(0) && _claimer != address(0));
-
-  //   // vm.startPrank(_depositor);
-  //   // govToken.approve(address(baseStaker), _amount);
-  //   // _depositId = baseStaker.stake(_amount, _delegatee, _claimer);
-  //   // vm.stopPrank();
-
-  //   // // Called after the stake so the surrogate will exist
-  //   // _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
-  // }
+  function _withdraw(address _depositor, Staker.DepositIdentifier _depositId, uint256 _amount)
+    internal
+    virtual
+  {
+    vm.prank(_depositor);
+    staker.withdraw(_depositId, _amount);
+  }
 
   function _fetchDeposit(Staker.DepositIdentifier _depositId)
     internal
@@ -167,37 +127,16 @@ abstract contract StakerTestBase is Test {
     _depositId = _stake(_depositor, _boundedAmount, _delegatee);
   }
 
-  // function _boundMintAndStake(
-  //   address _depositor,
-  //   uint256 _amount,
-  //   address _delegatee,
-  //   address _claimer
-  // ) internal returns (uint256 _boundedAmount, Staker.DepositIdentifier _depositId) {
-  //   // _boundedAmount = _boundMintAmount(_amount);
-  //   // _mintGovToken(_depositor, _boundedAmount);
-  //   // _depositId = _stake(_depositor, _boundedAmount, _delegatee, _claimer);
-  // }
-
-  // function _mintTransferAndNotifyReward(uint256 _amount) public {
-  //   rewardToken.mint(rewardNotifier, _amount);
-
-  //   vm.startPrank(rewardNotifier);
-  //   rewardToken.transfer(address(govStaker), _amount);
-  //   govStaker.notifyRewardAmount(_amount);
-  //   vm.stopPrank();
-  // }
-
-  // function _mintTransferAndNotifyReward(address _rewardNotifier, uint256 _amount) public {
-  //   vm.assume(_rewardNotifier != address(0));
-  //   rewardToken.mint(_rewardNotifier, _amount);
-
-  //   vm.startPrank(_rewardNotifier);
-  //   rewardToken.transfer(address(govStaker), _amount);
-  //   govStaker.notifyRewardAmount(_amount);
-  //   vm.stopPrank();
-  // }
-
   function _mintTransferAndNotifyReward(uint256 _amount) public virtual;
+
+  function _calculateEarnedRewards(
+    uint256 _earningPower,
+    uint256 _rewardAmount,
+    uint256 _percentDuration
+  ) internal virtual returns (uint256) {
+    return
+      _percentOf((_earningPower * _rewardAmount) / staker.totalEarningPower(), _percentDuration);
+  }
 
   function _assumeSafeDepositorAndSurrogate(address _depositor, address _delegatee) internal {
     DelegationSurrogate _surrogate = staker.surrogates(_delegatee);
