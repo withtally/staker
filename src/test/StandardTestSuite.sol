@@ -65,11 +65,11 @@ abstract contract WithdrawBase is StakerTestBase {
     _withdrawAmount = bound(_withdrawAmount, 0, _amount);
     _withdraw(_depositor, _depositId, _withdrawAmount);
 
-	uint256 _balance = STAKE_TOKEN.balanceOf(_depositor);
+    uint256 _balance = STAKE_TOKEN.balanceOf(_depositor);
 
     // If we have rewards accrued, check that they're consistent after withdrawal
     uint256 currentRewards = staker.unclaimedReward(_depositId);
     assertLteWithinOneUnit(currentRewards, initialRewards);
-	assertEq(_balance, _withdrawAmount);
+    assertEq(_balance, _withdrawAmount);
   }
 }
