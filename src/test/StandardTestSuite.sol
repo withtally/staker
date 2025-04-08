@@ -37,6 +37,83 @@ abstract contract StakeBase is StakerTestBase {
 
     assertLteWithinOneUnit(unclaimedRewards, _earnedRewards);
   }
+
+  function testForkFuzz_TwoDepositorsEarnRewardsOverSinglePeriod(
+    address _depositor1,
+    address _depositor2,
+    uint96 _amount,
+    address _delegatee,
+    uint256 _rewardAmount,
+    uint256 _percentDuration1,
+    uint256 _percentDuration2
+  ) public {
+    vm.assume(_depositor1 != address(0) && _depositor2 != address(0) && _depositor1 != _depositor2);
+    vm.assume(_depositor1 != address(staker) && _depositor2 != address(staker));
+    vm.assume(_delegatee != address(0) && _amount != 0);
+
+    _mintStakeToken(_depositor1, _amount);
+    _mintStakeToken(_depositor2, _amount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _percentDuration1 = bound(_percentDuration1, 1, 100);
+    _percentDuration2 = bound(_percentDuration2, 0, 100 - _percentDuration1);
+
+    Staker.DepositIdentifier _depositId1 = _stake(_depositor1, _amount, _delegatee);
+    Staker.DepositIdentifier _depositId2 = _stake(_depositor2, _amount, _delegatee);
+    _notifyRewardAmount(_rewardAmount);
+
+    _jumpAheadByPercentOfRewardDuration(_percentDuration1);
+    uint256 unclaimedRewards1 = staker.unclaimedReward(_depositId1);
+    Staker.Deposit memory _deposit1 = _fetchDeposit(_depositId1);
+    uint256 _earnedRewards1 =
+      _calculateEarnedRewards(_deposit1.earningPower, _rewardAmount, _percentDuration1);
+
+    _jumpAheadByPercentOfRewardDuration(_percentDuration2);
+    uint256 unclaimedRewards2 = staker.unclaimedReward(_depositId2);
+    Staker.Deposit memory _deposit2 = _fetchDeposit(_depositId2);
+    uint256 _earnedRewards2 = _calculateEarnedRewards(
+      _deposit2.earningPower, _rewardAmount, _percentDuration1 + _percentDuration2
+    );
+
+    assertLteWithinOneUnit(unclaimedRewards1, _earnedRewards1);
+    assertLteWithinOneUnit(unclaimedRewards2, _earnedRewards2);
+  }
+
+  function testForkFuzz_TwoDepositorsEarnRewardsOverMultiplePeriods(
+    address _depositor1,
+    address _depositor2,
+    uint96 _amount,
+    address _delegatee,
+    uint256 _rewardAmount,
+    uint256 _percentDuration1,
+    uint256 _percentDuration2
+  ) public {
+    vm.assume(_depositor1 != address(0) && _depositor2 != address(0) && _depositor1 != _depositor2);
+    vm.assume(_depositor1 != address(staker) && _depositor2 != address(staker));
+    vm.assume(_delegatee != address(0) && _amount != 0);
+
+    _mintStakeToken(_depositor1, _amount);
+    _mintStakeToken(_depositor2, _amount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _percentDuration1 = bound(_percentDuration1, 100, 1000);
+    _percentDuration2 = bound(_percentDuration2, 100, 1000);
+
+    Staker.DepositIdentifier _depositId1 = _stake(_depositor1, _amount, _delegatee);
+    Staker.DepositIdentifier _depositId2 = _stake(_depositor2, _amount, _delegatee);
+    _notifyRewardAmount(_rewardAmount);
+
+    _jumpAheadByPercentOfRewardDuration(_percentDuration1);
+    uint256 unclaimedRewards1 = staker.unclaimedReward(_depositId1);
+    Staker.Deposit memory _deposit1 = _fetchDeposit(_depositId1);
+    uint256 _earnedRewards1 = _calculateEarnedRewards(_deposit1.earningPower, _rewardAmount, 100);
+
+    _jumpAheadByPercentOfRewardDuration(_percentDuration2);
+    uint256 unclaimedRewards2 = staker.unclaimedReward(_depositId2);
+    Staker.Deposit memory _deposit2 = _fetchDeposit(_depositId2);
+    uint256 _earnedRewards2 = _calculateEarnedRewards(_deposit2.earningPower, _rewardAmount, 100);
+
+    assertLteWithinOneUnit(unclaimedRewards1, _earnedRewards1);
+    assertLteWithinOneUnit(unclaimedRewards2, _earnedRewards2);
+  }
 }
 
 abstract contract WithdrawBase is StakerTestBase {
