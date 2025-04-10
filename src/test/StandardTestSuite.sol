@@ -96,7 +96,7 @@ abstract contract WithdrawBase is StakerTestBase {
     _mintStakeToken(_depositor2, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _percentDuration1 = bound(_percentDuration1, 1, 100);
-    _percentDuration2 = bound(_percentDuration2, _percentDuration1, 100);
+    _percentDuration2 = bound(_percentDuration2, 0, 100 - _percentDuration1);
 
     Staker.DepositIdentifier _depositId1 = _stake(_depositor1, _amount, _delegatee);
     Staker.DepositIdentifier _depositId2 = _stake(_depositor2, _amount, _delegatee);
