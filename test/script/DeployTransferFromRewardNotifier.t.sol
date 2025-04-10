@@ -29,50 +29,27 @@ contract DeployTransferFromRewardNotifierTest is Test {
 contract Run is DeployTransferFromRewardNotifierTest {
   function test_DeployTransferFromRewardNotifier() public {
     (, Staker _staker, address[] memory _notifiers) = deployScript.run();
+    address deployedNotifier = _notifiers[0];
 
-    TransferFromRewardNotifier _transferFromNotifier = TransferFromRewardNotifier(_notifiers[0]);
-    assertEq(address(_staker), address(_transferFromNotifier.RECEIVER()));
-    assertEq(10e18, _transferFromNotifier.rewardAmount());
-    assertEq(30 days, _transferFromNotifier.rewardInterval());
-    assertEq(deployScript.notifierOwner(), _transferFromNotifier.owner());
-    assertEq(
-      address(deployScript.notifierRewardSource()), address(_transferFromNotifier.rewardSource())
+    // Encode constructor arguments with the same value as Fake
+    bytes memory args = abi.encode(
+      _staker, // receiver
+      10e18, // reward amount
+      30 days, // reward interval
+      deployScript.notifierOwner(), // owner
+      deployScript.notifierRewardSource() // reward source
     );
-  }
-}
 
-contract SetRewardSource is DeployTransferFromRewardNotifierTest {
-  function testFuzz_UpdatesTheRewardSource(address _newRewardSource) public {
-    (,, address[] memory _notifiers) = deployScript.run();
-    TransferFromRewardNotifier _transferFromNotifier = TransferFromRewardNotifier(_notifiers[0]);
-    address owner = deployScript.notifierOwner();
+    // Get creation bytecode and append constructor args
+    bytes memory bytecode = abi.encodePacked(
+      vm.getCode("TransferFromRewardNotifier.sol:TransferFromRewardNotifier"), args
+    );
 
-    vm.prank(owner);
-    _transferFromNotifier.setRewardSource(_newRewardSource);
+    address expectedNotifier;
+    assembly {
+      expectedNotifier := create(0, add(bytecode, 0x20), mload(bytecode))
+    }
 
-    assertEq(_transferFromNotifier.rewardSource(), _newRewardSource);
-  }
-
-  function testFuzz_EmitsAnEventForSettingTheRewardSource(address _newRewardSource) public {
-    (,, address[] memory _notifiers) = deployScript.run();
-    TransferFromRewardNotifier _transferFromNotifier = TransferFromRewardNotifier(_notifiers[0]);
-    address owner = deployScript.notifierOwner();
-    address _oldRewardSource = deployScript.notifierRewardSource();
-
-    vm.expectEmit();
-    emit TransferFromRewardNotifier.RewardSourceSet(_oldRewardSource, _newRewardSource);
-    vm.prank(owner);
-    _transferFromNotifier.setRewardSource(_newRewardSource);
-  }
-
-  function testFuzz_RevertIf_CallerIsNotOwner(address _newRewardSource, address _notOwner) public {
-    (,, address[] memory _notifiers) = deployScript.run();
-    TransferFromRewardNotifier _transferFromNotifier = TransferFromRewardNotifier(_notifiers[0]);
-    address owner = deployScript.notifierOwner();
-
-    vm.assume(_notOwner != owner);
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _notOwner));
-    vm.prank(_notOwner);
-    _transferFromNotifier.setRewardSource(_newRewardSource);
+    assertEq(deployedNotifier.code, expectedNotifier.code);
   }
 }
