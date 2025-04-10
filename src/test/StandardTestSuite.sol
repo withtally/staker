@@ -87,10 +87,11 @@ abstract contract WithdrawBase is StakerTestBase {
     vm.assume(_depositor1 != address(0) && _depositor2 != address(0) && _depositor1 != _depositor2);
     vm.assume(_depositor1 != address(staker) && _depositor2 != address(staker));
     vm.assume(_delegatee != address(0));
-    vm.assume(_amount != 0);
     vm.assume(_percentDuration1 != _percentDuration2);
 
     _amount = uint96(_boundMintAmount(_amount));
+    vm.assume(_amount != 0);
+
     _mintStakeToken(_depositor1, _amount);
     _mintStakeToken(_depositor2, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
