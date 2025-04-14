@@ -48,10 +48,11 @@ abstract contract WithdrawBase is StakerTestBase {
     uint256 _withdrawAmount,
     uint256 _percentDuration
   ) public {
-    vm.assume(_depositor != address(0) && _delegatee != address(0) && _amount != 0);
+    vm.assume(_depositor != address(0) && _delegatee != address(0));
     vm.assume(_depositor != address(staker));
 
     _amount = uint96(_boundMintAmount(_amount));
+	vm.assume(_amount != 0);
     _mintGovToken(_depositor, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _percentDuration = bound(_percentDuration, 1, 100);
