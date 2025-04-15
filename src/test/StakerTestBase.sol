@@ -185,4 +185,10 @@ abstract contract StakerTestBase is Test, PercentAssertions {
         && (!isKnownDepositor[address(_surrogate)])
     );
   }
+
+  /// @notice A test helper that assumes an address is neither zero nor the staker contract
+  function _assumeNotZeroAddressOrStaker(address _addr) internal {
+    assumeNotZeroAddress(_addr);
+    vm.assume(_addr != address(staker));
+  }
 }

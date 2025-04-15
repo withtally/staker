@@ -84,10 +84,9 @@ abstract contract WithdrawBase is StakerTestBase {
     uint256 _percentDuration1,
     uint256 _percentDuration2
   ) public {
-    vm.assume(_depositor1 != address(0) && _depositor2 != address(0) && _depositor1 != _depositor2);
-    vm.assume(_depositor1 != address(staker) && _depositor2 != address(staker));
-    vm.assume(_delegatee != address(0));
-    vm.assume(_percentDuration1 != _percentDuration2);
+    _assumeNotZeroAddressOrStaker(_depositor1);
+    _assumeNotZeroAddressOrStaker(_depositor2);
+    vm.assume(_depositor1 != _depositor2 && _delegatee != address(0));
 
     _amount = uint96(_boundMintAmount(_amount));
     vm.assume(_amount != 0);
@@ -127,8 +126,8 @@ abstract contract WithdrawBase is StakerTestBase {
     uint256 _withdrawAmount,
     uint256 _percentDuration
   ) public {
-    vm.assume(_depositor != address(0) && _delegatee != address(0) && _amount != 0);
-    vm.assume(_depositor != address(staker));
+    _assumeNotZeroAddressOrStaker(_depositor);
+    vm.assume(_delegatee != address(0));
 
     _amount = uint96(_boundMintAmount(_amount));
     _mintStakeToken(_depositor, _amount);
