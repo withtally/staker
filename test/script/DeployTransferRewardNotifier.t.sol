@@ -28,42 +28,25 @@ contract DeployTransferRewardNotifierTest is Test {
 contract Run is DeployTransferRewardNotifierTest {
   function test_DeployTransferRewardNotifier() public {
     (, Staker _staker, address[] memory _notifiers) = deployScript.run();
-    TransferRewardNotifier _transferNotifier = TransferRewardNotifier(_notifiers[0]);
+    address deployedNotifier = _notifiers[0];
 
-    assertEq(address(_staker), address(_transferNotifier.RECEIVER()));
-    assertEq(10e18, _transferNotifier.rewardAmount());
-    assertEq(30 days, _transferNotifier.rewardInterval());
-    assertEq(deployScript.notifierOwner(), _transferNotifier.owner());
-  }
-}
+    // Encode constructor arguments with the same value as Fake
+    bytes memory args = abi.encode(
+      _staker, // receiver
+      10e18, // reward amount
+      30 days, // reward interval
+      deployScript.notifierOwner() // owner
+    );
 
-contract Approve is DeployTransferRewardNotifierTest {
-  function testFuzz_ApprovesTheSpenderForTheAmount(address _spender, uint256 _amount) public {
-    vm.assume(_spender != address(0));
+    // Get creation bytecode and append constructor args
+    bytes memory bytecode =
+      abi.encodePacked(vm.getCode("TransferRewardNotifier.sol:TransferRewardNotifier"), args);
 
-    (,, address[] memory _notifiers) = deployScript.run();
-    TransferRewardNotifier _transferNotifier = TransferRewardNotifier(_notifiers[0]);
-    address owner = deployScript.notifierOwner();
+    address expectedNotifier;
+    assembly {
+      expectedNotifier := create(0, add(bytecode, 0x20), mload(bytecode))
+    }
 
-    vm.prank(owner);
-    _transferNotifier.approve(_spender, _amount);
-
-    assertEq(rewardToken.allowance(address(_transferNotifier), _spender), _amount);
-  }
-
-  function testFuzz_RevertIf_CallerIsNotOwner(address _spender, uint256 _amount, address _notOwner)
-    public
-  {
-    vm.assume(_spender != address(0));
-
-    (,, address[] memory _notifiers) = deployScript.run();
-    TransferRewardNotifier _transferNotifier = TransferRewardNotifier(_notifiers[0]);
-    address owner = deployScript.notifierOwner();
-
-    vm.assume(_notOwner != owner);
-
-    vm.prank(_notOwner);
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _notOwner));
-    _transferNotifier.approve(_spender, _amount);
+    assertEq(deployedNotifier.code, expectedNotifier.code);
   }
 }

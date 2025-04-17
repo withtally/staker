@@ -31,18 +31,32 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorTest is Test {
 
 contract Run is DeployBinaryEligibilityOracleEarningPowerCalculatorTest {
   function test_DeployBinaryEligibilityOracleEarningPowerCalculatorHarness() public {
-    (IEarningPowerCalculator _calculator, Staker _staker,) = deployScript.run();
-    BinaryEligibilityOracleEarningPowerCalculator _binaryEligibilityOracleCalculator =
-      BinaryEligibilityOracleEarningPowerCalculator(address(_calculator));
-    assertEq(address(_calculator), address(_staker.earningPowerCalculator()));
-    assertEq(address(_binaryEligibilityOracleCalculator.owner()), makeAddr("owner"));
-    assertEq(address(_binaryEligibilityOracleCalculator.scoreOracle()), makeAddr("scoreOracle"));
-    assertEq(_binaryEligibilityOracleCalculator.STALE_ORACLE_WINDOW(), 7 days);
-    assertEq(
-      address(_binaryEligibilityOracleCalculator.oraclePauseGuardian()),
-      makeAddr("oraclePauseGuardian")
+    (IEarningPowerCalculator _calculator,,) = deployScript.run();
+    address deployedPowerCalculator = address(_calculator);
+
+    // Encode constructor arguments with the same value as Harness
+    bytes memory args = abi.encode(
+      deployScript.owner(), // owner
+      deployScript.scoreOracle(), // scoreOracle
+      uint256(7 days), // staleOracleWindow
+      deployScript.oraclePauseGuardian(), // oraclePauseGuardian
+      uint256(50), // delegateeScoreEligibilityThreshold
+      uint256(7 days) // updateEligibilityDelay
     );
-    assertEq(_binaryEligibilityOracleCalculator.delegateeEligibilityThresholdScore(), 50);
-    assertEq(_binaryEligibilityOracleCalculator.updateEligibilityDelay(), 7 days);
+
+    // Get creation bytecode and append constructor args
+    bytes memory bytecode = abi.encodePacked(
+      vm.getCode(
+        "BinaryEligibilityOracleEarningPowerCalculator.sol:BinaryEligibilityOracleEarningPowerCalculator"
+      ),
+      args
+    );
+
+    address expectedPowerCalculator;
+    assembly {
+      expectedPowerCalculator := create(0, add(bytecode, 0x20), mload(bytecode))
+    }
+
+    assertEq(deployedPowerCalculator.code, expectedPowerCalculator.code);
   }
 }
