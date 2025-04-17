@@ -73,4 +73,86 @@ abstract contract WithdrawBase is StakerTestBase {
     assertLteWithinOneUnit(currentRewards, initialRewards);
     assertEq(_balance, _withdrawAmount);
   }
+
+  function testFuzz_WithdrawTwoUsersAfterDuration(
+    address _depositor1,
+    address _depositor2,
+    uint96 _amount,
+    address _delegatee,
+    uint256 _rewardAmount,
+    uint256 _withdrawAmount1,
+    uint256 _withdrawAmount2,
+    uint256 _percentDuration1,
+    uint256 _percentDuration2
+  ) public {
+    _assumeNotZeroAddressOrStaker(_depositor1);
+    _assumeNotZeroAddressOrStaker(_depositor2);
+    vm.assume(_depositor1 != _depositor2 && _delegatee != address(0));
+
+    _amount = uint96(_boundMintAmount(_amount));
+    vm.assume(_amount != 0);
+
+    _mintStakeToken(_depositor1, _amount);
+    _mintStakeToken(_depositor2, _amount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _percentDuration1 = bound(_percentDuration1, 1, 100);
+    _percentDuration2 = bound(_percentDuration2, 0, 100 - _percentDuration1);
+
+    Staker.DepositIdentifier _depositId1 = _stake(_depositor1, _amount, _delegatee);
+    Staker.DepositIdentifier _depositId2 = _stake(_depositor2, _amount, _delegatee);
+
+    _notifyRewardAmount(_rewardAmount);
+
+    _jumpAheadByPercentOfRewardDuration(_percentDuration1);
+    uint256 initialRewards1 = staker.unclaimedReward(_depositId1);
+    _withdrawAmount1 = bound(_withdrawAmount1, 0, _amount);
+    _withdraw(_depositor1, _depositId1, _withdrawAmount1);
+    assertLteWithinOneUnit(staker.unclaimedReward(_depositId1), initialRewards1);
+
+    _jumpAheadByPercentOfRewardDuration(_percentDuration2);
+    uint256 initialRewards2 = staker.unclaimedReward(_depositId2);
+    _withdrawAmount2 = bound(_withdrawAmount2, 0, _amount);
+    _withdraw(_depositor2, _depositId2, _withdrawAmount2);
+    assertLteWithinOneUnit(staker.unclaimedReward(_depositId2), initialRewards2);
+
+    assertEq(STAKE_TOKEN.balanceOf(_depositor1), _withdrawAmount1);
+    assertEq(STAKE_TOKEN.balanceOf(_depositor2), _withdrawAmount2);
+  }
+
+  function testForkFuzz_ClaimRewardAndWithdrawAfterDuration(
+    address _depositor,
+    uint96 _amount,
+    address _delegatee,
+    uint256 _rewardAmount,
+    uint256 _withdrawAmount,
+    uint256 _percentDuration
+  ) public {
+    _assumeNotZeroAddressOrStaker(_depositor);
+    vm.assume(_delegatee != address(0));
+
+    _amount = uint96(_boundMintAmount(_amount));
+    _mintStakeToken(_depositor, _amount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _percentDuration = bound(_percentDuration, 1, 100);
+
+    Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
+    _notifyRewardAmount(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+
+    uint256 initialRewards = staker.unclaimedReward(_depositId);
+    uint256 initialRewardBalance = REWARD_TOKEN.balanceOf(_depositor);
+
+    vm.prank(_depositor);
+    staker.claimReward(_depositId);
+
+    uint256 rewardsReceived = REWARD_TOKEN.balanceOf(_depositor) - initialRewardBalance;
+    assertEq(staker.unclaimedReward(_depositId), 0);
+    assertEq(rewardsReceived, initialRewards);
+
+    _withdrawAmount = bound(_withdrawAmount, 0, _amount);
+    _withdraw(_depositor, _depositId, _withdrawAmount);
+
+    uint256 _balance = STAKE_TOKEN.balanceOf(_depositor);
+    assertEq(_balance, _withdrawAmount);
+  }
 }
