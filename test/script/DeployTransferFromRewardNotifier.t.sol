@@ -27,7 +27,20 @@ contract DeployTransferFromRewardNotifierTest is Test {
 }
 
 contract Run is DeployTransferFromRewardNotifierTest {
-  function test_DeployTransferFromRewardNotifier() public {
+  function test_DeployedNotifierHasCorrectConfig() public {
+    (, Staker _staker, address[] memory _notifiers) = deployScript.run();
+
+    TransferFromRewardNotifier _transferFromNotifier = TransferFromRewardNotifier(_notifiers[0]);
+    assertEq(address(_staker), address(_transferFromNotifier.RECEIVER()));
+    assertEq(10e18, _transferFromNotifier.rewardAmount());
+    assertEq(30 days, _transferFromNotifier.rewardInterval());
+    assertEq(deployScript.notifierOwner(), _transferFromNotifier.owner());
+    assertEq(
+      address(deployScript.notifierRewardSource()), address(_transferFromNotifier.rewardSource())
+    );
+  }
+
+  function test_DeployedNotifierMatchesExpectedBytecode() public {
     (, Staker _staker, address[] memory _notifiers) = deployScript.run();
     address deployedNotifier = _notifiers[0];
 
