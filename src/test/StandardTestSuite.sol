@@ -121,8 +121,9 @@ abstract contract StakeBase is StakerTestBase {
     );
 
     assertLteWithinOneUnit(unclaimedRewards1, _earnedRewards1);
-    assertLteWithinOneUnit(unclaimedRewards2, _earnedRewards2Duration1 + _earnedRewards2Duration2);
-  }
+    // because we summed 2 amounts, the rounding error can be as much as 2 units
+    assertApproxEqAbs(unclaimedRewards2, _earnedRewards2Duration1 + _earnedRewards2Duration2, 2);
+    assertLe(unclaimedRewards2, _earnedRewards2Duration1 + _earnedRewards2Duration2);  }
 }
 
 abstract contract WithdrawBase is StakerTestBase {
