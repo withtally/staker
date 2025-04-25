@@ -250,3 +250,36 @@ abstract contract WithdrawBase is StakerTestBase {
     assertEq(_balance, _withdrawAmount);
   }
 }
+
+abstract contract AlterDelegateeBase is StakerTestBase {
+  function testFuzz_DepositorCanUpdateDelegatee(
+    address _depositor,
+    uint96 _depositAmount,
+    address _firstDelegatee,
+    address _newDelegatee
+  ) public {
+    _assumeNotZeroAddressOrStaker(_depositor);
+    vm.assume(
+      _firstDelegatee != address(0) && _newDelegatee != address(0)
+        && _newDelegatee != _firstDelegatee
+    );
+
+    _depositAmount = uint96(_boundMintAmount(_depositAmount));
+    _mintStakeToken(_depositor, _depositAmount);
+    Staker.DepositIdentifier _depositId = _stake(_depositor, _depositAmount, _firstDelegatee);
+    address _firstSurrogate = address(staker.surrogates(_firstDelegatee));
+
+    vm.expectEmit();
+    emit Staker.DelegateeAltered(_depositId, _firstDelegatee, _newDelegatee, _depositAmount);
+
+    vm.prank(_depositor);
+    staker.alterDelegatee(_depositId, _newDelegatee);
+
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    address _newSurrogate = address(staker.surrogates(_deposit.delegatee));
+
+    assertEq(_deposit.delegatee, _newDelegatee);
+    assertEq(STAKE_TOKEN.balanceOf(_newSurrogate), _depositAmount);
+    assertEq(STAKE_TOKEN.balanceOf(_firstSurrogate), 0);
+  }
+}
