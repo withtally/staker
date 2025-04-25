@@ -251,6 +251,79 @@ abstract contract WithdrawBase is StakerTestBase {
   }
 }
 
+abstract contract AlterClaimerBase is StakerTestBase {
+  function testFuzz_DepositorCanUpdateClaimerBeforeAccruingRewards(
+    address _depositor,
+    uint96 _depositAmount,
+    address _delegatee,
+    address _firstClaimer,
+    address _newClaimer
+  ) public {
+    _assumeNotZeroAddressOrStaker(_depositor);
+    vm.assume(
+      _firstClaimer != address(0) && _newClaimer != address(0) && _newClaimer != _firstClaimer
+    );
+
+    _depositAmount = uint96(_boundMintAmount(_depositAmount));
+    _mintStakeToken(_depositor, _depositAmount);
+    Staker.DepositIdentifier _depositId =
+      _stake(_depositor, _depositAmount, _delegatee, _firstClaimer);
+
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+
+    vm.expectEmit();
+    emit Staker.ClaimerAltered(_depositId, _firstClaimer, _newClaimer, _deposit.earningPower);
+
+    vm.prank(_depositor);
+    staker.alterClaimer(_depositId, _newClaimer);
+
+    _deposit = _fetchDeposit(_depositId);
+
+    assertEq(staker.unclaimedReward(_depositId), 0);
+    assertEq(_deposit.claimer, _newClaimer);
+  }
+
+  function testFuzz_DepositorCanUpdateClaimerAfterAccruingRewards(
+    address _depositor,
+    uint96 _depositAmount,
+    address _delegatee,
+    uint256 _rewardAmount,
+    uint256 _percentDuration,
+    address _firstClaimer,
+    address _newClaimer
+  ) public {
+    _assumeNotZeroAddressOrStaker(_depositor);
+    vm.assume(
+      _firstClaimer != address(0) && _newClaimer != address(0) && _newClaimer != _firstClaimer
+    );
+    _percentDuration = bound(_percentDuration, 1, 100);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _depositAmount = uint96(_boundMintAmount(_depositAmount));
+    // We assume the following to guarantee positive unclaimed reward.
+    vm.assume(_depositAmount != 0 && _rewardAmount != 0);
+
+    _mintStakeToken(_depositor, _depositAmount);
+    Staker.DepositIdentifier _depositId =
+      _stake(_depositor, _depositAmount, _delegatee, _firstClaimer);
+
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+
+    _notifyRewardAmount(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+
+    vm.expectEmit();
+    emit Staker.ClaimerAltered(_depositId, _firstClaimer, _newClaimer, _deposit.earningPower);
+
+    vm.prank(_depositor);
+    staker.alterClaimer(_depositId, _newClaimer);
+
+    _deposit = _fetchDeposit(_depositId);
+
+    assertGt(staker.unclaimedReward(_depositId), 0);
+    assertEq(_deposit.claimer, _newClaimer);
+  }
+}
+
 abstract contract AlterDelegateeBase is StakerTestBase {
   function testFuzz_DepositorCanUpdateDelegatee(
     address _depositor,

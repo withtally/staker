@@ -2,7 +2,12 @@
 pragma solidity ^0.8.23;
 
 import {StakerTestBase, IERC20Mintable} from "../../src/test/StakerTestBase.sol";
-import {StakeBase, WithdrawBase, AlterDelegateeBase} from "../../src/test/StandardTestSuite.sol";
+import {
+  StakeBase,
+  WithdrawBase,
+  AlterClaimerBase,
+  AlterDelegateeBase
+} from "../../src/test/StandardTestSuite.sol";
 import {Staker} from "../../src/Staker.sol";
 import {MintRewardNotifier} from "../../src/notifiers/MintRewardNotifier.sol";
 import {DeployBaseFake} from "../fakes/DeployBaseFake.sol";
@@ -37,5 +42,7 @@ contract DeployBaseHarnessTestBase is StakerTestBase {
 contract Stake is StakeBase, DeployBaseHarnessTestBase {}
 
 contract Withdraw is WithdrawBase, DeployBaseHarnessTestBase {}
+
+contract AlterClaimer is AlterClaimerBase, DeployBaseHarnessTestBase {}
 
 contract AlterDelegatee is AlterDelegateeBase, DeployBaseHarnessTestBase {}
