@@ -26,12 +26,14 @@ contract StakerFactoryTest is Test {
 
   function testCreateStakingSystem() public {
     address admin = address(this);
+    uint256 maxClaimFee = 1e18; // 1 token with 18 decimals
     address stakerAddr = factory.createStakingSystem(
       rewardsToken,
       stakeToken,
       calc,
       0,
-      admin
+      admin,
+      maxClaimFee
     );
 
     assertGt(stakerAddr.code.length, 0, "Deployed staker should have code");
@@ -45,6 +47,22 @@ contract StakerFactoryTest is Test {
     assertEq(address(staker.REWARD_TOKEN()), address(rewardsToken));
     assertEq(address(staker.STAKE_TOKEN()), address(stakeToken));
     assertEq(staker.admin(), admin);
+    assertEq(staker.MAX_CLAIM_FEE(), maxClaimFee, "MAX_CLAIM_FEE should match the provided value");
+  }
+  
+  function testCreateWithCustomMaxClaimFee() public {
+    uint256 customMaxClaimFee = 5 * 1e18; // 5 tokens with 18 decimals
+    address stakerAddr = factory.createStakingSystem(
+      rewardsToken,
+      stakeToken,
+      calc,
+      0,
+      address(this),
+      customMaxClaimFee
+    );
+    
+    FullStaker staker = FullStaker(stakerAddr);
+    assertEq(staker.MAX_CLAIM_FEE(), customMaxClaimFee);
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -53,7 +71,7 @@ contract StakerFactoryTest is Test {
 
   function testRevertsIfAdminZeroAddress() public {
     vm.expectRevert();
-    factory.createStakingSystem(rewardsToken, stakeToken, calc, 0, address(0));
+    factory.createStakingSystem(rewardsToken, stakeToken, calc, 0, address(0), 1e18);
   }
 
   function testLargeMaxBumpTip() public {
@@ -63,10 +81,38 @@ contract StakerFactoryTest is Test {
       stakeToken,
       calc,
       largeTip,
-      address(this)
+      address(this),
+      1e18
     );
     FullStaker staker = FullStaker(stakerAddr);
     assertEq(staker.maxBumpTip(), largeTip);
+  }
+  
+  function testZeroMaxClaimFee() public {
+    address stakerAddr = factory.createStakingSystem(
+      rewardsToken,
+      stakeToken,
+      calc,
+      0,
+      address(this),
+      0
+    );
+    FullStaker staker = FullStaker(stakerAddr);
+    assertEq(staker.MAX_CLAIM_FEE(), 0);
+  }
+  
+  function testLargeMaxClaimFee() public {
+    uint256 largeMaxClaimFee = type(uint256).max;
+    address stakerAddr = factory.createStakingSystem(
+      rewardsToken,
+      stakeToken,
+      calc,
+      0,
+      address(this),
+      largeMaxClaimFee
+    );
+    FullStaker staker = FullStaker(stakerAddr);
+    assertEq(staker.MAX_CLAIM_FEE(), largeMaxClaimFee);
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -81,16 +127,22 @@ contract StakerFactoryTest is Test {
       ERC20VotesMock stakeT = new ERC20VotesMock();
       ERC20VotesMock rewardT = new ERC20VotesMock();
 
+      // Vary both maxBumpTip and maxClaimFee in each deployment
       address stakerAddr = factory.createStakingSystem(
         rewardT,
         stakeT,
         calc,
         i, // vary bump tip
-        admin
+        admin,
+        (i + 1) * 1e18 // vary max claim fee
       );
 
       assertGt(stakerAddr.code.length, 0);
       assertEq(factory.allStakers(i), stakerAddr);
+      
+      // Verify the MAX_CLAIM_FEE is set correctly
+      FullStaker staker = FullStaker(stakerAddr);
+      assertEq(staker.MAX_CLAIM_FEE(), (i + 1) * 1e18);
     }
 
     assertEq(factory.allStakersLength(), 3);

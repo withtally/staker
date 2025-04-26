@@ -16,6 +16,7 @@ import {IERC20Staking} from "../src/interfaces/IERC20Staking.sol";
 ///  - STAKE_TOKEN          address of the ERC20Votes/ERC20Permit governance token to stake
 ///  - CALCULATOR           address of IEarningPowerCalculator implementation
 ///  - MAX_BUMP_TIP         uint256 (optional, defaults to 0)
+///  - MAX_CLAIM_FEE        uint256 (optional, defaults to 1e18)
 ///  - ADMIN                address that will be the admin (optional, defaults to tx.origin)
 ///
 /// Usage:
@@ -40,6 +41,7 @@ contract CreateStakingSystem is Script {
     address stake = vm.envAddress("STAKE_TOKEN");
     address calc = vm.envAddress("CALCULATOR");
     uint256 maxTip = _tryEnvUint("MAX_BUMP_TIP", 0);
+    uint256 maxClaimFee = _tryEnvUint("MAX_CLAIM_FEE", 1e18);
     address admin = _tryEnvAddress("ADMIN", tx.origin);
 
     vm.startBroadcast();
@@ -49,7 +51,8 @@ contract CreateStakingSystem is Script {
       IERC20Staking(stake),
       IEarningPowerCalculator(calc),
       maxTip,
-      admin
+      admin,
+      maxClaimFee
     );
 
     vm.stopBroadcast();

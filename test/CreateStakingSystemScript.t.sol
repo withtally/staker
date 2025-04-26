@@ -32,7 +32,8 @@ contract CreateStakingSystemScriptTest is Test {
       stake,
       calc,
       0, // max tip
-      address(this) // admin
+      address(this), // admin
+      2e18 // max claim fee
     );
     
     // Verify the staker was deployed correctly
@@ -80,6 +81,7 @@ contract CreateStakingSystemScriptTest is Test {
     vm.setEnv("STAKE_TOKEN", vm.toString(address(stake)));
     vm.setEnv("CALCULATOR", vm.toString(address(calc)));
     vm.setEnv("MAX_BUMP_TIP", "0");
+    vm.setEnv("MAX_CLAIM_FEE", "3000000000000000000"); // 3e18
     vm.setEnv("ADMIN", vm.toString(address(this)));
     
     // 4. Run the script and verify results

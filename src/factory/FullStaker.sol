@@ -33,15 +33,16 @@ contract FullStaker is
     IERC20Staking _stakeToken,
     IEarningPowerCalculator _earningPowerCalculator,
     uint256 _maxBumpTip,
-    address _admin
+    address _admin,
+    uint256 _maxClaimFee
   )
     Staker(_rewardsToken, IERC20(_stakeToken), _earningPowerCalculator, _maxBumpTip, _admin)
     StakerDelegateSurrogateVotes(IERC20Delegates(address(_stakeToken)))
     StakerPermitAndStake(_stakeToken)
     EIP712("FullStaker", "1")
   {
-    // Override the maximum reward token fee for claiming rewards
-    MAX_CLAIM_FEE = 1e18;
+    // Set the maximum reward token fee for claiming rewards based on the parameter
+    MAX_CLAIM_FEE = _maxClaimFee;
     // Start with no reward claiming fee configured
     _setClaimFeeParameters(ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)}));
   }

@@ -158,7 +158,8 @@ address staker = factory.createStakingSystem(
   address(stakeToken),    // ERC20Votes / ERC20Permit governance token being staked
   address(calc),          // IEarningPowerCalculator implementation
   0,                      // initial maxBumpTip
-  admin                   // admin address
+  admin,                  // admin address
+  1e18                    // maximum claim fee (in reward tokens)
 );
 ```
 
@@ -346,6 +347,7 @@ new staking systems **at predictable addresses on any EVM chain.**
    - `STAKE_TOKEN`    – ERC20Votes/ERC20Permit governance token being staked
    - `CALCULATOR`     – Address of an `IEarningPowerCalculator` implementation
    - `MAX_BUMP_TIP`   – (Optional) initial max bump tip (defaults to 0)
+   - `MAX_CLAIM_FEE`  – (Optional) maximum fee that can be charged for claiming rewards (defaults to 1e18)
    - `ADMIN`          – (Optional) admin for the staking system (defaults to `tx.origin`)
 
 The script resolves the deterministic factory address, then calls `createStakingSystem(...)`.
