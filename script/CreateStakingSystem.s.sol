@@ -57,7 +57,7 @@ contract CreateStakingSystem is Script {
 
   // --- helpers -------------------------------------------------------------//
 
-  function _tryEnvUint(string memory key, uint256 defaultValue) internal returns (uint256 val) {
+  function _tryEnvUint(string memory key, uint256 defaultValue) internal view returns (uint256 val) {
     try vm.envUint(key) returns (uint256 v) {
       val = v;
     } catch {
@@ -65,7 +65,7 @@ contract CreateStakingSystem is Script {
     }
   }
 
-  function _tryEnvAddress(string memory key, address defaultValue) internal returns (address val) {
+  function _tryEnvAddress(string memory key, address defaultValue) internal view returns (address val) {
     try vm.envAddress(key) returns (address a) {
       val = a;
     } catch {

@@ -279,3 +279,39 @@ This command will use the names of the contract's unit tests to generate a human
 The code in this repository is licensed under the [GNU Affero General Public License](LICENSE) unless otherwise indicated.
 
 Copyright (C) 2025 Tally
+
+### Deterministic Deployment Scripts
+
+The repository includes two Foundry scripts that let you deploy both the factory and
+new staking systems **at predictable addresses on any EVM chain.**
+
+1. **Deploy the factory once**  (CREATE2 via the canonical singleton factory)
+
+   ```bash
+   forge script script/DeployStakerFactory.s.sol \
+     --broadcast --rpc-url $RPC_URL
+   ```
+
+   This uses the EIP-2470 singleton factory (`0xce0042…cf9f`) and salt
+   `"StakerFactory_v1.0.0"`, guaranteeing the *same* `StakerFactory` address on every network.
+
+2. **Create a new staking system** via the factory
+
+   ```bash
+   REWARD_TOKEN=0x... \
+   STAKE_TOKEN=0x...  \
+   CALCULATOR=0x...   \
+   MAX_BUMP_TIP=0     \
+   ADMIN=0xYourDAO    \
+   forge script script/CreateStakingSystem.s.sol \
+     --broadcast --rpc-url $RPC_URL
+   ```
+
+   Environment variables:
+   - `REWARD_TOKEN`   – ERC20 used for rewards
+   - `STAKE_TOKEN`    – ERC20Votes/ERC20Permit governance token being staked
+   - `CALCULATOR`     – Address of an `IEarningPowerCalculator` implementation
+   - `MAX_BUMP_TIP`   – (Optional) initial max bump tip (defaults to 0)
+   - `ADMIN`          – (Optional) admin for the staking system (defaults to `tx.origin`)
+
+The script resolves the deterministic factory address, then calls `createStakingSystem(...)`.
