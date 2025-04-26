@@ -17,4 +17,9 @@ contract MockNotifiableRewardReceiver is INotifiableRewardReceiver {
   function notifyRewardAmount(uint256 _amount) external {
     lastParam_notifyRewardAmount_amount = _amount;
   }
+
+  // Simplified getter used by some tests for convenience
+  function lastRewardAmount() external view returns (uint256) {
+    return lastParam_notifyRewardAmount_amount;
+  }
 }

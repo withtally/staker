@@ -318,57 +318,44 @@ Copyright (C) 2025 Tally
 The repository includes two Foundry scripts that let you deploy both the factory and
 new staking systems **at predictable addresses on any EVM chain.**
 
-1. **Deploy the factory once**  (CREATE2 via the canonical singleton factory)
+In **v1.2.0** we added deterministic deployment scripts for all three *reward-notifier*
+factories. Each script uses the canonical [EIP-2470 singleton factory](`0xce0042…cf9f`)
+with a versioned salt, guaranteeing the *same contract address* on every network.
 
-   ```bash
-   forge script script/DeployStakerFactory.s.sol \
-     --broadcast --rpc-url $RPC_URL
-   ```
+| Script | Contract Deployed | Salt |
+| ------ | ----------------- | ---- |
+| `script/DeployStakerFactory.s.sol` | `StakerFactory` | `"StakerFactory_v1.0.0"` |
+| `script/DeployTransferRewardNotifierFactory.s.sol` | `TransferRewardNotifierFactory` | `"TransferRewardNotifierFactory_v1.0.0"` |
+| `script/DeployTransferFromRewardNotifierFactory.s.sol` | `TransferFromRewardNotifierFactory` | `"TransferFromRewardNotifierFactory_v1.0.0"` |
+| `script/DeployMintRewardNotifierFactory.s.sol` | `MintRewardNotifierFactory` | `"MintRewardNotifierFactory_v1.0.0"` |
 
-   This uses the EIP-2470 singleton factory (`0xce0042…cf9f`) and salt
-   `"StakerFactory_v1.0.0"`, guaranteeing the *same* `StakerFactory` address on every network.
-   
-   The deterministic factory address will be: `0xef091cC54d58079Ce478baC110E22247f2c0D5FC`
+> **Note**  The deterministic address is a pure function of `(singletonFactory, salt, bytecode)`.
+> You can pre-compute it with `cast compute-create2-address` if you need to whitelist addresses
+> before deploying.
 
-2. **Create a new staking system** via the factory
+### Deploying a Reward-Notifier Factory
 
-   ```bash
-   REWARD_TOKEN=0x... \
-   STAKE_TOKEN=0x...  \
-   CALCULATOR=0x...   \
-   MAX_BUMP_TIP=0     \
-   ADMIN=0xYourDAO    \
-   forge script script/CreateStakingSystem.s.sol \
-     --broadcast --rpc-url $RPC_URL
-   ```
-
-   Environment variables:
-   - `REWARD_TOKEN`   – ERC20 used for rewards
-   - `STAKE_TOKEN`    – ERC20Votes/ERC20Permit governance token being staked
-   - `CALCULATOR`     – Address of an `IEarningPowerCalculator` implementation
-   - `MAX_BUMP_TIP`   – (Optional) initial max bump tip (defaults to 0)
-   - `MAX_CLAIM_FEE`  – (Optional) maximum fee that can be charged for claiming rewards (defaults to 1e18)
-   - `ADMIN`          – (Optional) admin for the staking system (defaults to `tx.origin`)
-
-The script resolves the deterministic factory address, then calls `createStakingSystem(...)`.
-
-#### Verifying Your Deployment
-
-After deploying, you can verify everything is working as expected:
+Example (Transfer-Reward):
 
 ```bash
-# 1. Check that factory exists at the expected address
-cast code 0xef091cC54d58079Ce478baC110E22247f2c0D5FC --rpc-url $RPC_URL | head -c 10
-# Should return bytecode, not 0x
-
-# 2. Check how many staking systems have been deployed
-cast call 0xef091cC54d58079Ce478baC110E22247f2c0D5FC "allStakersLength()(uint256)" --rpc-url $RPC_URL
-
-# 3. Get the address of a deployed staking system (replace INDEX with the index number)
-cast call 0xef091cC54d58079Ce478baC110E22247f2c0D5FC "allStakers(uint256)(address)" INDEX --rpc-url $RPC_URL
-
-# 4. Verify your staking system parameters (replace STAKER_ADDRESS)
-cast call STAKER_ADDRESS "REWARD_TOKEN()(address)" --rpc-url $RPC_URL
-cast call STAKER_ADDRESS "STAKE_TOKEN()(address)" --rpc-url $RPC_URL
-cast call STAKER_ADDRESS "admin()(address)" --rpc-url $RPC_URL
+forge script script/DeployTransferRewardNotifierFactory.s.sol \
+  --broadcast --rpc-url $RPC_URL
 ```
+
+The script will:
+1. Try `CREATE2` via the singleton factory (reverts if already deployed).  
+2. If the singleton isn't present (e.g. local hard-hat node) it falls back to a normal `new` deployment
+   so tests/devnets keep working.
+
+Mint-Reward and TransferFrom variants work the same—just swap the script name.
+
+After deployment you can verify the address:
+
+```bash
+cast code <DEPLOYED_ADDRESS> --rpc-url $RPC_URL | head -c 10 # should return bytecode, not 0x
+```
+
+### Using the Factories
+
+Once a notifier factory is live you can deploy an actual notifier via its `create*` method. The
+pattern is the same as shown earlier for `StakerFactory` (see test files for full examples).

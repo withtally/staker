@@ -16,12 +16,7 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 /// (`StakerDelegateSurrogateVotes`, `StakerPermitAndStake`, `StakerOnBehalf`). This contract is
 /// intended to be deployed by `StakerFactory` so that users can spin up an entire staking system
 /// with one transaction.
-contract FullStaker is
-  Staker,
-  StakerDelegateSurrogateVotes,
-  StakerPermitAndStake,
-  StakerOnBehalf
-{
+contract FullStaker is Staker, StakerDelegateSurrogateVotes, StakerPermitAndStake, StakerOnBehalf {
   /// @notice Constructs a fully-featured Staker instance.
   /// @param _rewardsToken The ERC20 token distributed as rewards.
   /// @param _stakeToken  The ERC20 token being staked (must support votes + permit).
@@ -46,4 +41,4 @@ contract FullStaker is
     // Start with no reward claiming fee configured
     _setClaimFeeParameters(ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)}));
   }
-} 
+}
