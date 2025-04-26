@@ -1,0 +1,26 @@
+[
+  {
+    "type": "function",
+    "name": "deploy",
+    "inputs": [
+      {
+        "name": "creationCode",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "salt",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "deployed",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  }
+]

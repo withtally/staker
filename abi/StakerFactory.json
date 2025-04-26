@@ -1,0 +1,109 @@
+[
+  {
+    "type": "function",
+    "name": "allStakers",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "allStakersLength",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "createStakingSystem",
+    "inputs": [
+      {
+        "name": "_rewardsToken",
+        "type": "address",
+        "internalType": "contract IERC20"
+      },
+      {
+        "name": "_stakeToken",
+        "type": "address",
+        "internalType": "contract IERC20Staking"
+      },
+      {
+        "name": "_earningPowerCalculator",
+        "type": "address",
+        "internalType": "contract IEarningPowerCalculator"
+      },
+      {
+        "name": "_maxBumpTip",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_admin",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_maxClaimFee",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "staker",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "StakingSystemCreated",
+    "inputs": [
+      {
+        "name": "staker",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "stakeToken",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "rewardsToken",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "admin",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  }
+]

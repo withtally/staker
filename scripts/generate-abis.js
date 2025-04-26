@@ -1,5 +1,13 @@
-const fs = require('fs');
-const path = require('path');
+// SPDX-License-Identifier: MIT
+// Generates ABI-only JSON files from Foundry build artifacts (./out)
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Derive __dirname in ES-module context
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Directory that contains Foundry build artifacts
 const OUT_DIR = path.join(__dirname, '..', 'out');
@@ -27,5 +35,4 @@ function recurseDir(dir) {
 }
 
 recurseDir(OUT_DIR);
-
 console.log(`ABI files written to ${ABI_DIR}`); 

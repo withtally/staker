@@ -1,0 +1,41 @@
+[
+  {
+    "type": "function",
+    "name": "IS_SCRIPT",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "deployPublic",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "factory",
+        "type": "address",
+        "internalType": "contract StakerFactory"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "run",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "factory",
+        "type": "address",
+        "internalType": "contract StakerFactory"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  }
+]

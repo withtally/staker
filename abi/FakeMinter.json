@@ -1,0 +1,44 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_parentMinter",
+        "type": "address",
+        "internalType": "contract IMintable"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "mint",
+    "inputs": [
+      {
+        "name": "_to",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "parentMinter",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IMintable"
+      }
+    ],
+    "stateMutability": "view"
+  }
+]
