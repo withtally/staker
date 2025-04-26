@@ -163,9 +163,41 @@ address staker = factory.createStakingSystem(
 ```
 
 The returned `staker` address is an instance of `FullStaker`, which bundles:
-• `StakerDelegateSurrogateVotes`
-• `StakerPermitAndStake`
-• `StakerOnBehalf`
+• `StakerDelegateSurrogateVotes` - Allows delegation of voting power through surrogate contracts
+• `StakerPermitAndStake` - Enables gasless approvals using EIP-2612 permit functionality
+• `StakerOnBehalf` - Supports actions via EIP-712 signatures for gasless operations
+
+#### Interacting with a deployed staking system
+
+After deployment, users can interact with the staking system:
+
+```solidity
+// Approve and stake tokens
+stakeToken.approve(address(staker), amount);
+staker.stake(amount, delegatee, claimer);
+
+// Check earning power (eligibility for rewards)
+uint256 earningPower = staker.earningPower(depositId);
+
+// Claim rewards
+staker.claimReward(depositId);
+
+// Withdraw stake
+staker.withdraw(depositId, amount);
+```
+
+#### Deterministic Deployment
+
+The repository includes deterministic deployment scripts that ensure the **same addresses** on every EVM network. This is particularly useful for:
+
+1. **Consistent documentation** - Reference the same contract addresses across all networks
+2. **Simplified front-end integration** - Configure UIs with known addresses regardless of network
+3. **Cross-chain compatibility** - Deploy the same staking system on L1/L2s with address consistency
+
+The factory is deployed at the same deterministic address on all EVM chains:
+`0xef091cC54d58079Ce478baC110E22247f2c0D5FC`
+
+See the [Deterministic Deployment Scripts](#deterministic-deployment-scripts) section for usage details.
 
 If you need a different set of extensions you can still follow the manual approach described in the next section.
 
@@ -280,7 +312,7 @@ The code in this repository is licensed under the [GNU Affero General Public Lic
 
 Copyright (C) 2025 Tally
 
-### Deterministic Deployment Scripts
+## Deterministic Deployment Scripts
 
 The repository includes two Foundry scripts that let you deploy both the factory and
 new staking systems **at predictable addresses on any EVM chain.**
@@ -294,6 +326,8 @@ new staking systems **at predictable addresses on any EVM chain.**
 
    This uses the EIP-2470 singleton factory (`0xce0042…cf9f`) and salt
    `"StakerFactory_v1.0.0"`, guaranteeing the *same* `StakerFactory` address on every network.
+   
+   The deterministic factory address will be: `0xef091cC54d58079Ce478baC110E22247f2c0D5FC`
 
 2. **Create a new staking system** via the factory
 
@@ -315,3 +349,24 @@ new staking systems **at predictable addresses on any EVM chain.**
    - `ADMIN`          – (Optional) admin for the staking system (defaults to `tx.origin`)
 
 The script resolves the deterministic factory address, then calls `createStakingSystem(...)`.
+
+#### Verifying Your Deployment
+
+After deploying, you can verify everything is working as expected:
+
+```bash
+# 1. Check that factory exists at the expected address
+cast code 0xef091cC54d58079Ce478baC110E22247f2c0D5FC --rpc-url $RPC_URL | head -c 10
+# Should return bytecode, not 0x
+
+# 2. Check how many staking systems have been deployed
+cast call 0xef091cC54d58079Ce478baC110E22247f2c0D5FC "allStakersLength()(uint256)" --rpc-url $RPC_URL
+
+# 3. Get the address of a deployed staking system (replace INDEX with the index number)
+cast call 0xef091cC54d58079Ce478baC110E22247f2c0D5FC "allStakers(uint256)(address)" INDEX --rpc-url $RPC_URL
+
+# 4. Verify your staking system parameters (replace STAKER_ADDRESS)
+cast call STAKER_ADDRESS "REWARD_TOKEN()(address)" --rpc-url $RPC_URL
+cast call STAKER_ADDRESS "STAKE_TOKEN()(address)" --rpc-url $RPC_URL
+cast call STAKER_ADDRESS "admin()(address)" --rpc-url $RPC_URL
+```
