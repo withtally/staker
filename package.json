@@ -17,5 +17,9 @@
   "homepage": "https://github.com/ScopeLift/staker#readme",
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2"
-  }
+  },
+  "scripts": {
+    "build:abi": "node scripts/generate-abis.js"
+  },
+  "type": "module"
 }
