@@ -15,10 +15,7 @@ contract StakerFactory {
   /// @param rewardsToken The reward token distributed by the system.
   /// @param admin    Admin address configured for the system.
   event StakingSystemCreated(
-    address indexed staker,
-    address indexed stakeToken,
-    address indexed rewardsToken,
-    address admin
+    address indexed staker, address indexed stakeToken, address indexed rewardsToken, address admin
   );
 
   /// @dev Keep track of all deployed staking systems.
@@ -30,7 +27,8 @@ contract StakerFactory {
   /// @param _earningPowerCalculator Calculator contract for earning power.
   /// @param _maxBumpTip  Initial max bump tip.
   /// @param _admin  Admin address for the staking system.
-  /// @param _maxClaimFee Maximum fee that can be charged for claiming rewards (denominated in reward tokens).
+  /// @param _maxClaimFee Maximum fee that can be charged for claiming rewards (denominated in
+  /// reward tokens).
   /// @return staker Address of the newly deployed FullStaker.
   function createStakingSystem(
     IERC20 _rewardsToken,
@@ -42,12 +40,7 @@ contract StakerFactory {
   ) external returns (address staker) {
     // Deploy
     FullStaker newStaker = new FullStaker(
-      _rewardsToken,
-      _stakeToken,
-      _earningPowerCalculator,
-      _maxBumpTip,
-      _admin,
-      _maxClaimFee
+      _rewardsToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin, _maxClaimFee
     );
 
     staker = address(newStaker);
@@ -60,4 +53,4 @@ contract StakerFactory {
   function allStakersLength() external view returns (uint256) {
     return allStakers.length;
   }
-} 
+}

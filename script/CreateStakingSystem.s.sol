@@ -21,7 +21,7 @@ import {IERC20Staking} from "../src/interfaces/IERC20Staking.sol";
 ///
 /// Usage:
 /// ```bash
-/// REWARD_TOKEN=0x... STAKE_TOKEN=0x... CALCULATOR=0x... \ 
+/// REWARD_TOKEN=0x... STAKE_TOKEN=0x... CALCULATOR=0x... \
 /// forge script script/CreateStakingSystem.s.sol --broadcast --rpc-url $RPC
 /// ```
 contract CreateStakingSystem is Script {
@@ -68,11 +68,15 @@ contract CreateStakingSystem is Script {
     }
   }
 
-  function _tryEnvAddress(string memory key, address defaultValue) internal view returns (address val) {
+  function _tryEnvAddress(string memory key, address defaultValue)
+    internal
+    view
+    returns (address val)
+  {
     try vm.envAddress(key) returns (address a) {
       val = a;
     } catch {
       val = defaultValue;
     }
   }
-} 
+}

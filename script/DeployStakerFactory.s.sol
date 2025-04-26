@@ -68,18 +68,22 @@ contract DeployStakerFactory is Script {
     // If code already present, return existing address to allow script idempotency
     deployed = _computeAddress(address(singleton), creationCode);
     if (deployed.code.length == 0) {
-        try singleton.deploy(creationCode, SALT) returns (address addr) {
-          deployed = addr;
-        } catch {
-          // In local/fork tests the singleton may not be present; fall back to a normal deployment
-          deployed = address(new StakerFactory());
-        }
+      try singleton.deploy(creationCode, SALT) returns (address addr) {
+        deployed = addr;
+      } catch {
+        // In local/fork tests the singleton may not be present; fall back to a normal deployment
+        deployed = address(new StakerFactory());
+      }
     }
   }
 
-  function _computeAddress(address factory, bytes memory creationCode) internal pure returns (address) {
+  function _computeAddress(address factory, bytes memory creationCode)
+    internal
+    pure
+    returns (address)
+  {
     bytes32 codeHash = keccak256(creationCode);
     bytes32 data = keccak256(abi.encodePacked(bytes1(0xff), factory, SALT, codeHash));
     return address(uint160(uint256(data)));
   }
-} 
+}

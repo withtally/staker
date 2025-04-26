@@ -20,21 +20,15 @@ contract StakerFactoryTest is Test {
     calc = new IdentityEarningPowerCalculator();
 
     // Mint tokens to this contract for later interactions
-    stakeToken.mint(address(this), 1_000 ether);
-    rewardsToken.mint(address(this), 1_000 ether);
+    stakeToken.mint(address(this), 1000 ether);
+    rewardsToken.mint(address(this), 1000 ether);
   }
 
   function testCreateStakingSystem() public {
     address admin = address(this);
     uint256 maxClaimFee = 1e18; // 1 token with 18 decimals
-    address stakerAddr = factory.createStakingSystem(
-      rewardsToken,
-      stakeToken,
-      calc,
-      0,
-      admin,
-      maxClaimFee
-    );
+    address stakerAddr =
+      factory.createStakingSystem(rewardsToken, stakeToken, calc, 0, admin, maxClaimFee);
 
     assertGt(stakerAddr.code.length, 0, "Deployed staker should have code");
 
@@ -49,18 +43,13 @@ contract StakerFactoryTest is Test {
     assertEq(staker.admin(), admin);
     assertEq(staker.MAX_CLAIM_FEE(), maxClaimFee, "MAX_CLAIM_FEE should match the provided value");
   }
-  
+
   function testCreateWithCustomMaxClaimFee() public {
     uint256 customMaxClaimFee = 5 * 1e18; // 5 tokens with 18 decimals
     address stakerAddr = factory.createStakingSystem(
-      rewardsToken,
-      stakeToken,
-      calc,
-      0,
-      address(this),
-      customMaxClaimFee
+      rewardsToken, stakeToken, calc, 0, address(this), customMaxClaimFee
     );
-    
+
     FullStaker staker = FullStaker(stakerAddr);
     assertEq(staker.MAX_CLAIM_FEE(), customMaxClaimFee);
   }
@@ -76,40 +65,23 @@ contract StakerFactoryTest is Test {
 
   function testLargeMaxBumpTip() public {
     uint256 largeTip = type(uint256).max;
-    address stakerAddr = factory.createStakingSystem(
-      rewardsToken,
-      stakeToken,
-      calc,
-      largeTip,
-      address(this),
-      1e18
-    );
+    address stakerAddr =
+      factory.createStakingSystem(rewardsToken, stakeToken, calc, largeTip, address(this), 1e18);
     FullStaker staker = FullStaker(stakerAddr);
     assertEq(staker.maxBumpTip(), largeTip);
   }
-  
+
   function testZeroMaxClaimFee() public {
-    address stakerAddr = factory.createStakingSystem(
-      rewardsToken,
-      stakeToken,
-      calc,
-      0,
-      address(this),
-      0
-    );
+    address stakerAddr =
+      factory.createStakingSystem(rewardsToken, stakeToken, calc, 0, address(this), 0);
     FullStaker staker = FullStaker(stakerAddr);
     assertEq(staker.MAX_CLAIM_FEE(), 0);
   }
-  
+
   function testLargeMaxClaimFee() public {
     uint256 largeMaxClaimFee = type(uint256).max;
     address stakerAddr = factory.createStakingSystem(
-      rewardsToken,
-      stakeToken,
-      calc,
-      0,
-      address(this),
-      largeMaxClaimFee
+      rewardsToken, stakeToken, calc, 0, address(this), largeMaxClaimFee
     );
     FullStaker staker = FullStaker(stakerAddr);
     assertEq(staker.MAX_CLAIM_FEE(), largeMaxClaimFee);
@@ -139,7 +111,7 @@ contract StakerFactoryTest is Test {
 
       assertGt(stakerAddr.code.length, 0);
       assertEq(factory.allStakers(i), stakerAddr);
-      
+
       // Verify the MAX_CLAIM_FEE is set correctly
       FullStaker staker = FullStaker(stakerAddr);
       assertEq(staker.MAX_CLAIM_FEE(), (i + 1) * 1e18);
@@ -147,4 +119,4 @@ contract StakerFactoryTest is Test {
 
     assertEq(factory.allStakersLength(), 3);
   }
-} 
+}
