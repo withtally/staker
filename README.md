@@ -146,6 +146,29 @@ Add the following lines to to your `package.json` in the `dependencies` key:
 
 Note that because the `staker` package is pinned to a version branch on GitHub. To upgrade to a new version of Staker in the future, you cannot expect an upgrade to a new version simply by running `npm upgrade`. Instead, you will have to update the tag referenced in the `pacakage.json` and re-run `npm install`.
 
+### Quick-Start via StakerFactory
+
+Starting with v1.1.0 the repository ships a `StakerFactory` contract that lets you deploy an **entire** staking system (base contract + extensions) in **one transaction**.
+
+```solidity
+// Pseudo-script (Foundry)
+StakerFactory factory = new StakerFactory();
+address staker = factory.createStakingSystem(
+  address(rewardToken),   // ERC20 distributed as rewards
+  address(stakeToken),    // ERC20Votes / ERC20Permit governance token being staked
+  address(calc),          // IEarningPowerCalculator implementation
+  0,                      // initial maxBumpTip
+  admin                   // admin address
+);
+```
+
+The returned `staker` address is an instance of `FullStaker`, which bundles:
+• `StakerDelegateSurrogateVotes`
+• `StakerPermitAndStake`
+• `StakerOnBehalf`
+
+If you need a different set of extensions you can still follow the manual approach described in the next section.
+
 ### Import and Assemble a Staker
 
 To create a concrete implementation, import Staker and the desired extensions. Create a new contract that inherits from Staker and the extensions of choice, and implement the constructor, along with any method overrides in accordance with your desired set of features and customizations.

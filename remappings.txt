@@ -1,1 +1,2 @@
 staker-test/=test/
+@openzeppelin/=lib/openzeppelin-contracts/
