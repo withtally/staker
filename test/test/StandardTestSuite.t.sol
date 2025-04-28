@@ -5,6 +5,7 @@ import {StakerTestBase, IERC20Mintable} from "../../src/test/StakerTestBase.sol"
 import {
   StakeBase,
   WithdrawBase,
+  ClaimRewardBase,
   AlterClaimerBase,
   AlterDelegateeBase
 } from "../../src/test/StandardTestSuite.sol";
@@ -42,6 +43,8 @@ contract DeployBaseHarnessTestBase is StakerTestBase {
 contract Stake is StakeBase, DeployBaseHarnessTestBase {}
 
 contract Withdraw is WithdrawBase, DeployBaseHarnessTestBase {}
+
+contract ClaimReward is ClaimRewardBase, DeployBaseHarnessTestBase {}
 
 contract AlterClaimer is AlterClaimerBase, DeployBaseHarnessTestBase {}
 

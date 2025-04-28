@@ -251,6 +251,121 @@ abstract contract WithdrawBase is StakerTestBase {
   }
 }
 
+abstract contract ClaimRewardBase is StakerTestBase {
+  function testFuzz_DepositorReceivesRewardsOverSinglePeriod(
+    address _depositor,
+    address _delegatee,
+    uint96 _depositAmount,
+    uint256 _rewardAmount,
+    uint256 _percentDuration
+  ) public {
+    _assumeNotZeroAddressOrStaker(_depositor);
+    vm.assume(_delegatee != address(0));
+
+    _mintStakeToken(_depositor, _depositAmount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _percentDuration = bound(_percentDuration, 1, 100);
+
+    uint256 _initialDepositorReward = REWARD_TOKEN.balanceOf(_depositor);
+
+    Staker.DepositIdentifier _depositId = _stake(_depositor, _depositAmount, _delegatee);
+    _notifyRewardAmount(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+
+    uint256 _unclaimedReward = staker.unclaimedReward(_depositId);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+
+    vm.prank(_depositor);
+    staker.claimReward(_depositId);
+
+    uint256 _newDepositorReward = REWARD_TOKEN.balanceOf(_depositor);
+
+    assertEq(_newDepositorReward - _initialDepositorReward, _unclaimedReward);
+    assertEq(staker.unclaimedReward(_depositId), 0);
+  }
+
+  function testFuzz_DepositorReceivesRewardsOverMultiplePeriods(
+    address _depositor,
+    address _delegatee,
+    uint96 _depositAmount,
+    uint256 _rewardAmount,
+    uint256 _percentDuration
+  ) public {
+    _assumeNotZeroAddressOrStaker(_depositor);
+    vm.assume(_delegatee != address(0));
+
+    _mintStakeToken(_depositor, _depositAmount);
+
+    uint256 _initialDepositorReward = REWARD_TOKEN.balanceOf(_depositor);
+    Staker.DepositIdentifier _depositId = _stake(_depositor, _depositAmount, _delegatee);
+
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _notifyRewardAmount(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    _notifyRewardAmount(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+
+    uint256 _unclaimedReward = staker.unclaimedReward(_depositId);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+
+    vm.prank(_depositor);
+    staker.claimReward(_depositId);
+
+    uint256 _newDepositorReward = REWARD_TOKEN.balanceOf(_depositor);
+
+    assertEq(_newDepositorReward - _initialDepositorReward, _unclaimedReward);
+    assertEq(staker.unclaimedReward(_depositId), 0);
+  }
+
+  function testFuzz_DepositorClaimsRewardsWaitsAndStakesAgainOverSinglePeriod(
+    address _depositor,
+    address _delegatee,
+    uint96 _depositAmount,
+    uint256 _rewardAmount,
+    uint256 _percentDuration
+  ) public {
+    _assumeNotZeroAddressOrStaker(_depositor);
+    vm.assume(_delegatee != address(0));
+
+    _mintStakeToken(_depositor, _depositAmount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+
+    uint256 _initialDepositorReward = REWARD_TOKEN.balanceOf(_depositor);
+
+    Staker.DepositIdentifier _depositId1 = _stake(_depositor, _depositAmount, _delegatee);
+    _notifyRewardAmount(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+
+    uint256 _unclaimedReward1 = staker.unclaimedReward(_depositId1);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId1);
+
+    vm.prank(_depositor);
+    staker.claimReward(_depositId1);
+
+    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+    _mintStakeToken(_depositor, _depositAmount);
+
+    Staker.DepositIdentifier _depositId2 = _stake(_depositor, _depositAmount, _delegatee);
+    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+
+    _unclaimedReward1 += staker.unclaimedReward(_depositId1);
+    uint256 _unclaimedReward2 = staker.unclaimedReward(_depositId2);
+
+    vm.startPrank(_depositor);
+    staker.claimReward(_depositId1);
+    staker.claimReward(_depositId2);
+    vm.stopPrank();
+
+    uint256 _newDepositorReward = REWARD_TOKEN.balanceOf(_depositor);
+
+    assertEq(_newDepositorReward - _initialDepositorReward, _unclaimedReward1 + _unclaimedReward2);
+    assertEq(staker.unclaimedReward(_depositId1), 0);
+    assertEq(staker.unclaimedReward(_depositId2), 0);
+  }
+}
+
 abstract contract AlterClaimerBase is StakerTestBase {
   function testFuzz_DepositorCanUpdateClaimerBeforeAccruingRewards(
     address _depositor,
