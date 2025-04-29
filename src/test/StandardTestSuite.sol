@@ -3,15 +3,11 @@
 
 pragma solidity ^0.8.23;
 
-import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
 import {Staker} from "../Staker.sol";
 import {StakerTestBase} from "./StakerTestBase.sol";
 
-abstract contract Constructor is StakerTestBase {}
 
-// After deployment test that a stake event can occurj
 abstract contract StakeBase is StakerTestBase {
-  // TODO: Maybe verify balances
   function testForkFuzz_CorrectlyStakeAndEarnRewardsAfterDuration(
     address _depositor,
     uint96 _amount,

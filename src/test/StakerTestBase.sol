@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.23;
 
-import {Vm, Test, stdStorage, StdStorage} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {Staker} from "../Staker.sol";
 import {DelegationSurrogate} from "../DelegationSurrogate.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
