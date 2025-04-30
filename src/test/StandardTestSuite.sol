@@ -285,27 +285,28 @@ abstract contract ClaimRewardBase is StakerTestBase {
     address _depositor,
     address _delegatee,
     uint96 _depositAmount,
-    uint256 _rewardAmount,
+    uint256 _rewardAmount1,
+    uint256 _rewardAmount2,
     uint256 _percentDuration
   ) public {
     _assumeNotZeroAddressOrStaker(_depositor);
     vm.assume(_delegatee != address(0));
 
+    _rewardAmount1 = _boundToRealisticReward(_rewardAmount1);
+    _rewardAmount2 = _boundToRealisticReward(_rewardAmount2);
+
     _mintStakeToken(_depositor, _depositAmount);
 
-    uint256 _initialDepositorReward = REWARD_TOKEN.balanceOf(_depositor);
     Staker.DepositIdentifier _depositId = _stake(_depositor, _depositAmount, _delegatee);
 
-    _rewardAmount = _boundToRealisticReward(_rewardAmount);
-    _notifyRewardAmount(_rewardAmount);
+    _notifyRewardAmount(_rewardAmount1);
     _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
 
-    _rewardAmount = _boundToRealisticReward(_rewardAmount);
-    _notifyRewardAmount(_rewardAmount);
+    _rewardAmount2 = _boundToRealisticReward(_rewardAmount2);
+    _notifyRewardAmount(_rewardAmount2);
     _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
 
     uint256 _unclaimedReward = staker.unclaimedReward(_depositId);
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     vm.prank(_depositor);
     staker.claimReward(_depositId);
