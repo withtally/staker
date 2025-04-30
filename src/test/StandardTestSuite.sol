@@ -252,7 +252,7 @@ abstract contract WithdrawBase is StakerTestBase {
 }
 
 abstract contract ClaimRewardBase is StakerTestBase {
-  function testFuzz_DepositorReceivesRewardsOverSinglePeriod(
+  function testFuzz_DepositorClaimsEarnedRewardsWithinSinglePeriod(
     address _depositor,
     address _delegatee,
     uint96 _depositAmount,
@@ -284,7 +284,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
     assertEq(staker.unclaimedReward(_depositId), 0);
   }
 
-  function testFuzz_DepositorReceivesRewardsOverMultiplePeriods(
+  function testFuzz_DepositorClaimsEarnedRewardsAfterMultiplePeriods(
     address _depositor,
     address _delegatee,
     uint96 _depositAmount,
@@ -319,7 +319,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
     assertEq(staker.unclaimedReward(_depositId), 0);
   }
 
-  function testFuzz_DepositorClaimsRewardsWaitsAndStakesAgainOverSinglePeriod(
+  function testFuzz_DepositorClaimsRewardsWaitsAndStakesAgainWithinSinglePeriod(
     address _depositor,
     address _delegatee,
     uint96 _depositAmount,
