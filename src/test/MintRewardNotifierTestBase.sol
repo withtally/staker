@@ -11,16 +11,14 @@ import {IERC20Mintable} from "./interfaces/IERC20Mintable.sol";
 import {StakerTestBase} from "./StakerTestBase.sol";
 
 abstract contract MintRewardNotifierTestBase is StakerTestBase {
-    // DeployMintRewardNotifier _deployer;
-    MintRewardNotifier mintRewardNotifier;
+  MintRewardNotifier mintRewardNotifier;
 
-    // function setUp() public virtual override {
-    //     super.setUp();
+  function _notifyRewardAmount(uint256 _amount) public override {
+    address _owner = mintRewardNotifier.owner();
 
-    // }
+    vm.prank(_owner);
+    mintRewardNotifier.setRewardAmount(_amount);
 
-    function _notifyRewardAmount(uint256 _amount) public override {
-        console2.log(address(mintRewardNotifier));
-        mintRewardNotifier.notify();
-    }
+    mintRewardNotifier.notify();
+  }
 }
