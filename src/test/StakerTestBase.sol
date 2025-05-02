@@ -91,8 +91,8 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     _depositId = _stake(_depositor, _boundedAmount, _delegatee);
   }
 
-  /// @notice A test helper that wraps calling the `stake` function on the underlying Staker
-  /// contract.
+  /// @notice Test helper that handles token approvals, pranking, and safety checks for staking.
+  /// Ensures consistent setup across all staking tests to reduce code duplication.
   /// @param _depositor The address of the depositor.
   /// @param _amount The amount to stake.
   /// @param _delegatee The address that will receive the voting power of the stake.
@@ -113,8 +113,8 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
   }
 
-  /// @notice A test helper that wraps calling the `stake` function on the underlying Staker
-  /// contract.
+  /// @notice Extension of the base stake helper that supports custom reward claimers
+  /// for AlterClaimer tests. Provides the same setup and safety checks.
   /// @param _depositor The address of the depositor.
   /// @param _amount The amount to stake.
   /// @param _delegatee The address that will receive the voting power of the stake.
