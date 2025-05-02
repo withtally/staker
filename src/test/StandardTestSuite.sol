@@ -322,28 +322,34 @@ abstract contract ClaimRewardBase is StakerTestBase {
     address _delegatee,
     uint96 _depositAmount,
     uint256 _rewardAmount,
-    uint256 _percentDuration
+    uint256 _percentDuration1,
+    uint256 _percentDuration2,
+    uint256 _percentDuration3
   ) public {
     _assumeNotZeroAddressOrStaker(_depositor);
     vm.assume(_delegatee != address(0));
 
+    _depositAmount = uint96(bound(_depositAmount, 1, type(uint96).max / 2));
+    _percentDuration1 = bound(_percentDuration1, 0, 100);
+    _percentDuration2 = bound(_percentDuration2, 0, 100 - _percentDuration1);
+    _percentDuration3 = bound(_percentDuration3, 0, 100 - _percentDuration1 - _percentDuration2);
+
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
 
-    _mintStakeToken(_depositor, _depositAmount);
+    _mintStakeToken(_depositor, _depositAmount * 2);
     Staker.DepositIdentifier _depositId1 = _stake(_depositor, _depositAmount, _delegatee);
     _notifyRewardAmount(_rewardAmount);
-    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+    _jumpAheadByPercentOfRewardDuration(_percentDuration1);
 
     uint256 _unclaimedReward1 = staker.unclaimedReward(_depositId1);
 
     vm.prank(_depositor);
     staker.claimReward(_depositId1);
 
-    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+    _jumpAheadByPercentOfRewardDuration(_percentDuration2);
 
-    _mintStakeToken(_depositor, _depositAmount);
     Staker.DepositIdentifier _depositId2 = _stake(_depositor, _depositAmount, _delegatee);
-    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+    _jumpAheadByPercentOfRewardDuration(_percentDuration3);
 
     _unclaimedReward1 += staker.unclaimedReward(_depositId1);
     uint256 _unclaimedReward2 = staker.unclaimedReward(_depositId2);
@@ -356,6 +362,12 @@ abstract contract ClaimRewardBase is StakerTestBase {
     uint256 _claimedReward = REWARD_TOKEN.balanceOf(_depositor);
 
     assertEq(_claimedReward, _unclaimedReward1 + _unclaimedReward2);
+    // because we summed 3 time periods, the rounding error can be as much as 2 units
+    assertApproxEqAbs(
+      _claimedReward,
+      _rewardAmount * (_percentDuration1 + _percentDuration2 + _percentDuration3) / 100,
+      2
+    );
     assertEq(staker.unclaimedReward(_depositId1), 0);
     assertEq(staker.unclaimedReward(_depositId2), 0);
   }
@@ -367,30 +379,35 @@ abstract contract ClaimRewardBase is StakerTestBase {
     uint96 _depositAmount2,
     uint256 _rewardAmount1,
     uint256 _rewardAmount2,
-    uint256 _percentDuration
+    uint256 _percentDuration1,
+    uint256 _percentDuration2
   ) public {
     _assumeNotZeroAddressOrStaker(_depositor);
     vm.assume(_delegatee != address(0));
+    _depositAmount1 = uint96(bound(_depositAmount1, 1, type(uint96).max - 1));
+    _depositAmount2 = uint96(bound(_depositAmount2, 1, type(uint96).max - _depositAmount1));
+
+    _percentDuration1 = bound(_percentDuration1, 0, 100);
+    _percentDuration2 = bound(_percentDuration2, 0, 100);
 
     _rewardAmount1 = _boundToRealisticReward(_rewardAmount1);
     _rewardAmount2 = _boundToRealisticReward(_rewardAmount2);
 
-    _mintStakeToken(_depositor, _depositAmount1);
+    _mintStakeToken(_depositor, _depositAmount1 + _depositAmount2);
     Staker.DepositIdentifier _depositId1 = _stake(_depositor, _depositAmount1, _delegatee);
     _notifyRewardAmount(_rewardAmount1);
-    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+    _jumpAheadByPercentOfRewardDuration(_percentDuration1);
 
     uint256 _unclaimedReward1 = staker.unclaimedReward(_depositId1);
 
     vm.prank(_depositor);
     staker.claimReward(_depositId1);
+    // intentionally warp till the end of current reward period
+    _jumpAheadByPercentOfRewardDuration(100 - _percentDuration1);
 
-    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
-
-    _mintStakeToken(_depositor, _depositAmount2);
     Staker.DepositIdentifier _depositId2 = _stake(_depositor, _depositAmount2, _delegatee);
     _notifyRewardAmount(_rewardAmount2);
-    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+    _jumpAheadByPercentOfRewardDuration(_percentDuration2);
 
     _unclaimedReward1 += staker.unclaimedReward(_depositId1);
     uint256 _unclaimedReward2 = staker.unclaimedReward(_depositId2);
@@ -403,6 +420,8 @@ abstract contract ClaimRewardBase is StakerTestBase {
     uint256 _claimedReward = REWARD_TOKEN.balanceOf(_depositor);
 
     assertEq(_claimedReward, _unclaimedReward1 + _unclaimedReward2);
+    // because we summed 2 amounts, the rounding error can be as much as 2 units
+    assertApproxEqAbs(_claimedReward, _rewardAmount1 + _percentDuration2 * _rewardAmount2 / 100, 2);
     assertEq(staker.unclaimedReward(_depositId1), 0);
     assertEq(staker.unclaimedReward(_depositId2), 0);
   }
