@@ -290,8 +290,9 @@ abstract contract ClaimRewardBase is StakerTestBase {
     uint256 _percentDuration
   ) public {
     _assumeNotZeroAddressOrStaker(_depositor);
-    vm.assume(_delegatee != address(0));
+    vm.assume(_delegatee != address(0) && _depositAmount != 0);
 
+    _percentDuration = bound(_percentDuration, 1, 100);
     _rewardAmount1 = _boundToRealisticReward(_rewardAmount1);
     _rewardAmount2 = _boundToRealisticReward(_rewardAmount2);
 
@@ -300,11 +301,11 @@ abstract contract ClaimRewardBase is StakerTestBase {
     Staker.DepositIdentifier _depositId = _stake(_depositor, _depositAmount, _delegatee);
 
     _notifyRewardAmount(_rewardAmount1);
-    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+    _jumpAheadByPercentOfRewardDuration(100);
 
     _rewardAmount2 = _boundToRealisticReward(_rewardAmount2);
     _notifyRewardAmount(_rewardAmount2);
-    _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 1, 100));
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
     uint256 _unclaimedReward = staker.unclaimedReward(_depositId);
 
@@ -314,6 +315,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
     uint256 _claimedReward = REWARD_TOKEN.balanceOf(_depositor);
 
     assertEq(_claimedReward, _unclaimedReward);
+    assertLteWithinOneUnit(_claimedReward, _rewardAmount1 + _rewardAmount2 * _percentDuration / 100);
     assertEq(staker.unclaimedReward(_depositId), 0);
   }
 
