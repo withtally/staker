@@ -319,6 +319,36 @@ abstract contract ClaimRewardBase is StakerTestBase {
     assertEq(staker.unclaimedReward(_depositId), 0);
   }
 
+  function testFuzz_ZeroDepositYieldsZeroReward(
+    address _depositor,
+    address _delegatee,
+    uint256 _rewardAmount,
+    uint256 _percentDuration
+  ) public {
+    _assumeNotZeroAddressOrStaker(_depositor);
+    vm.assume(_delegatee != address(0));
+
+    _percentDuration = bound(_percentDuration, 0, 100);
+
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+
+    _mintStakeToken(_depositor, 0);
+    Staker.DepositIdentifier _depositId = _stake(_depositor, 0, _delegatee);
+    _notifyRewardAmount(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+
+    uint256 _unclaimedReward = staker.unclaimedReward(_depositId);
+
+    vm.prank(_depositor);
+    staker.claimReward(_depositId);
+
+    uint256 _claimedReward = REWARD_TOKEN.balanceOf(_depositor);
+
+    assertEq(_claimedReward, _unclaimedReward);
+    assertEq(_claimedReward, 0);
+    assertEq(staker.unclaimedReward(_depositId), 0);
+  }
+
   function testFuzz_DepositorClaimsRewardsWaitsAndStakesAgainWithinASinglePeriod(
     address _depositor,
     address _delegatee,
@@ -331,7 +361,8 @@ abstract contract ClaimRewardBase is StakerTestBase {
     _assumeNotZeroAddressOrStaker(_depositor);
     vm.assume(_delegatee != address(0));
 
-    _depositAmount = uint96(bound(_depositAmount, 1, type(uint96).max / 2));
+    _depositAmount = uint96(_boundToRealisticStake(_depositAmount));
+
     _percentDuration1 = bound(_percentDuration1, 0, 100);
     _percentDuration2 = bound(_percentDuration2, 0, 100 - _percentDuration1);
     _percentDuration3 = bound(_percentDuration3, 0, 100 - _percentDuration1 - _percentDuration2);
@@ -386,8 +417,8 @@ abstract contract ClaimRewardBase is StakerTestBase {
   ) public {
     _assumeNotZeroAddressOrStaker(_depositor);
     vm.assume(_delegatee != address(0));
-    _depositAmount1 = uint96(bound(_depositAmount1, 1, type(uint96).max - 1));
-    _depositAmount2 = uint96(bound(_depositAmount2, 1, type(uint96).max - _depositAmount1));
+    _depositAmount1 = uint96(_boundToRealisticStake(_depositAmount1));
+    _depositAmount2 = uint96(_boundToRealisticStake(_depositAmount2));
 
     _percentDuration1 = bound(_percentDuration1, 0, 100);
     _percentDuration2 = bound(_percentDuration2, 0, 100);
