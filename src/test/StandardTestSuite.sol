@@ -6,7 +6,6 @@ pragma solidity ^0.8.23;
 import {Staker} from "../Staker.sol";
 import {StakerTestBase} from "./StakerTestBase.sol";
 
-
 abstract contract StakeBase is StakerTestBase {
   function testForkFuzz_CorrectlyStakeAndEarnRewardsAfterDuration(
     address _depositor,
