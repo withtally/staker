@@ -3,13 +3,12 @@
 
 pragma solidity ^0.8.23;
 
-import {Test, console2} from "forge-std/Test.sol";
 import {MintRewardNotifier} from "../notifiers/MintRewardNotifier.sol";
-import {PercentAssertions} from "./helpers/PercentAssertions.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC20Mintable} from "./interfaces/IERC20Mintable.sol";
 import {StakerTestBase} from "./StakerTestBase.sol";
 
+/// @notice Base contract for testing MintRewardNotifier functionality.
+/// @dev Extends StakerTestBase and provides reward notification testing utilities.
+/// Simulates calling notify function on MintRewardNotifier.
 abstract contract MintRewardNotifierTestBase is StakerTestBase {
   MintRewardNotifier mintRewardNotifier;
 
