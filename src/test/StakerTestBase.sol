@@ -114,7 +114,7 @@ abstract contract StakerTestBase is Test, PercentAssertions {
   }
 
   /// @notice Extension of the base stake helper that supports custom reward claimers
-  /// for AlterClaimer tests. Provides the same setup and safety checks.
+  /// for `AlterClaimer` tests. Provides the same setup and safety checks.
   /// @param _depositor The address of the depositor.
   /// @param _amount The amount to stake.
   /// @param _delegatee The address that will receive the voting power of the stake.
