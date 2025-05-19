@@ -91,8 +91,8 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     _depositId = _stake(_depositor, _boundedAmount, _delegatee);
   }
 
-  /// @notice A test helper that wraps calling the `stake` function on the underlying Staker
-  /// contract.
+  /// @notice Test helper that handles token approvals, pranking, and safety checks for staking.
+  /// Ensures consistent setup across all staking tests to reduce code duplication.
   /// @param _depositor The address of the depositor.
   /// @param _amount The amount to stake.
   /// @param _delegatee The address that will receive the voting power of the stake.
@@ -107,6 +107,29 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     vm.startPrank(_depositor);
     STAKE_TOKEN.approve(address(staker), _amount);
     _depositId = staker.stake(_amount, _delegatee);
+    vm.stopPrank();
+
+    // Called after the stake so the surrogate will exist
+    _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
+  }
+
+  /// @notice Extension of the base stake helper that supports custom reward claimers
+  /// for `AlterClaimer` tests. Provides the same setup and safety checks.
+  /// @param _depositor The address of the depositor.
+  /// @param _amount The amount to stake.
+  /// @param _delegatee The address that will receive the voting power of the stake.
+  /// @param _claimer Address that will have the right to claim rewards for this stake.
+  /// @return _depositId The id of the created deposit.
+  function _stake(address _depositor, uint256 _amount, address _delegatee, address _claimer)
+    internal
+    virtual
+    returns (Staker.DepositIdentifier _depositId)
+  {
+    vm.assume(_delegatee != address(0));
+
+    vm.startPrank(_depositor);
+    STAKE_TOKEN.approve(address(staker), _amount);
+    _depositId = staker.stake(_amount, _delegatee, _claimer);
     vm.stopPrank();
 
     // Called after the stake so the surrogate will exist
