@@ -99,32 +99,23 @@ abstract contract StakeBase is StakerTestBase {
     _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(_percentDuration1);
 
+    // intentionally warp till the end of current reward period
+    _jumpAheadByPercentOfRewardDuration(100 - _percentDuration1);
+
     _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(_percentDuration2);
 
-    uint256 _remainingFirstPeriodRewards = _percentOf(_rewardAmount, 100 - _percentDuration1);
     uint256 unclaimedRewards1 = staker.unclaimedReward(_depositId1);
     uint256 unclaimedRewards2 = staker.unclaimedReward(_depositId2);
     Staker.Deposit memory _deposit1 = _fetchDeposit(_depositId1);
     Staker.Deposit memory _deposit2 = _fetchDeposit(_depositId2);
-    uint256 _earnedRewards1 = _calculateEarnedRewards(
-      _deposit1.earningPower, _rewardAmount, _percentDuration1
-    )
-      + _calculateEarnedRewards(
-        _deposit2.earningPower, _rewardAmount + _remainingFirstPeriodRewards, _percentDuration2
-      );
-    uint256 _earnedRewards2 = _calculateEarnedRewards(
-      _deposit2.earningPower, _rewardAmount, _percentDuration1
-    )
-      + _calculateEarnedRewards(
-        _deposit2.earningPower, _rewardAmount + _remainingFirstPeriodRewards, _percentDuration2
-      );
+    uint256 _earnedRewards1 = _calculateEarnedRewards(_deposit1.earningPower, _rewardAmount, 100)
+      + _calculateEarnedRewards(_deposit1.earningPower, _rewardAmount, _percentDuration2);
+    uint256 _earnedRewards2 = _calculateEarnedRewards(_deposit2.earningPower, _rewardAmount, 100)
+      + _calculateEarnedRewards(_deposit2.earningPower, _rewardAmount, _percentDuration2);
 
-    // because we summed 2 amounts, the rounding error can be as much as 2 units
-    assertApproxEqAbs(unclaimedRewards1, _earnedRewards1, 2);
-    assertLe(unclaimedRewards1, _earnedRewards1);
-    assertApproxEqAbs(unclaimedRewards2, _earnedRewards2, 2);
-    assertLe(unclaimedRewards2, _earnedRewards2);
+    assertLteWithinOneUnit(unclaimedRewards1, _earnedRewards1);
+    assertLteWithinOneUnit(unclaimedRewards2, _earnedRewards2);
   }
 }
 
