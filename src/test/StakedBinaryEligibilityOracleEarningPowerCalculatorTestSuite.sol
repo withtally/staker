@@ -5,72 +5,65 @@ pragma solidity ^0.8.23;
 
 import {BinaryEligibilityOracleEarningPowerCalculator} from
   "../calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
-import {MintRewardNotifier} from "../notifiers/MintRewardNotifier.sol";
 import {StakerTestBase} from "./StakerTestBase.sol";
 import {Staker} from "../Staker.sol";
+import {BinaryEligibilityOracleEarningPowerCalculatorTestBase} from
+  "./BinaryEligibilityOracleEarningPowerCalculatorTestBase.sol";
 
-abstract contract StakedBinaryEligibilityOracleEarningPowerCalculatorTestBase is StakerTestBase {
-  BinaryEligibilityOracleEarningPowerCalculator calculator;
-  MintRewardNotifier mintRewardNotifier;
-
-  function _notifyRewardAmount(uint256 _amount) public override {
-    address _owner = mintRewardNotifier.owner();
-
-    vm.prank(_owner);
-    mintRewardNotifier.setRewardAmount(_amount);
-
-    mintRewardNotifier.notify();
-  }
-
-  /// !Fix Natspec
-  /// @notice Helper to set a delegatee's score above threshold
-  /// @dev This should be called after a delegatee is known but before checking their earning power
-  function _setDelegateeScoreAboveThreshold(address delegatee) internal {
-    vm.startPrank(calculator.scoreOracle());
-    calculator.updateDelegateeScore(delegatee, calculator.delegateeEligibilityThresholdScore() + 1);
-    vm.stopPrank();
-  }
-
-  /// @notice Helper to set a delegatee's score below threshold
+/// @title StakedBinaryEligibilityOracleEarningPowerCalculatorTestSuite
+/// @author [ScopeLift](https://scopelift.co)
+/// @notice The base contract for testing BinaryEligibilityOracleEarningPowerCalculator. Contains
+/// test setup and helper functions for testing the calculator's behavior when delegatees are below
+/// the eligibility threshold. This contract is designed to be used in conjunction with the
+/// deployment scripts in
+/// `src/script/calculators/DeployBinaryEligibilityOracleEarningPowerCalculator.sol`.
+abstract contract StakedBinaryEligibilityOracleEarningPowerCalculatorTestBase is
+  BinaryEligibilityOracleEarningPowerCalculatorTestBase
+{
+  /// @notice Helper to set a delegatee's score below threshold.
+  /// @param delegatee The address of the delegatee whose score will be set below threshold.
   function _setDelegateeScoreBelowThreshold(address delegatee) internal {
     vm.startPrank(calculator.scoreOracle());
     calculator.updateDelegateeScore(delegatee, calculator.delegateeEligibilityThresholdScore() - 1);
     vm.stopPrank();
   }
 
-  /// @notice Bound the mint amount to a realistic value.
-  /// @param _amount The unbounded mint amount.
-  /// @return The bounded mint amount.
-  function _boundMintAmount(uint256 _amount) internal pure virtual override returns (uint256) {
-    return bound(_amount, 1, 100_000_000e18);
-  }
-
-  function _stake(address _depositor, uint256 _amount, address _delegatee)
+  /// @notice A test helper that wraps calling the `stake` function and ensures proper earning power
+  /// adjustment when delegatee scores are below threshold.
+  /// @param _depositor The address of the depositor.
+  /// @param _amount The amount to stake.
+  /// @param _delegatee The address to which the delegation surrogate is delegating voting power.
+  /// @return _depositId The id of the created deposit.
+  function _stakeBelowThreshold(address _depositor, uint256 _amount, address _delegatee)
     internal
     virtual
-    override
     returns (Staker.DepositIdentifier _depositId)
   {
-    vm.assume(_delegatee != address(0));
+    _depositId = StakerTestBase._stake(_depositor, _amount, _delegatee);
+    _setDelegateeScoreBelowThreshold(_delegatee);
+  }
 
+  /// @notice A test helper that wraps calling the `stake` function and ensures proper earning power
+  /// adjustment when delegatee scores are above threshold.
+  /// @param _depositor The address of the depositor.
+  /// @param _amount The amount to stake.
+  /// @param _delegatee The address to which the delegation surrogate is delegating voting power.
+  /// @return _depositId The id of the created deposit.
+  function _stakeAboveThreshold(address _depositor, uint256 _amount, address _delegatee)
+    internal
+    virtual
+    returns (Staker.DepositIdentifier _depositId)
+  {
+    _depositId = StakerTestBase._stake(_depositor, _amount, _delegatee);
+
+    _setDelegateeScoreAboveThreshold(_delegatee);
     vm.startPrank(_depositor);
-    STAKE_TOKEN.approve(address(staker), _amount);
-    _depositId = staker.stake(_amount, _delegatee);
+    staker.bumpEarningPower(_depositId, _depositor, 0);
     vm.stopPrank();
-
-    // Called after the stake so the surrogate will exist
-    _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
-
-    if (calculator.delegateeScores(_delegatee) < calculator.delegateeEligibilityThresholdScore()) {
-      _setDelegateeScoreAboveThreshold(_delegatee);
-      vm.startPrank(_depositor);
-      staker.bumpEarningPower(_depositId, _depositor, 0);
-      vm.stopPrank();
-    }
   }
 }
 
-abstract contract StakeBase is StakerTestBase {
+abstract contract StakeBase is StakedBinaryEligibilityOracleEarningPowerCalculatorTestBase {
   function testFuzz_StakerEarnsZeroRewardsWhenDelegateeScoreIsBelowThreshold(
     address _depositor,
     uint96 _amount,
@@ -85,7 +78,7 @@ abstract contract StakeBase is StakerTestBase {
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _percentDuration = bound(_percentDuration, 1, 100);
 
-    Staker.DepositIdentifier _depositId = _stakeZeroEarningPower(_depositor, _amount, _delegatee);
+    Staker.DepositIdentifier _depositId = _stakeBelowThreshold(_depositor, _amount, _delegatee);
 
     _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -96,7 +89,7 @@ abstract contract StakeBase is StakerTestBase {
   }
 }
 
-abstract contract WithdrawBase is StakerTestBase {
+abstract contract WithdrawBase is StakedBinaryEligibilityOracleEarningPowerCalculatorTestBase {
   function testFuzz_OnlyStakeWithEligibleEarningPowerClaimsRewardAfterDuration(
     address _depositor1,
     address _depositor2,
@@ -119,9 +112,8 @@ abstract contract WithdrawBase is StakerTestBase {
     _mintStakeToken(_depositor1, _amount1);
     _mintStakeToken(_depositor2, _amount2);
 
-    Staker.DepositIdentifier _depositId1 =
-    _stakeZeroEarningPower(_depositor1, _amount1, _delegatee1);
-    Staker.DepositIdentifier _depositId2 = _stake(_depositor2, _amount2, _delegatee2);
+    Staker.DepositIdentifier _depositId1 = _stakeBelowThreshold(_depositor1, _amount1, _delegatee1);
+    Staker.DepositIdentifier _depositId2 = _stakeAboveThreshold(_depositor2, _amount2, _delegatee2);
 
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _notifyRewardAmount(_rewardAmount);

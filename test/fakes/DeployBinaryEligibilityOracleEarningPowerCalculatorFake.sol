@@ -23,7 +23,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorFake is
   address public admin = makeAddr("Staker admin");
   address public owner = makeAddr("owner");
   address public notifierOwner = makeAddr("Notifier owner");
-  address public notifierMinter;
+  address public notifierMinter = makeAddr("Notifier Minter");
   address public scoreOracle = makeAddr("scoreOracle");
   address public oraclePauseGuardian = makeAddr("oraclePauseGuardian");
   uint256 public initialRewardAmount = 10e18;
@@ -54,7 +54,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorFake is
     returns (MintRewardNotifierConfiguration memory)
   {
     return MintRewardNotifierConfiguration({
-      initialRewardAmount: initialRewardInterval,
+      initialRewardAmount: initialRewardAmount,
       initialRewardInterval: initialRewardInterval,
       initialOwner: notifierOwner,
       minter: IMintable(notifierMinter)
