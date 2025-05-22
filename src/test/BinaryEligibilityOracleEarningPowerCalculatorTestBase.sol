@@ -16,7 +16,7 @@ import {Staker} from "../Staker.sol";
 /// functionality. This contract is designed to be used in conjunction with the deployment scripts
 /// in
 /// `src/script/calculators/DeployBinaryEligibilityOracleEarningPowerCalculator.sol`.
-abstract contract BinaryEligibilityOracleEarningPowerCalculatorTestBase is StakerTestBase {
+contract BinaryEligibilityOracleEarningPowerCalculatorTestBase is StakerTestBase {
   BinaryEligibilityOracleEarningPowerCalculator calculator;
   MintRewardNotifier mintRewardNotifier;
 
@@ -27,32 +27,6 @@ abstract contract BinaryEligibilityOracleEarningPowerCalculatorTestBase is Stake
     vm.startPrank(calculator.scoreOracle());
     calculator.updateDelegateeScore(delegatee, calculator.delegateeEligibilityThresholdScore() + 1);
     vm.stopPrank();
-  }
-
-  /// @notice A test helper that wraps calling the `stake` function on the underlying Staker
-  /// contract.
-  /// @dev When the delegatee is below threshold, this function automatically sets their score above
-  /// threshold and bumps the earning power to ensure proper test setup.
-  /// @param _depositor The address of the depositor.
-  /// @param _amount The amount to stake.
-  /// @param _delegatee The address that will receive the voting power of the stake.
-  /// @return _depositId The id of the created deposit.
-  function _stake(address _depositor, uint256 _amount, address _delegatee)
-    internal
-    virtual
-    override
-    returns (Staker.DepositIdentifier _depositId)
-  {
-    _depositId = StakerTestBase._stake(_depositor, _amount, _delegatee);
-
-    // This should only be triggered on the first call. Subsequent calls will have the delegatee
-    // score already above threshold, so their stakes should be full already.
-    if (calculator.delegateeScores(_delegatee) < calculator.delegateeEligibilityThresholdScore()) {
-      _setDelegateeScoreAboveThreshold(_delegatee);
-      vm.startPrank(_depositor);
-      staker.bumpEarningPower(_depositId, _depositor, 0);
-      vm.stopPrank();
-    }
   }
 
   /// @notice Bound the mint amount to a realistic value.

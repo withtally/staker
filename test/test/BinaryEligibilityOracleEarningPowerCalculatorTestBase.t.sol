@@ -59,16 +59,6 @@ contract Stake is StakeBase, DeployBinaryEligibilityOracleEarningPowerCalculator
     super.setUp();
   }
 
-  function _stake(address _depositor, uint256 _amount, address _delegatee)
-    internal
-    virtual
-    override(StakerTestBase, BinaryEligibilityOracleEarningPowerCalculatorTestBase)
-    returns (Staker.DepositIdentifier _depositId)
-  {
-    return
-      BinaryEligibilityOracleEarningPowerCalculatorTestBase._stake(_depositor, _amount, _delegatee);
-  }
-
   function _boundMintAmount(uint256 _amount)
     internal
     pure
@@ -86,16 +76,6 @@ contract Withdraw is WithdrawBase, DeployBinaryEligibilityOracleEarningPowerCalc
     override(StakerTestBase, DeployBinaryEligibilityOracleEarningPowerCalculatorTestBase)
   {
     super.setUp();
-  }
-
-  function _stake(address _depositor, uint256 _amount, address _delegatee)
-    internal
-    virtual
-    override(StakerTestBase, BinaryEligibilityOracleEarningPowerCalculatorTestBase)
-    returns (Staker.DepositIdentifier _depositId)
-  {
-    return
-      BinaryEligibilityOracleEarningPowerCalculatorTestBase._stake(_depositor, _amount, _delegatee);
   }
 
   function _boundMintAmount(uint256 _amount)
