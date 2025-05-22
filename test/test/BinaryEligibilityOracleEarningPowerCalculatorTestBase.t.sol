@@ -55,6 +55,14 @@ contract Stake is StakeBase, DeployBinaryEligibilityOracleEarningPowerCalculator
   {
     return BinaryEligibilityOracleEarningPowerCalculatorTestBase._boundMintAmount(_amount);
   }
+
+  function _updateEarningPower(Staker.DepositIdentifier _depositId)
+    internal
+    virtual
+    override(StakerTestBase, BinaryEligibilityOracleEarningPowerCalculatorTestBase)
+  {
+    return BinaryEligibilityOracleEarningPowerCalculatorTestBase._updateEarningPower(_depositId);
+  }
 }
 
 contract Withdraw is WithdrawBase, DeployBinaryEligibilityOracleEarningPowerCalculatorTestBase {
@@ -73,5 +81,13 @@ contract Withdraw is WithdrawBase, DeployBinaryEligibilityOracleEarningPowerCalc
     returns (uint256)
   {
     return BinaryEligibilityOracleEarningPowerCalculatorTestBase._boundMintAmount(_amount);
+  }
+
+  function _updateEarningPower(Staker.DepositIdentifier _depositId)
+    internal
+    virtual
+    override(StakerTestBase, BinaryEligibilityOracleEarningPowerCalculatorTestBase)
+  {
+    return BinaryEligibilityOracleEarningPowerCalculatorTestBase._updateEarningPower(_depositId);
   }
 }
