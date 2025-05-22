@@ -7,7 +7,7 @@ import {DeployMintRewardNotifier} from "../../src/script/notifiers/DeployMintRew
 import {DeployIdentityEarningPowerCalculator} from
   "../../src/script/calculators/DeployIdentityEarningPowerCalculator.sol";
 import {IMintable} from "../../src/interfaces/IMintable.sol";
-
+import {FakeMinter} from "./FakeMinter.sol";
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
 import {Staker} from "../../src/Staker.sol";
 import {StakerHarness} from "../harnesses/StakerHarness.sol";
@@ -23,7 +23,7 @@ contract DeployBaseFake is
   address public admin = makeAddr("Staker admin");
   address public notifierReceiver = makeAddr("Notifier receiver");
   address public notifierOwner = makeAddr("Notifier owner");
-  address public notifierMinter = makeAddr("Notifier minter");
+  address public notifierMinter;
   uint256 public initialRewardAmount = 10e18;
   uint256 public initialRewardInterval = 30 days;
   uint256 public maxBumpTip = 1e18;
@@ -34,6 +34,7 @@ contract DeployBaseFake is
   constructor(IERC20 _rewardToken, IERC20 _stakeToken) {
     rewardToken = _rewardToken;
     stakeToken = _stakeToken;
+    notifierMinter = address(new FakeMinter(IMintable(address(_rewardToken))));
   }
 
   function _baseConfiguration() internal virtual override returns (BaseConfiguration memory) {
