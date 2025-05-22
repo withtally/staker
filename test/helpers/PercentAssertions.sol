@@ -46,7 +46,8 @@ contract PercentAssertions is Test {
       fail();
     }
 
-    uint256 minBound = b - 1;
+    uint256 minBound = b;
+    if (b != 0) minBound = b - 1;
 
     if (!((a == b) || (a == minBound))) {
       emit log("Error: a == b || a  == b-1");
