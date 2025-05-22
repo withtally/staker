@@ -7,9 +7,11 @@ import {TransferFromRewardNotifier} from "../notifiers/TransferFromRewardNotifie
 import {IMintable} from "src/interfaces/IMintable.sol";
 import {StakerTestBase} from "./StakerTestBase.sol";
 
-/// @notice Base contract for testing TransferFromRewardNotifier functionality.
-/// @dev Extends StakerTestBase and simulates calling notify function on TransferFromRewardNotifier.
-/// This contract is designed to be used in conjunction with the deployment scripts in
+/// @title TransferFromRewardNotifierTestBase
+/// @author [ScopeLift](https://scopelift.co)
+/// @notice Base contract for testing TransferFromRewardNotifier functionality. Extends
+/// StakerTestBase and simulates calling notify function on TransferFromRewardNotifier. This
+/// contract is designed to be used in conjunction with the deployment scripts in
 /// `src/script/notifiers/DeployTransferFromRewardNotifier.sol`.
 abstract contract TransferFromRewardNotifierTestBase is StakerTestBase {
   TransferFromRewardNotifier transferFromRewardNotifier;
