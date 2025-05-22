@@ -22,6 +22,7 @@ abstract contract StakeBase is StakerTestBase {
     _percentDuration = bound(_percentDuration, 1, 100);
 
     Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
+    _updateEarningPower(_depositId);
     _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(bound(_percentDuration, 0, 100));
 
@@ -54,7 +55,9 @@ abstract contract StakeBase is StakerTestBase {
     _percentDuration2 = bound(_percentDuration2, 0, 100 - _percentDuration1);
 
     Staker.DepositIdentifier _depositId1 = _stake(_depositor1, _amount, _delegatee);
+    _updateEarningPower(_depositId1);
     Staker.DepositIdentifier _depositId2 = _stake(_depositor2, _amount, _delegatee);
+    _updateEarningPower(_depositId2);
     _notifyRewardAmount(_rewardAmount);
 
     _jumpAheadByPercentOfRewardDuration(_percentDuration1);
@@ -94,7 +97,9 @@ abstract contract StakeBase is StakerTestBase {
     _percentDuration2 = bound(_percentDuration2, 1, 100);
 
     Staker.DepositIdentifier _depositId1 = _stake(_depositor1, _amount, _delegatee);
+    _updateEarningPower(_depositId1);
     Staker.DepositIdentifier _depositId2 = _stake(_depositor2, _amount, _delegatee);
+    _updateEarningPower(_depositId2);
 
     _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(_percentDuration1);
@@ -138,6 +143,7 @@ abstract contract WithdrawBase is StakerTestBase {
     _percentDuration = bound(_percentDuration, 1, 100);
 
     Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
+    _updateEarningPower(_depositId);
     _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
@@ -179,7 +185,9 @@ abstract contract WithdrawBase is StakerTestBase {
     _percentDuration2 = bound(_percentDuration2, 0, 100 - _percentDuration1);
 
     Staker.DepositIdentifier _depositId1 = _stake(_depositor1, _amount, _delegatee);
+    _updateEarningPower(_depositId1);
     Staker.DepositIdentifier _depositId2 = _stake(_depositor2, _amount, _delegatee);
+    _updateEarningPower(_depositId2);
 
     _notifyRewardAmount(_rewardAmount);
 
@@ -216,6 +224,7 @@ abstract contract WithdrawBase is StakerTestBase {
     _percentDuration = bound(_percentDuration, 1, 100);
 
     Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
+    _updateEarningPower(_depositId);
     _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
@@ -253,6 +262,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
     _percentDuration = bound(_percentDuration, 1, 100);
 
     Staker.DepositIdentifier _depositId = _stake(_depositor, _depositAmount, _delegatee);
+    _updateEarningPower(_depositId);
     _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
@@ -285,6 +295,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
     _mintStakeToken(_depositor, _depositAmount);
 
     Staker.DepositIdentifier _depositId = _stake(_depositor, _depositAmount, _delegatee);
+    _updateEarningPower(_depositId);
 
     _notifyRewardAmount(_rewardAmount1);
     _jumpAheadByPercentOfRewardDuration(100);
@@ -320,6 +331,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
 
     _mintStakeToken(_depositor, 0);
     Staker.DepositIdentifier _depositId = _stake(_depositor, 0, _delegatee);
+    _updateEarningPower(_depositId);
     _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
@@ -357,6 +369,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
 
     _mintStakeToken(_depositor, _depositAmount * 2);
     Staker.DepositIdentifier _depositId1 = _stake(_depositor, _depositAmount, _delegatee);
+    _updateEarningPower(_depositId1);
     _notifyRewardAmount(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(_percentDuration1);
 
@@ -368,6 +381,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
     _jumpAheadByPercentOfRewardDuration(_percentDuration2);
 
     Staker.DepositIdentifier _depositId2 = _stake(_depositor, _depositAmount, _delegatee);
+    _updateEarningPower(_depositId2);
     _jumpAheadByPercentOfRewardDuration(_percentDuration3);
 
     _unclaimedReward1 += staker.unclaimedReward(_depositId1);
@@ -414,6 +428,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
 
     _mintStakeToken(_depositor, _depositAmount1 + _depositAmount2);
     Staker.DepositIdentifier _depositId1 = _stake(_depositor, _depositAmount1, _delegatee);
+    _updateEarningPower(_depositId1);
     _notifyRewardAmount(_rewardAmount1);
     _jumpAheadByPercentOfRewardDuration(_percentDuration1);
 
@@ -425,6 +440,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
     _jumpAheadByPercentOfRewardDuration(100 - _percentDuration1);
 
     Staker.DepositIdentifier _depositId2 = _stake(_depositor, _depositAmount2, _delegatee);
+    _updateEarningPower(_depositId2);
     _notifyRewardAmount(_rewardAmount2);
     _jumpAheadByPercentOfRewardDuration(_percentDuration2);
 
@@ -463,6 +479,7 @@ abstract contract AlterClaimerBase is StakerTestBase {
     _mintStakeToken(_depositor, _depositAmount);
     Staker.DepositIdentifier _depositId =
       _stake(_depositor, _depositAmount, _delegatee, _firstClaimer);
+    _updateEarningPower(_depositId);
 
     Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
 
@@ -500,6 +517,7 @@ abstract contract AlterClaimerBase is StakerTestBase {
     _mintStakeToken(_depositor, _depositAmount);
     Staker.DepositIdentifier _depositId =
       _stake(_depositor, _depositAmount, _delegatee, _firstClaimer);
+    _updateEarningPower(_depositId);
 
     Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
 
@@ -535,6 +553,7 @@ abstract contract AlterDelegateeBase is StakerTestBase {
     _depositAmount = uint96(_boundMintAmount(_depositAmount));
     _mintStakeToken(_depositor, _depositAmount);
     Staker.DepositIdentifier _depositId = _stake(_depositor, _depositAmount, _firstDelegatee);
+    _updateEarningPower(_depositId);
     address _firstSurrogate = address(staker.surrogates(_firstDelegatee));
 
     vm.expectEmit();

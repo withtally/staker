@@ -46,16 +46,6 @@ contract Stake is StakeBase, DeployBinaryEligibilityOracleEarningPowerCalculator
     super.setUp();
   }
 
-  function _stake(address _depositor, uint256 _amount, address _delegatee)
-    internal
-    virtual
-    override(StakerTestBase, BinaryEligibilityOracleEarningPowerCalculatorTestBase)
-    returns (Staker.DepositIdentifier _depositId)
-  {
-    return
-      BinaryEligibilityOracleEarningPowerCalculatorTestBase._stake(_depositor, _amount, _delegatee);
-  }
-
   function _boundMintAmount(uint256 _amount)
     internal
     pure
@@ -64,6 +54,14 @@ contract Stake is StakeBase, DeployBinaryEligibilityOracleEarningPowerCalculator
     returns (uint256)
   {
     return BinaryEligibilityOracleEarningPowerCalculatorTestBase._boundMintAmount(_amount);
+  }
+
+  function _updateEarningPower(Staker.DepositIdentifier _depositId)
+    internal
+    virtual
+    override(StakerTestBase, BinaryEligibilityOracleEarningPowerCalculatorTestBase)
+  {
+    return BinaryEligibilityOracleEarningPowerCalculatorTestBase._updateEarningPower(_depositId);
   }
 }
 
@@ -75,16 +73,6 @@ contract Withdraw is WithdrawBase, DeployBinaryEligibilityOracleEarningPowerCalc
     super.setUp();
   }
 
-  function _stake(address _depositor, uint256 _amount, address _delegatee)
-    internal
-    virtual
-    override(StakerTestBase, BinaryEligibilityOracleEarningPowerCalculatorTestBase)
-    returns (Staker.DepositIdentifier _depositId)
-  {
-    return
-      BinaryEligibilityOracleEarningPowerCalculatorTestBase._stake(_depositor, _amount, _delegatee);
-  }
-
   function _boundMintAmount(uint256 _amount)
     internal
     pure
@@ -93,5 +81,13 @@ contract Withdraw is WithdrawBase, DeployBinaryEligibilityOracleEarningPowerCalc
     returns (uint256)
   {
     return BinaryEligibilityOracleEarningPowerCalculatorTestBase._boundMintAmount(_amount);
+  }
+
+  function _updateEarningPower(Staker.DepositIdentifier _depositId)
+    internal
+    virtual
+    override(StakerTestBase, BinaryEligibilityOracleEarningPowerCalculatorTestBase)
+  {
+    return BinaryEligibilityOracleEarningPowerCalculatorTestBase._updateEarningPower(_depositId);
   }
 }

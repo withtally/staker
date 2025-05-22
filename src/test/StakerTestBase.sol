@@ -108,6 +108,7 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     STAKE_TOKEN.approve(address(staker), _amount);
     _depositId = staker.stake(_amount, _delegatee);
     vm.stopPrank();
+    _updateEarningPower(_depositId);
 
     // Called after the stake so the surrogate will exist
     _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
@@ -135,6 +136,9 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     // Called after the stake so the surrogate will exist
     _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
   }
+
+  /// @notice A test helper hook that updates a deposit's earning power.
+  function _updateEarningPower(Staker.DepositIdentifier) internal virtual {}
 
   /// @notice A test helper that wraps calling `withdraw` on the underlying Staker contract.
   /// @param _depositor The depositor that is withdrawing their stake.
