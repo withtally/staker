@@ -29,6 +29,14 @@ contract BinaryEligibilityOracleEarningPowerCalculatorTestBase is StakerTestBase
     vm.stopPrank();
   }
 
+  function _updateEarningPower(Staker.DepositIdentifier _depositId) internal virtual override {
+    uint256 _delegateeeScore = vm.randomUint(0, calculator.delegateeEligibilityThresholdScore() * 2);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    vm.startPrank(calculator.scoreOracle());
+    calculator.updateDelegateeScore(_deposit.delegatee, _delegateeeScore);
+    vm.stopPrank();
+  }
+
   /// @notice Bound the mint amount to a realistic value.
   /// @dev Override of the base contract's function to set appropriate bounds for this calculator.
   /// @param _amount The unbounded mint amount.
