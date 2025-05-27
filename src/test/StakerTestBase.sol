@@ -10,6 +10,14 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Mintable} from "./interfaces/IERC20Mintable.sol";
 import {PercentAssertions} from "./helpers/PercentAssertions.sol";
 
+/// @title StakerTestBase
+/// @author [ScopeLift](https://scopelift.co)
+/// @notice This abstract contract provides a common foundation and essential helper functions for
+/// constructing modular integration tests. It is designed to be inherited by test suites that
+/// verify the functionality of Staker contracts, various reward notifiers and earning power
+/// calculators.
+/// @dev Integrators looking to develop a bespoke reward notifier or earning power calculator should
+/// consider extending this contract.
 abstract contract StakerTestBase is Test, PercentAssertions {
   Staker staker;
   IERC20 STAKE_TOKEN;
@@ -181,8 +189,8 @@ abstract contract StakerTestBase is Test, PercentAssertions {
   /// @param _amount The amount of tokens to send to the Staker contract.
   function _notifyRewardAmount(uint256 _amount) public virtual;
 
-  //// @notice A function to help calculate the earned rewards over a given period of the reward
-  // duration.
+  /// @notice A function to help calculate the earned rewards over a given period of the reward
+  /// duration.
   /// @param _earningPower The earning power during the reward duration.
   /// @param _rewardAmount The total amount of reward staker's split.
   /// @param _percentDuration The total duration of the reward period that has passed.

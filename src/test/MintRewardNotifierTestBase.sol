@@ -6,12 +6,17 @@ pragma solidity ^0.8.23;
 import {MintRewardNotifier} from "../notifiers/MintRewardNotifier.sol";
 import {StakerTestBase} from "./StakerTestBase.sol";
 
-/// @notice Base contract for testing MintRewardNotifier functionality.
-/// @dev Extends StakerTestBase and provides reward notification testing utilities.
-/// Simulates calling notify function on MintRewardNotifier.
+/// @title MintRewardNotifierTestBase
+/// @author [ScopeLift](https://scopelift.co)
+/// @notice Base contract for testing `MintRewardNotifier` functionality. Extends `StakerTestBase`
+/// and provides the necessary setup for the `notify` on `MintRewardNotifier`.
+/// @dev This contract is designed to be used in conjunction with the deployment scripts in
+/// `src/script/notifiers/DeployMintRewardNotifier.sol`.
 abstract contract MintRewardNotifierTestBase is StakerTestBase {
   MintRewardNotifier mintRewardNotifier;
 
+  /// @notice Sets the reward amount, then calls the `notify` function that triggers token minting
+  /// and reward distribution.
   function _notifyRewardAmount(uint256 _amount) public override {
     address _owner = mintRewardNotifier.owner();
 
