@@ -6,6 +6,13 @@ pragma solidity ^0.8.23;
 import {Staker} from "../Staker.sol";
 import {StakerTestBase} from "./StakerTestBase.sol";
 
+/// @title StakeBase
+/// @author [ScopeLift](https://scopelift.co)
+/// @notice Provides a standard suite of tests for core staking functionality.
+/// This includes tests for single and multiple depositors staking and earning rewards
+/// over various timeframes and reward periods.
+/// @dev Inherit this contract to test the fundamental staking and reward accrual logic of a Staker
+/// implementation.
 abstract contract StakeBase is StakerTestBase {
   function testForkFuzz_CorrectlyStakeAndEarnRewardsAfterDuration(
     address _depositor,
@@ -124,6 +131,12 @@ abstract contract StakeBase is StakerTestBase {
   }
 }
 
+/// @title WithdrawBase
+/// @author [ScopeLift](https://scopelift.co)
+/// @notice Provides a standard suite of tests for withdrawal functionality.
+/// This includes tests for unstaking after reward accrual, withdrawals by multiple users,
+/// and interactions between claiming rewards and withdrawing stake.
+/// @dev Inherit this contract to test the withdrawal mechanisms of a Staker implementation.
 abstract contract WithdrawBase is StakerTestBase {
   function testForkFuzz_CorrectlyUnstakeAfterDuration(
     address _depositor,
@@ -246,6 +259,12 @@ abstract contract WithdrawBase is StakerTestBase {
   }
 }
 
+/// @title ClaimRewardBase
+/// @author [ScopeLift](https://scopelift.co)
+/// @notice Provides a standard suite of tests for reward claiming functionality.
+/// This includes tests for claiming rewards over single and multiple periods, handling of
+/// zero-deposits, and scenarios involving staking, claiming, and re-staking.
+/// @dev Inherit this contract to test the reward claiming mechanisms of a Staker implementation.
 abstract contract ClaimRewardBase is StakerTestBase {
   function testFuzz_DepositorClaimsEarnedRewardsWithinASinglePeriod(
     address _depositor,
@@ -462,6 +481,12 @@ abstract contract ClaimRewardBase is StakerTestBase {
   }
 }
 
+/// @title AlterClaimerBase
+/// @author [ScopeLift](https://scopelift.co)
+/// @notice Provides a standard suite of tests for the `alterClaimer` functionality.
+/// This includes tests for updating the claimer both before and after rewards have
+/// accrued.
+/// @dev Inherit this contract to test the claimer alteration mechanism of a Staker implementation.
 abstract contract AlterClaimerBase is StakerTestBase {
   function testFuzz_DepositorCanUpdateClaimerBeforeAccruingRewards(
     address _depositor,
@@ -537,6 +562,13 @@ abstract contract AlterClaimerBase is StakerTestBase {
   }
 }
 
+/// @title AlterDelegateeBase
+/// @author [ScopeLift](https://scopelift.co)
+/// @notice Provides a standard suite of tests for the `alterDelegatee` functionality.
+/// This includes tests for updating the delegatee and verifying the correct transfer
+/// of delegated stake/voting power.
+/// @dev Inherit this contract to test the delegatee alteration mechanism of a Staker
+/// implementation.
 abstract contract AlterDelegateeBase is StakerTestBase {
   function testFuzz_DepositorCanUpdateDelegatee(
     address _depositor,
