@@ -3,21 +3,24 @@ pragma solidity ^0.8.23;
 
 import {TransferFromRewardNotifierTestBase} from
   "../../src/test/TransferFromRewardNotifierTestBase.sol";
-import {StakeBase, WithdrawBase} from "../../src/test/StandardTestSuite.sol";
+import {
+  StakeBase,
+  WithdrawBase,
+  ClaimRewardBase,
+  AlterClaimerBase,
+  AlterDelegateeBase
+} from "../../src/test/StandardTestSuite.sol";
 import {Staker} from "../../src/Staker.sol";
 import {TransferFromRewardNotifier} from "../../src/notifiers/TransferFromRewardNotifier.sol";
 import {DeployTransferFromRewardNotifierFake} from
   "../fakes/DeployTransferFromRewardNotifierFake.sol";
 import {ERC20Fake} from "../fakes/ERC20Fake.sol";
 import {ERC20VotesMock} from "../mocks/MockERC20Votes.sol";
-import {StakerTestBase} from "../../src/test/StakerTestBase.sol";
 
 contract DeployTransferFromRewardNotifierTestBase is TransferFromRewardNotifierTestBase {
   DeployTransferFromRewardNotifierFake DEPLOY_SCRIPT;
 
-  function setUp() public virtual override {
-    super.setUp();
-
+  function setUp() public virtual {
     REWARD_TOKEN = new ERC20Fake();
     STAKE_TOKEN = new ERC20VotesMock();
     DEPLOY_SCRIPT = new DeployTransferFromRewardNotifierFake(REWARD_TOKEN, STAKE_TOKEN);
@@ -27,14 +30,12 @@ contract DeployTransferFromRewardNotifierTestBase is TransferFromRewardNotifierT
   }
 }
 
-contract Stake is StakeBase, DeployTransferFromRewardNotifierTestBase {
-  function setUp() public override(StakerTestBase, DeployTransferFromRewardNotifierTestBase) {
-    super.setUp();
-  }
-}
+contract Stake is StakeBase, DeployTransferFromRewardNotifierTestBase {}
 
-contract Withdraw is WithdrawBase, DeployTransferFromRewardNotifierTestBase {
-  function setUp() public override(StakerTestBase, DeployTransferFromRewardNotifierTestBase) {
-    super.setUp();
-  }
-}
+contract Withdraw is WithdrawBase, DeployTransferFromRewardNotifierTestBase {}
+
+contract ClaimReward is ClaimRewardBase, DeployTransferFromRewardNotifierTestBase {}
+
+contract AlterClaimer is AlterClaimerBase, DeployTransferFromRewardNotifierTestBase {}
+
+contract AlterDelegatee is AlterDelegateeBase, DeployTransferFromRewardNotifierTestBase {}
