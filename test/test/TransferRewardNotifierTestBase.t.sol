@@ -2,20 +2,23 @@
 pragma solidity ^0.8.23;
 
 import {TransferRewardNotifierTestBase} from "../../src/test/TransferRewardNotifierTestBase.sol";
-import {StakeBase, WithdrawBase} from "../../src/test/StandardTestSuite.sol";
+import {
+  StakeBase,
+  WithdrawBase,
+  ClaimRewardBase,
+  AlterClaimerBase,
+  AlterDelegateeBase
+} from "../../src/test/StandardTestSuite.sol";
 import {Staker} from "../../src/Staker.sol";
 import {TransferRewardNotifier} from "../../src/notifiers/TransferRewardNotifier.sol";
 import {DeployTransferRewardNotifierFake} from "../fakes/DeployTransferRewardNotifierFake.sol";
 import {ERC20Fake} from "../fakes/ERC20Fake.sol";
 import {ERC20VotesMock} from "../mocks/MockERC20Votes.sol";
-import {StakerTestBase} from "../../src/test/StakerTestBase.sol";
 
 contract DeployTransferRewardNotifierTestBase is TransferRewardNotifierTestBase {
   DeployTransferRewardNotifierFake DEPLOY_SCRIPT;
 
-  function setUp() public virtual override {
-    super.setUp();
-
+  function setUp() public virtual {
     REWARD_TOKEN = new ERC20Fake();
     STAKE_TOKEN = new ERC20VotesMock();
     DEPLOY_SCRIPT = new DeployTransferRewardNotifierFake(REWARD_TOKEN, STAKE_TOKEN);
@@ -25,14 +28,12 @@ contract DeployTransferRewardNotifierTestBase is TransferRewardNotifierTestBase 
   }
 }
 
-contract Stake is StakeBase, DeployTransferRewardNotifierTestBase {
-  function setUp() public override(StakerTestBase, DeployTransferRewardNotifierTestBase) {
-    super.setUp();
-  }
-}
+contract Stake is StakeBase, DeployTransferRewardNotifierTestBase {}
 
-contract Withdraw is WithdrawBase, DeployTransferRewardNotifierTestBase {
-  function setUp() public override(StakerTestBase, DeployTransferRewardNotifierTestBase) {
-    super.setUp();
-  }
-}
+contract Withdraw is WithdrawBase, DeployTransferRewardNotifierTestBase {}
+
+contract ClaimReward is ClaimRewardBase, DeployTransferRewardNotifierTestBase {}
+
+contract AlterClaimer is AlterClaimerBase, DeployTransferRewardNotifierTestBase {}
+
+contract AlterDelegatee is AlterDelegateeBase, DeployTransferRewardNotifierTestBase {}

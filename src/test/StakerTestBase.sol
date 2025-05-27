@@ -25,12 +25,6 @@ abstract contract StakerTestBase is Test, PercentAssertions {
   mapping(DelegationSurrogate surrogate => bool isKnown) isKnownSurrogate;
   mapping(address depositor => bool isKnown) isKnownDepositor;
 
-  function setUp() public virtual {
-    // Set the block timestamp to an arbitrary value to avoid introducing assumptions into tests
-    // based on a starting timestamp of 0, which is the default.
-    _jumpAhead(1234);
-  }
-
   /// @notice A function to move time forward.
   /// @param _seconds The time to jump forward in seconds.
   function _jumpAhead(uint256 _seconds) public virtual {
