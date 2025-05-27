@@ -16,6 +16,7 @@ import {DeployBinaryEligibilityOracleEarningPowerCalculatorFake} from
 import {ERC20Fake} from "../fakes/ERC20Fake.sol";
 import {ERC20VotesMock} from "../mocks/MockERC20Votes.sol";
 import {StakerTestBase} from "../../src/test/StakerTestBase.sol";
+import {IERC20Mintable} from "../../src/test/interfaces/IERC20Mintable.sol";
 
 contract DeployStakedBinaryEligibilityOracleEarningPowerCalculatorTestBase is
   StakedBinaryEligibilityOracleEarningPowerCalculatorTestBase
@@ -37,6 +38,18 @@ contract DeployStakedBinaryEligibilityOracleEarningPowerCalculatorTestBase is
     mintRewardNotifier = MintRewardNotifier(_rewardNotifiers[0]);
     calculator = BinaryEligibilityOracleEarningPowerCalculator(address(_earningPowerCalculator));
     staker = _staker;
+  }
+
+  /// @notice Test helper to notify rewards using the mint reward notifier.
+  /// @param _amount The amount of rewards to notify.
+  function _notifyRewardAmount(uint256 _amount) public virtual override {
+    vm.assume(address(mintRewardNotifier) != address(0));
+    IERC20Mintable(address(REWARD_TOKEN)).mint(address(mintRewardNotifier), _amount);
+
+    vm.startPrank(address(mintRewardNotifier));
+    REWARD_TOKEN.transfer(address(staker), _amount);
+    staker.notifyRewardAmount(_amount);
+    vm.stopPrank();
   }
 }
 
