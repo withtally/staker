@@ -12,6 +12,7 @@ import {Staker} from "../../src/Staker.sol";
 import {StakerHarness} from "../harnesses/StakerHarness.sol";
 import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {FakeMinter} from "./FakeMinter.sol";
 
 contract DeployBinaryEligibilityOracleEarningPowerCalculatorFake is
   DeployBase,
@@ -22,7 +23,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorFake is
   address public admin = makeAddr("Staker admin");
   address public owner = makeAddr("owner");
   address public notifierOwner = makeAddr("Notifier owner");
-  address public notifierMinter = makeAddr("Notifier minter");
+  address public notifierMinter = makeAddr("Notifier Minter");
   address public scoreOracle = makeAddr("scoreOracle");
   address public oraclePauseGuardian = makeAddr("oraclePauseGuardian");
   uint256 public initialRewardAmount = 10e18;
@@ -39,6 +40,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorFake is
   constructor(IERC20 _rewardToken, IERC20 _stakeToken) {
     rewardToken = _rewardToken;
     stakeToken = _stakeToken;
+    notifierMinter = address(new FakeMinter(IMintable(address(_rewardToken))));
   }
 
   function _baseConfiguration() internal virtual override returns (BaseConfiguration memory) {
@@ -52,7 +54,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorFake is
     returns (MintRewardNotifierConfiguration memory)
   {
     return MintRewardNotifierConfiguration({
-      initialRewardAmount: initialRewardInterval,
+      initialRewardAmount: initialRewardAmount,
       initialRewardInterval: initialRewardInterval,
       initialOwner: notifierOwner,
       minter: IMintable(notifierMinter)
