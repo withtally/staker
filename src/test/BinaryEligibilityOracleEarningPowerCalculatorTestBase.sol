@@ -20,39 +20,12 @@ abstract contract BinaryEligibilityOracleEarningPowerCalculatorTestBase is Stake
   BinaryEligibilityOracleEarningPowerCalculator calculator;
   MintRewardNotifier mintRewardNotifier;
 
-  /// @notice Helper to set a delegatee's score above the eligibility threshold.
-  /// @dev This should be called after a delegatee is known but before checking their earning power.
-  /// @param delegatee The address of the delegatee whose score will be set above threshold.
-  function _setDelegateeScoreAboveThreshold(address delegatee) internal {
+  function _updateEarningPower(Staker.DepositIdentifier _depositId) internal virtual override {
+    uint256 _delegateeeScore = vm.randomUint(0, calculator.delegateeEligibilityThresholdScore() * 2);
+    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
     vm.startPrank(calculator.scoreOracle());
-    calculator.updateDelegateeScore(delegatee, calculator.delegateeEligibilityThresholdScore() + 1);
+    calculator.updateDelegateeScore(_deposit.delegatee, _delegateeeScore);
     vm.stopPrank();
-  }
-
-  /// @notice A test helper that wraps calling the `stake` function on the underlying Staker
-  /// contract.
-  /// @dev When the delegatee is below threshold, this function automatically sets their score above
-  /// threshold and bumps the earning power to ensure proper test setup.
-  /// @param _depositor The address of the depositor.
-  /// @param _amount The amount to stake.
-  /// @param _delegatee The address that will receive the voting power of the stake.
-  /// @return _depositId The id of the created deposit.
-  function _stake(address _depositor, uint256 _amount, address _delegatee)
-    internal
-    virtual
-    override
-    returns (Staker.DepositIdentifier _depositId)
-  {
-    _depositId = StakerTestBase._stake(_depositor, _amount, _delegatee);
-
-    // This should only be triggered on the first call. Subsequent calls will have the delegatee
-    // score already above threshold, so their stakes should be full already.
-    if (calculator.delegateeScores(_delegatee) < calculator.delegateeEligibilityThresholdScore()) {
-      _setDelegateeScoreAboveThreshold(_delegatee);
-      vm.startPrank(_depositor);
-      staker.bumpEarningPower(_depositId, _depositor, 0);
-      vm.stopPrank();
-    }
   }
 
   /// @notice Bound the mint amount to a realistic value.
