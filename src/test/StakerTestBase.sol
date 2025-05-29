@@ -108,6 +108,7 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     STAKE_TOKEN.approve(address(staker), _amount);
     _depositId = staker.stake(_amount, _delegatee);
     vm.stopPrank();
+    _updateEarningPower(_depositId);
 
     // Called after the stake so the surrogate will exist
     _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
@@ -135,6 +136,9 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     // Called after the stake so the surrogate will exist
     _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
   }
+
+  /// @notice A test helper hook that updates a deposit's earning power.
+  function _updateEarningPower(Staker.DepositIdentifier) internal virtual {}
 
   /// @notice A test helper that wraps calling `withdraw` on the underlying Staker contract.
   /// @param _depositor The depositor that is withdrawing their stake.
@@ -181,8 +185,8 @@ abstract contract StakerTestBase is Test, PercentAssertions {
   /// @param _amount The amount of tokens to send to the Staker contract.
   function _notifyRewardAmount(uint256 _amount) public virtual;
 
-  //// @notice A function to help calculate the earned rewards over a given period of the reward
-  // duration.
+  /// @notice A function to help calculate the earned rewards over a given period of the reward
+  /// duration.
   /// @param _earningPower The earning power during the reward duration.
   /// @param _rewardAmount The total amount of reward staker's split.
   /// @param _percentDuration The total duration of the reward period that has passed.
@@ -192,8 +196,10 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     uint256 _rewardAmount,
     uint256 _percentDuration
   ) internal virtual returns (uint256) {
-    return
-      _percentOf((_earningPower * _rewardAmount) / staker.totalEarningPower(), _percentDuration);
+    uint256 _totalEarningPower = staker.totalEarningPower();
+    return _totalEarningPower == 0
+      ? 0
+      : _percentOf((_earningPower * _rewardAmount) / _totalEarningPower, _percentDuration);
   }
 
   /// @notice A test helper to prevent address collisions with depositors and delegate surrogate
