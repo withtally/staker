@@ -2,20 +2,23 @@
 pragma solidity ^0.8.23;
 
 import {MintRewardNotifierTestBase} from "../../src/test/MintRewardNotifierTestBase.sol";
-import {StakeBase, WithdrawBase} from "../../src/test/StandardTestSuite.sol";
+import {
+  StakeBase,
+  WithdrawBase,
+  ClaimRewardBase,
+  AlterClaimerBase,
+  AlterDelegateeBase
+} from "../../src/test/StandardTestSuite.sol";
 import {Staker} from "../../src/Staker.sol";
 import {MintRewardNotifier} from "../../src/notifiers/MintRewardNotifier.sol";
 import {DeployBaseFake} from "../fakes/DeployBaseFake.sol";
 import {ERC20Fake} from "../fakes/ERC20Fake.sol";
 import {ERC20VotesMock} from "../mocks/MockERC20Votes.sol";
-import {StakerTestBase} from "../../src/test/StakerTestBase.sol";
 
 contract DeployMintRewardNotifierTestBase is MintRewardNotifierTestBase {
   DeployBaseFake DEPLOY_SCRIPT;
 
-  function setUp() public virtual override {
-    super.setUp();
-
+  function setUp() public virtual {
     REWARD_TOKEN = new ERC20Fake();
     STAKE_TOKEN = new ERC20VotesMock();
     DEPLOY_SCRIPT = new DeployBaseFake(REWARD_TOKEN, STAKE_TOKEN);
@@ -25,14 +28,12 @@ contract DeployMintRewardNotifierTestBase is MintRewardNotifierTestBase {
   }
 }
 
-contract Stake is StakeBase, DeployMintRewardNotifierTestBase {
-  function setUp() public override(StakerTestBase, DeployMintRewardNotifierTestBase) {
-    super.setUp();
-  }
-}
+contract Stake is StakeBase, DeployMintRewardNotifierTestBase {}
 
-contract Withdraw is WithdrawBase, DeployMintRewardNotifierTestBase {
-  function setUp() public override(StakerTestBase, DeployMintRewardNotifierTestBase) {
-    super.setUp();
-  }
-}
+contract Withdraw is WithdrawBase, DeployMintRewardNotifierTestBase {}
+
+contract ClaimReward is ClaimRewardBase, DeployMintRewardNotifierTestBase {}
+
+contract AlterClaimer is AlterClaimerBase, DeployMintRewardNotifierTestBase {}
+
+contract AlterDelegatee is AlterDelegateeBase, DeployMintRewardNotifierTestBase {}

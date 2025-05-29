@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// slither-disable-start reentrancy-benign
 
 pragma solidity ^0.8.23;
 
@@ -10,6 +9,14 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Mintable} from "./interfaces/IERC20Mintable.sol";
 import {PercentAssertions} from "./helpers/PercentAssertions.sol";
 
+/// @title StakerTestBase
+/// @author [ScopeLift](https://scopelift.co)
+/// @notice This abstract contract provides a common foundation and essential helper functions for
+/// constructing modular integration tests. It is designed to be inherited by test suites that
+/// verify the functionality of Staker contracts, various reward notifiers and earning power
+/// calculators.
+/// @dev Integrators looking to develop a bespoke reward notifier or earning power calculator should
+/// consider extending this contract.
 abstract contract StakerTestBase is Test, PercentAssertions {
   Staker staker;
   IERC20 STAKE_TOKEN;
@@ -17,12 +24,6 @@ abstract contract StakerTestBase is Test, PercentAssertions {
 
   mapping(DelegationSurrogate surrogate => bool isKnown) isKnownSurrogate;
   mapping(address depositor => bool isKnown) isKnownDepositor;
-
-  function setUp() public virtual {
-    // Set the block timestamp to an arbitrary value to avoid introducing assumptions into tests
-    // based on a starting timestamp of 0, which is the default.
-    _jumpAhead(1234);
-  }
 
   /// @notice A function to move time forward.
   /// @param _seconds The time to jump forward in seconds.
