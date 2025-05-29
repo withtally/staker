@@ -16,18 +16,9 @@ import {Staker} from "../Staker.sol";
 /// functionality. This contract is designed to be used in conjunction with the deployment scripts
 /// in
 /// `src/script/calculators/DeployBinaryEligibilityOracleEarningPowerCalculator.sol`.
-contract BinaryEligibilityOracleEarningPowerCalculatorTestBase is StakerTestBase {
+abstract contract BinaryEligibilityOracleEarningPowerCalculatorTestBase is StakerTestBase {
   BinaryEligibilityOracleEarningPowerCalculator calculator;
   MintRewardNotifier mintRewardNotifier;
-
-  /// @notice Helper to set a delegatee's score above the eligibility threshold.
-  /// @dev This should be called after a delegatee is known but before checking their earning power.
-  /// @param delegatee The address of the delegatee whose score will be set above threshold.
-  function _setDelegateeScoreAboveThreshold(address delegatee) internal {
-    vm.startPrank(calculator.scoreOracle());
-    calculator.updateDelegateeScore(delegatee, calculator.delegateeEligibilityThresholdScore() + 1);
-    vm.stopPrank();
-  }
 
   function _updateEarningPower(Staker.DepositIdentifier _depositId) internal virtual override {
     uint256 _delegateeeScore = vm.randomUint(0, calculator.delegateeEligibilityThresholdScore() * 2);

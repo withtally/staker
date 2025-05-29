@@ -43,6 +43,15 @@ abstract contract StakedBinaryEligibilityOracleEarningPowerCalculatorTestBase is
     _setDelegateeScoreBelowThreshold(_delegatee);
   }
 
+  /// @notice Helper to set a delegatee's score above the eligibility threshold.
+  /// @dev This should be called after a delegatee is known but before checking their earning power.
+  /// @param delegatee The address of the delegatee whose score will be set above threshold.
+  function _setDelegateeScoreAboveThreshold(address delegatee) internal {
+    vm.startPrank(calculator.scoreOracle());
+    calculator.updateDelegateeScore(delegatee, calculator.delegateeEligibilityThresholdScore() + 1);
+    vm.stopPrank();
+  }
+
   /// @notice A test helper that wraps calling the `stake` function and ensures proper earning power
   /// adjustment when delegatee scores are above threshold.
   /// @param _depositor The address of the depositor.
