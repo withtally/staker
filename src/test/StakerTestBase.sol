@@ -14,7 +14,10 @@ import {PercentAssertions} from "./helpers/PercentAssertions.sol";
 /// @notice This abstract contract provides a common foundation and essential helper functions for
 /// constructing modular integration tests. It is designed to be inherited by test suites that
 /// verify the functionality of Staker contracts, various reward notifiers and earning power
-/// calculators.
+/// calculators. For example, a test base for `MintRewardNotifier` (like
+/// `MintRewardNotifierTestBase`) will inherit `StakerTestBase` to implement `_notifyRewardAmount`,
+/// by calling `setAmount` and `notify` on the `MintRewardNotifier`. These specific notifier
+/// behaviors can then be tested through a common suite (e.g., `StandardTestSuite.sol`).
 /// @dev Integrators looking to develop a bespoke reward notifier or earning power calculator should
 /// consider extending this contract.
 abstract contract StakerTestBase is Test, PercentAssertions {

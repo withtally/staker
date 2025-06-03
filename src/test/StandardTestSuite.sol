@@ -12,14 +12,15 @@ import {StakerTestBase} from "./StakerTestBase.sol";
 /// This includes tests for single and multiple depositors staking and earning rewards
 /// over various timeframes and reward periods.
 /// @dev Inherit this contract to test the fundamental staking and reward accrual logic of a Staker
-/// implementation.
+/// implementation, covering scenarios where there are single and multiple depositors, as well as
+/// single and multiple reward periods.
 abstract contract StakeBase is StakerTestBase {
   /// @notice Tests that a single depositor correctly stakes and earns rewards after a specified
   /// duration within a single reward period. Asserts that the unclaimed rewards are consistent with
   /// calculated earned rewards.
   /// @param _depositor The address of the staker.
   /// @param _amount The amount of stake tokens to deposit.
-  /// @param _delegatee The address to delegate voting power to.
+  /// @param _delegatee The address with the stake's voting power.
   /// @param _rewardAmount The total reward amount for the period.
   /// @param _percentDuration The percentage of the reward duration to advance time by (1-100).
   function testForkFuzz_CorrectlyStakeAndEarnRewardsAfterDuration(
@@ -165,14 +166,16 @@ abstract contract StakeBase is StakerTestBase {
 /// @notice Provides a standard suite of tests for withdrawal functionality.
 /// This includes tests for unstaking after reward accrual, withdrawals by multiple users,
 /// and interactions between claiming rewards and withdrawing stake.
-/// @dev Inherit this contract to test the withdrawal mechanisms of a Staker implementation.
+/// @dev Inherit this contract to test the withdrawal mechanisms of a Staker implementation,
+/// including scenarios with single and multiple users unstaking, and interactions
+/// between reward claims and withdrawals.
 abstract contract WithdrawBase is StakerTestBase {
   /// @notice Tests that a depositor can correctly unstake a specified amount after rewards have
   /// accrued over a duration. Asserts that the staker's token balance reflects the withdrawal and
   /// unclaimed rewards are handled consistently.
   /// @param _depositor The address of the staker.
   /// @param _amount The initial amount of stake tokens deposited.
-  /// @param _delegatee The address to delegate voting power to.
+  /// @param _delegatee The address with the stake's voting power.
   /// @param _rewardAmount The total reward amount for the period.
   /// @param _withdrawAmount The amount of stake tokens to withdraw.
   /// @param _percentDuration The percentage of the reward duration to advance time by before
@@ -278,7 +281,7 @@ abstract contract WithdrawBase is StakerTestBase {
   /// become zero, and stake is correctly withdrawn.
   /// @param _depositor The address of the staker.
   /// @param _amount The initial amount of stake tokens deposited.
-  /// @param _delegatee The address to delegate voting power to.
+  /// @param _delegatee The address with the stake's voting power.
   /// @param _rewardAmount The total reward amount for the period.
   /// @param _withdrawAmount The amount of stake tokens to withdraw.
   /// @param _percentDuration The percentage of the reward duration to advance time by before
@@ -327,13 +330,15 @@ abstract contract WithdrawBase is StakerTestBase {
 /// @notice Provides a standard suite of tests for reward claiming functionality.
 /// This includes tests for claiming rewards over single and multiple periods, handling of
 /// zero-deposits, and scenarios involving staking, claiming, and re-staking.
-/// @dev Inherit this contract to test the reward claiming mechanisms of a Staker implementation.
+/// @dev Inherit this contract to test the reward claiming mechanisms of a Staker implementation,
+/// covering scenarios such as claims within single and across multiple reward periods, zero-deposit
+/// handling, and sequences of staking, claiming, and re-staking.
 abstract contract ClaimRewardBase is StakerTestBase {
   /// @notice Tests that a depositor can correctly claim all earned rewards within a single reward
   /// period. Asserts that the claimed reward amount matches the unclaimed rewards and that
   /// unclaimed rewards become zero post-claim.
   /// @param _depositor The address of the staker.
-  /// @param _delegatee The address to delegate voting power to.
+  /// @param _delegatee The address with the stake's voting power.
   /// @param _depositAmount The amount of stake tokens deposited.
   /// @param _rewardAmount The total reward amount for the period.
   /// @param _percentDuration The percentage of the reward duration to advance time by before
@@ -372,7 +377,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
   /// periods. Asserts that the total claimed reward matches the total unclaimed rewards from all
   /// periods.
   /// @param _depositor The address of the staker.
-  /// @param _delegatee The address to delegate voting power to.
+  /// @param _delegatee The address with the stake's voting power.
   /// @param _depositAmount The amount of stake tokens deposited.
   /// @param _rewardAmount1 The reward amount for the first period.
   /// @param _rewardAmount2 The reward amount for the second period.
@@ -420,7 +425,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
   /// @notice Tests that a deposit of zero tokens correctly yields zero rewards. Asserts that both
   /// unclaimed and claimed rewards are zero when the deposit amount is zero.
   /// @param _depositor The address of the staker.
-  /// @param _delegatee The address to delegate voting power to.
+  /// @param _delegatee The address with the stake's voting power.
   /// @param _rewardAmount The total reward amount for the period.
   /// @param _percentDuration The percentage of the reward duration to advance time by.
   function testFuzz_ZeroDepositYieldsZeroReward(
@@ -459,7 +464,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
   /// claimed rewards correctly reflect earnings from both deposits across the various time
   /// segments.
   /// @param _depositor The address of the staker.
-  /// @param _delegatee The address to delegate voting power to.
+  /// @param _delegatee The address with the stake's voting power.
   /// @param _depositAmount The amount for each of the two stake operations.
   /// @param _rewardAmount The total reward amount for the period.
   /// @param _percentDuration1 Percentage of duration before first claim.
@@ -527,7 +532,7 @@ abstract contract ClaimRewardBase is StakerTestBase {
   /// period, stakes again (new deposit), and then claims all rewards. Asserts that total claimed
   /// rewards correctly reflect earnings from both deposits across both reward periods.
   /// @param _depositor The address of the staker.
-  /// @param _delegatee The address to delegate voting power to.
+  /// @param _delegatee The address with the stake's voting power.
   /// @param _depositAmount1 The amount for the first stake.
   /// @param _depositAmount2 The amount for the second stake.
   /// @param _rewardAmount1 The reward amount for the first period.
@@ -597,7 +602,8 @@ abstract contract ClaimRewardBase is StakerTestBase {
 /// @notice Provides a standard suite of tests for the `alterClaimer` functionality.
 /// This includes tests for updating the claimer both before and after rewards have
 /// accrued.
-/// @dev Inherit this contract to test the claimer alteration mechanism of a Staker implementation.
+/// @dev Inherit this contract to test the claimer alteration mechanism of a Staker implementation,
+/// including updates to the claimer both before and after rewards have accrued.
 abstract contract AlterClaimerBase is StakerTestBase {
   /// @notice Tests that a depositor can successfully update the claimer for their deposit before
   /// any rewards have accrued. Verifies that the `ClaimerAltered` event is emitted with correct

@@ -7,10 +7,11 @@ import {StakerTestBase} from "./StakerTestBase.sol";
 
 /// @title MintRewardNotifierTestBase
 /// @author [ScopeLift](https://scopelift.co)
-/// @notice Base contract for testing `MintRewardNotifier` functionality. Extends `StakerTestBase`
-/// and provides the necessary setup for the `notify` on `MintRewardNotifier`.
-/// @dev This contract is designed to be used in conjunction with the deployment scripts in
-/// `src/script/notifiers/DeployMintRewardNotifier.sol`.
+/// @notice Base contract for testing a staker contract with a single `MintRewardNotifier`. Extends
+/// `StakerTestBase` and implements the reward notification logic.
+/// @dev This contract requires an initialized instance of `MintRewardNotifier`. Initialization is
+/// typically handled by a deployment script such as
+/// `src/script/notifiers/DeployMintRewardNotifier.sol`
 abstract contract MintRewardNotifierTestBase is StakerTestBase {
   MintRewardNotifier mintRewardNotifier;
 

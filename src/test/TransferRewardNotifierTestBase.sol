@@ -8,11 +8,11 @@ import {StakerTestBase} from "./StakerTestBase.sol";
 
 /// @title TransferRewardNotifierTestBase
 /// @author [ScopeLift](https://scopelift.co)
-/// @notice Base contract for testing `TransferRewardNotifier` functionality. Extends
-/// `StakerTestBase`
-/// and provides the necessary setup for `notify` on `TransferRewardNotifier`.
-/// @dev This contract is designed to be used in conjunction with the deployment scripts in
-/// `src/script/notifiers/DeployTransferRewardNotifier.sol`.
+/// @notice Base contract for testing a staker contract with a single `TransferRewardNotifier`.
+/// Extends `StakerTestBase` and implements the reward notification logic.
+/// @dev This contract requires an initialized instance of `TransferRewardNotifier`. Initialization
+/// is typically handled by a deployment script such as
+/// `src/script/notifiers/DeployTransferRewardNotifier.sol`
 abstract contract TransferRewardNotifierTestBase is StakerTestBase {
   TransferRewardNotifier transferRewardNotifier;
 
