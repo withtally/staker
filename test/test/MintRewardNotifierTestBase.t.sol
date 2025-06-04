@@ -8,7 +8,7 @@ import {
   ClaimRewardBase,
   AlterClaimerBase,
   AlterDelegateeBase
-} from "../../src/test/StandardTestSuite.sol";
+} from "../../src/test/StakerForkTestSuite.sol";
 import {Staker} from "../../src/Staker.sol";
 import {MintRewardNotifier} from "../../src/notifiers/MintRewardNotifier.sol";
 import {DeployBaseFake} from "../fakes/DeployBaseFake.sol";

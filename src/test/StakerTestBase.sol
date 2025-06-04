@@ -17,7 +17,7 @@ import {PercentAssertions} from "./helpers/PercentAssertions.sol";
 /// calculators. For example, a test base for `MintRewardNotifier` (like
 /// `MintRewardNotifierTestBase`) will inherit `StakerTestBase` to implement `_notifyRewardAmount`,
 /// by calling `setAmount` and `notify` on the `MintRewardNotifier`. These specific notifier
-/// behaviors can then be tested through a common suite (e.g., `StandardTestSuite.sol`).
+/// behaviors can then be tested through a common suite (e.g., `StakerForkTestSuite.sol`).
 /// @dev Integrators looking to develop a bespoke reward notifier or earning power calculator should
 /// consider extending this contract.
 abstract contract StakerTestBase is Test, PercentAssertions {
@@ -220,7 +220,7 @@ abstract contract StakerTestBase is Test, PercentAssertions {
   }
 
   /// @notice A test helper that assumes an address is neither zero nor the staker contract
-  function _assumeNotZeroAddressOrStaker(address _addr) internal {
+  function _assumeNotZeroAddressOrStaker(address _addr) internal view {
     assumeNotZeroAddress(_addr);
     vm.assume(_addr != address(staker));
   }

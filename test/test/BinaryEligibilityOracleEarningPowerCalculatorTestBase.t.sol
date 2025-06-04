@@ -7,7 +7,7 @@ import {BinaryEligibilityOracleEarningPowerCalculator} from
   "src/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
 import {MintRewardNotifier} from "../../src/notifiers/MintRewardNotifier.sol";
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
-import {StakeBase, WithdrawBase} from "../../src/test/StandardTestSuite.sol";
+import {StakeBase, WithdrawBase} from "../../src/test/StakerForkTestSuite.sol";
 import {Staker} from "../../src/Staker.sol";
 import {DeployBinaryEligibilityOracleEarningPowerCalculatorFake} from
   "../fakes/DeployBinaryEligibilityOracleEarningPowerCalculatorFake.sol";
