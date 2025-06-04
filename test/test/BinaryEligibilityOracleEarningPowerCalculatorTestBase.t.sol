@@ -21,9 +21,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorTestBase is
 {
   DeployBinaryEligibilityOracleEarningPowerCalculatorFake DEPLOY_SCRIPT;
 
-  function setUp() public virtual override {
-    super.setUp();
-
+  function setUp() public virtual {
     REWARD_TOKEN = new ERC20Fake();
     STAKE_TOKEN = new ERC20VotesMock();
     DEPLOY_SCRIPT =
@@ -52,13 +50,6 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorTestBase is
 }
 
 contract Stake is StakeBase, DeployBinaryEligibilityOracleEarningPowerCalculatorTestBase {
-  function setUp()
-    public
-    override(StakerTestBase, DeployBinaryEligibilityOracleEarningPowerCalculatorTestBase)
-  {
-    super.setUp();
-  }
-
   function _boundMintAmount(uint256 _amount)
     internal
     pure
@@ -79,13 +70,6 @@ contract Stake is StakeBase, DeployBinaryEligibilityOracleEarningPowerCalculator
 }
 
 contract Withdraw is WithdrawBase, DeployBinaryEligibilityOracleEarningPowerCalculatorTestBase {
-  function setUp()
-    public
-    override(StakerTestBase, DeployBinaryEligibilityOracleEarningPowerCalculatorTestBase)
-  {
-    super.setUp();
-  }
-
   function _boundMintAmount(uint256 _amount)
     internal
     pure
