@@ -13,13 +13,19 @@ import {Staker} from "../Staker.sol";
 /// @notice The base contract for testing BinaryEligibilityOracleEarningPowerCalculator. Contains
 /// test setup and helper functions for testing the calculator's behavior when delegatees meet
 /// the eligibility threshold. This includes stake management and eligibility threshold testing
-/// functionality. This contract is designed to be used in conjunction with the deployment scripts
-/// in
+/// functionality.
+/// @dev This contract requires an initialized instance of
+/// `BinaryEligibilityOracleEarningPowerCalculator`. Initialization is typically handled by a
+/// deployment script such as
 /// `src/script/calculators/DeployBinaryEligibilityOracleEarningPowerCalculator.sol`.
 abstract contract BinaryEligibilityOracleEarningPowerCalculatorTestBase is StakerTestBase {
   BinaryEligibilityOracleEarningPowerCalculator calculator;
   MintRewardNotifier mintRewardNotifier;
 
+  /// @notice A helper function that updates the delegatee score for a given deposit to a random
+  /// value between 0 and twice the eligibility threshold, facilitating tests for both eligible and
+  /// ineligible delegatee scenarios.
+  /// @param _depositId The identifier of the deposit whose delegatee's score is to be updated.
   function _updateEarningPower(Staker.DepositIdentifier _depositId) internal virtual override {
     uint256 _delegateeeScore = vm.randomUint(0, calculator.delegateeEligibilityThresholdScore() * 2);
     Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
