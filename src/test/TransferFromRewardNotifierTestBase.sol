@@ -3,7 +3,7 @@
 pragma solidity ^0.8.23;
 
 import {TransferFromRewardNotifier} from "../notifiers/TransferFromRewardNotifier.sol";
-import {IMintable} from "src/interfaces/IMintable.sol";
+import {IMintable} from "../interfaces/IMintable.sol";
 import {StakerTestBase} from "./StakerTestBase.sol";
 
 /// @title TransferFromRewardNotifierTestBase

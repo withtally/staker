@@ -10,17 +10,13 @@ import {Staker} from "../Staker.sol";
 
 /// @title BinaryEligibilityOracleEarningPowerCalculatorTestBase
 /// @author [ScopeLift](https://scopelift.co)
-/// @notice The base contract for testing BinaryEligibilityOracleEarningPowerCalculator. Contains
-/// test setup and helper functions for testing the calculator's behavior when delegatees meet
-/// the eligibility threshold. This includes stake management and eligibility threshold testing
-/// functionality.
-/// @dev This contract requires an initialized instance of
-/// `BinaryEligibilityOracleEarningPowerCalculator`. Initialization is typically handled by a
-/// deployment script such as
-/// `src/script/calculators/DeployBinaryEligibilityOracleEarningPowerCalculator.sol`.
+/// @notice The base contract for testing `BinaryEligibilityOracleEarningPowerCalculator`. Contains
+/// test setup and helper functions for testing the calculator's behavior. This conrtract is meant
+/// to be inherited in a concrete implementation with the necessary setUp and virtual methods
+/// implemented.
 abstract contract BinaryEligibilityOracleEarningPowerCalculatorTestBase is StakerTestBase {
+  /// @notice The earning power calculator to be tested.
   BinaryEligibilityOracleEarningPowerCalculator calculator;
-  MintRewardNotifier mintRewardNotifier;
 
   /// @notice A helper function that updates the delegatee score for a given deposit to a random
   /// value between 0 and twice the eligibility threshold, facilitating tests for both eligible and

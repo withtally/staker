@@ -4,7 +4,7 @@ pragma solidity ^0.8.23;
 import {BinaryEligibilityOracleEarningPowerCalculatorTestBase} from
   "../../src/test/BinaryEligibilityOracleEarningPowerCalculatorTestBase.sol";
 import {BinaryEligibilityOracleEarningPowerCalculator} from
-  "src/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
+  "../../src/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
 import {MintRewardNotifier} from "../../src/notifiers/MintRewardNotifier.sol";
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
 import {StakeBase, WithdrawBase} from "../../src/test/StakerForkTestSuite.sol";
@@ -20,6 +20,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorTestBase is
   BinaryEligibilityOracleEarningPowerCalculatorTestBase
 {
   DeployBinaryEligibilityOracleEarningPowerCalculatorFake DEPLOY_SCRIPT;
+  MintRewardNotifier mintRewardNotifier;
 
   function setUp() public virtual {
     REWARD_TOKEN = new ERC20Fake();

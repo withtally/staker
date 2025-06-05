@@ -13,10 +13,12 @@ import {StakerTestBase} from "./StakerTestBase.sol";
 /// typically handled by a deployment script such as
 /// `src/script/notifiers/DeployMintRewardNotifier.sol`
 abstract contract MintRewardNotifierTestBase is StakerTestBase {
+  /// @notice The mint reward notifier to test.
   MintRewardNotifier mintRewardNotifier;
 
   /// @notice Sets the reward amount, then calls the `notify` function that triggers token minting
   /// and reward distribution.
+  /// @param _amount The amount of reward to notify the staker contract.
   function _notifyRewardAmount(uint256 _amount) public override {
     address _owner = mintRewardNotifier.owner();
 
