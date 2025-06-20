@@ -481,10 +481,4 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
   {
     if (_owner != deposit.owner) revert Staker__Unauthorized("not owner", _owner);
   }
-
-  // function bumpEarningPower(
-  //     address _delegate,
-  //     address _tipReceiver,
-  //     uint256 _requestedTip
-  // ) external;
 }

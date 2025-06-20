@@ -133,6 +133,7 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   function getEarningPower(uint256 _amountStaked, address, /* _staker */ address _delegatee)
     external
     view
+    virtual
     returns (uint256)
   {
     if (_isOracleStale() || isOraclePaused) return _amountStaked;
@@ -145,7 +146,7 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     address, /* _staker */
     address _delegatee,
     uint256 /* _oldEarningPower */
-  ) external view returns (uint256, bool) {
+  ) external view virtual returns (uint256, bool) {
     if (_isOracleStale() || isOraclePaused) return (_amountStaked, true);
 
     if (!_isDelegateeEligible(_delegatee)) {
