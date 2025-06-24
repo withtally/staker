@@ -107,9 +107,6 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
   /// @notice ERC20 token in which rewards are denominated and distributed.
   IERC20 public immutable REWARD_TOKEN;
 
-  /// @notice Delegable governance token which users stake to earn rewards.
-  IERC20 public immutable STAKE_TOKEN;
-
   /// @notice Length of time over which rewards sent to this contract are distributed to stakers.
   uint256 public constant REWARD_DURATION = 30 days;
 
@@ -166,6 +163,18 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
 
   /// @notice Tracks the total earning power by a depositor across all unique deposits.
   mapping(address depositor => uint256 earningPower) public depositorTotalEarningPower;
+
+  constructor(
+    IERC20 _rewardToken,
+    IEarningPowerCalculator _earningPowerCalculator,
+    uint256 _maxBumpTip,
+    address _admin
+  ) {
+    REWARD_TOKEN = _rewardToken;
+    _setAdmin(_admin);
+    _setMaxBumpTip(_maxBumpTip);
+    _setEarningPowerCalculator(address(_earningPowerCalculator));
+  }
 
   /// @notice Set the admin address.
   /// @param _newAdmin Address of the new admin.
@@ -553,5 +562,5 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
     nextDepositId = DepositIdentifier.wrap(DepositIdentifier.unwrap(_depositId) + 1);
   }
 
-  function initializatDelegateReward(address _delegate) external virtual;
+  function initializeDelegateReward(address _delegate) external virtual;
 }
