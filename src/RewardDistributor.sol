@@ -9,8 +9,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 abstract contract RewardDistributor is INotifiableRewardReceiver {
   using SafeCast for uint256;
-  /// @notice A unique identifier assigned to each deposit.
 
+  /// @notice A unique identifier assigned to each deposit.
   type DepositIdentifier is uint256;
 
   struct DelegateReward {
@@ -50,6 +50,14 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
 
   /// @notice Thrown if a bumper's requested tip is invalid.
   error Staker__InvalidTip();
+
+  /// @notice Thrown if the following invariant is broken after a new reward: the contract should
+  /// always have a reward balance sufficient to distribute at the reward rate across the reward
+  /// duration.
+  error Staker__InsufficientRewardBalance();
+
+  /// @notice Emitted when this contract is notified of a new reward.
+  event RewardNotified(uint256 amount, address notifier);
 
   /// @notice Emitted when the admin address is set.
   event AdminSet(address indexed oldAdmin, address indexed newAdmin);
@@ -102,6 +110,9 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
   /// @notice Delegable governance token which users stake to earn rewards.
   IERC20 public immutable STAKE_TOKEN;
 
+  /// @notice Length of time over which rewards sent to this contract are distributed to stakers.
+  uint256 public constant REWARD_DURATION = 30 days;
+
   /// @notice Scale factor used in reward calculation math to reduce rounding errors caused by
   /// truncation during division.
   uint256 public constant SCALE_FACTOR = 1e36;
@@ -110,6 +121,9 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
   /// @dev For anything other than a zero value, this immutable parameter should be set in the
   /// constructor of a concrete implementation inheriting from Staker.
   uint256 public immutable MAX_CLAIM_FEE;
+
+  /// @dev Unique identifier that will be used for the next deposit.
+  DepositIdentifier private nextDepositId;
 
   /// @notice Permissioned actor that can enable/disable `rewardNotifier` addresses, set the max
   /// bump tip, set the claim fee parameters, and update the earning power calculator.
@@ -275,8 +289,9 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
 
     uint256 _unclaimedRewards = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
 
-    (uint256 _newEarningPower, bool _isQualifiedForBump) =
-      earningPowerCalculator.getNewEarningPower(0, deposit.owner, address(0), deposit.earningPower);
+    (uint256 _newEarningPower, bool _isQualifiedForBump) = earningPowerCalculator.getNewEarningPower(
+      0, deposit.owner, deposit.owner, deposit.earningPower
+    );
     if (!_isQualifiedForBump || _newEarningPower == deposit.earningPower) {
       revert Staker__Unqualified(_newEarningPower);
     }
@@ -373,7 +388,8 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
 
     // Updating the earning power here is not strictly necessary, but if the user is touching their
     // deposit anyway, it seems reasonable to make sure their earning power is up to date.
-    uint256 _newEarningPower = earningPowerCalculator.getEarningPower(0, deposit.owner, address(0));
+    uint256 _newEarningPower =
+      earningPowerCalculator.getEarningPower(0, deposit.owner, deposit.owner);
     totalEarningPower =
       _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
@@ -437,7 +453,8 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
     deposit.scaledUnclaimedRewardCheckpoint =
       deposit.scaledUnclaimedRewardCheckpoint - (_reward * SCALE_FACTOR);
 
-    uint256 _newEarningPower = earningPowerCalculator.getEarningPower(0, deposit.owner, address(0));
+    uint256 _newEarningPower =
+      earningPowerCalculator.getEarningPower(0, deposit.owner, deposit.owner);
 
     emit RewardClaimed(_depositId, _claimer, _payout, _newEarningPower);
 
@@ -481,4 +498,60 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
   {
     if (_owner != deposit.owner) revert Staker__Unauthorized("not owner", _owner);
   }
+
+  /// @notice Called by an authorized rewards notifier to alert the staking contract that a new
+  /// reward has been transferred to it. It is assumed that the reward has already been
+  /// transferred to this staking contract before the rewards notifier calls this method.
+  /// @param _amount Quantity of reward tokens the staking contract is being notified of.
+  /// @dev It is critical that only well behaved contracts are approved by the admin to call this
+  /// method, for two reasons.
+  ///
+  /// 1. A misbehaving contract could grief stakers by frequently notifying this contract of tiny
+  ///    rewards, thereby continuously stretching out the time duration over which real rewards are
+  ///    distributed. It is required that reward notifiers supply reasonable rewards at reasonable
+  ///    intervals.
+  //  2. A misbehaving contract could falsely notify this contract of rewards that were not actually
+  ///    distributed, creating a shortfall for those claiming their rewards after others. It is
+  ///    required that a notifier contract always transfers the `_amount` to this contract before
+  ///    calling this method.
+  function notifyRewardAmount(uint256 _amount) external virtual {
+    if (!isRewardNotifier[msg.sender]) revert Staker__Unauthorized("not notifier", msg.sender);
+
+    // We checkpoint the accumulator without updating the timestamp at which it was updated,
+    // because that second operation will be done after updating the reward rate.
+    rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
+
+    if (block.timestamp >= rewardEndTime) {
+      scaledRewardRate = (_amount * SCALE_FACTOR) / REWARD_DURATION;
+    } else {
+      uint256 _remainingReward = scaledRewardRate * (rewardEndTime - block.timestamp);
+      scaledRewardRate = (_remainingReward + _amount * SCALE_FACTOR) / REWARD_DURATION;
+    }
+
+    rewardEndTime = block.timestamp + REWARD_DURATION;
+    lastCheckpointTime = block.timestamp;
+
+    if ((scaledRewardRate / SCALE_FACTOR) == 0) revert Staker__InvalidRewardRate();
+
+    // This check cannot _guarantee_ sufficient rewards have been transferred to the contract,
+    // because it cannot isolate the unclaimed rewards owed to stakers left in the balance. While
+    // this check is useful for preventing degenerate cases, it is not sufficient. Therefore, it is
+    // critical that only safe reward notifier contracts are approved to call this method by the
+    // admin.
+    if (
+      (scaledRewardRate * REWARD_DURATION) > (REWARD_TOKEN.balanceOf(address(this)) * SCALE_FACTOR)
+    ) revert Staker__InsufficientRewardBalance();
+
+    emit RewardNotified(_amount, msg.sender);
+  }
+
+  /// @notice Internal method which generates and returns a unique, previously unused deposit
+  /// identifier.
+  /// @return _depositId Previously unused deposit identifier.
+  function _useDepositId() internal virtual returns (DepositIdentifier _depositId) {
+    _depositId = nextDepositId;
+    nextDepositId = DepositIdentifier.wrap(DepositIdentifier.unwrap(_depositId) + 1);
+  }
+
+  function initializatDelegateReward(address _delegate) external virtual;
 }
