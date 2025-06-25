@@ -65,7 +65,7 @@ contract RewardDistributorTest is RewardDistributorBase {
     RewardDistributor.DepositIdentifier _depositId = distributor.initializeDelegateReward(_scopeliftDelegate);
 
 	// Go through period
-	vm.roll(block.number + distributor.REWARD_DURATION());
+	vm.warp(block.timestamp + distributor.REWARD_DURATION());
 	uint256 _x = _votingPowerDistributor.getEarningPower(0, _scopeliftDelegate, _scopeliftDelegate);
 	distributor.delegateRewards(_depositId);
 	// Check that rewrd was earned

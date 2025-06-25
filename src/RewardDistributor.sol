@@ -108,7 +108,7 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
   IERC20 public immutable REWARD_TOKEN;
 
   /// @notice Length of time over which rewards sent to this contract are distributed to stakers.
-  uint256 public constant REWARD_DURATION = (30 * 24 * 60 * 60) / 12; // assuming 12 second blocks
+  uint256 public constant REWARD_DURATION = 30 days; // assuming 12 second blocks
 
   /// @notice Scale factor used in reward calculation math to reduce rounding errors caused by
   /// truncation during division.
@@ -221,8 +221,8 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
   /// at which the reward duration ended (because all rewards to date have already been streamed).
   /// @return Timestamp representing the last time at which rewards have been distributed.
   function lastTimeRewardDistributed() public view virtual returns (uint256) {
-    if (rewardEndTime <= block.number) return rewardEndTime;
-    else return block.number;
+    if (rewardEndTime <= block.timestamp) return rewardEndTime;
+    else return block.timestamp;
   }
 
   /// @notice Live value of the global reward per token accumulator. It is the sum of the last
@@ -530,15 +530,15 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
     // because that second operation will be done after updating the reward rate.
     rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
 
-    if (block.number >= rewardEndTime) {
+    if (block.timestamp >= rewardEndTime) {
       scaledRewardRate = (_amount * SCALE_FACTOR) / REWARD_DURATION;
     } else {
-      uint256 _remainingReward = scaledRewardRate * (rewardEndTime - block.number);
+      uint256 _remainingReward = scaledRewardRate * (rewardEndTime - block.timestamp);
       scaledRewardRate = (_remainingReward + _amount * SCALE_FACTOR) / REWARD_DURATION;
     }
 
-    rewardEndTime = block.number + REWARD_DURATION;
-    lastCheckpointTime = block.number ;
+    rewardEndTime = block.timestamp + REWARD_DURATION;
+    lastCheckpointTime = block.timestamp ;
 
     if ((scaledRewardRate / SCALE_FACTOR) == 0) revert Staker__InvalidRewardRate();
 
