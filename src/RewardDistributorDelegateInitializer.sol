@@ -7,7 +7,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 abstract contract RewardDistributorDelegateInitializer is RewardDistributor {
   using SafeCast for uint256;
 
-  function initializeDelegateReward(address _delegate) external virtual override {
+  function initializeDelegateReward(address _delegate) external virtual override returns (DepositIdentifier) {
     _checkpointGlobalReward();
 
     DepositIdentifier _depositId = _useDepositId();
@@ -16,6 +16,8 @@ abstract contract RewardDistributorDelegateInitializer is RewardDistributor {
     if (_delegateReward.owner != address(0)) revert();
 
     uint256 _earningPower = earningPowerCalculator.getEarningPower(0, _delegate, _delegate);
+    totalEarningPower += _earningPower;
+    depositorTotalEarningPower[_delegate] += _earningPower;
     delegateRewards[_depositId] = DelegateReward({
       earningPower: _earningPower.toUint96(),
       claimer: _delegate,
@@ -24,5 +26,6 @@ abstract contract RewardDistributorDelegateInitializer is RewardDistributor {
       scaledUnclaimedRewardCheckpoint: 0
     });
     // TODO: Add event
+	return _depositId;
   }
 }
