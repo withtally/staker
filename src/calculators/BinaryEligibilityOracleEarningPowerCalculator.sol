@@ -55,6 +55,12 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// @param newThreshold The new threshold value.
   event DelegateeEligibilityThresholdScoreSet(uint256 oldThreshold, uint256 newThreshold);
 
+  /// @notice The data structure accepted as an argument to `updateDelegateeScores`.
+  struct DelegateeScoreUpdate {
+    address delegatee;
+    uint256 newScore;
+  }
+
   /// @notice Error thrown when a non-score oracle address tries to call the `updateDelegateeScore`
   /// function.
   error BinaryEligibilityOracleEarningPowerCalculator__Unauthorized(bytes32 reason, address caller);
@@ -175,6 +181,33 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     }
     _updateDelegateeScore(_delegatee, _newScore);
     lastOracleUpdateTime = block.timestamp;
+  }
+
+  /// @notice Updates the eligibility scores of multiple delegatees in a single transaction.
+  /// @dev This function can only be called by the authorized `scoreOracle` address.
+  /// @dev If the oracle is paused, the update will be reverted.
+  /// @dev If any of the delegatees' scores is locked, the update will be reverted.
+  /// @dev Updates are processed sequentially. If the same delegatee appears multiple times in the
+  /// array, the last update will be applied.
+  /// @dev The `lastOracleUpdateTime` is only updated if the array contains at least one update.
+  /// @param _delegateeScoreUpdates An array of DelegateeScoreUpdate structs containing delegatee
+  /// addresses and their new scores.
+  function updateDelegateeScores(DelegateeScoreUpdate[] calldata _delegateeScoreUpdates) public {
+    if (msg.sender != scoreOracle) {
+      revert BinaryEligibilityOracleEarningPowerCalculator__Unauthorized("not oracle", msg.sender);
+    }
+    if (isOraclePaused) {
+      revert BinaryEligibilityOracleEarningPowerCalculator__DisallowedWhilePaused();
+    }
+    for (uint256 _i = 0; _i < _delegateeScoreUpdates.length; _i++) {
+      address _delegatee = _delegateeScoreUpdates[_i].delegatee;
+      uint256 _newScore = _delegateeScoreUpdates[_i].newScore;
+      if (delegateeScoreLockStatus[_delegatee]) {
+        revert BinaryEligibilityOracleEarningPowerCalculator__DelegateeScoreLocked(_delegatee);
+      }
+      _updateDelegateeScore(_delegatee, _newScore);
+    }
+    if (_delegateeScoreUpdates.length > 0) lastOracleUpdateTime = block.timestamp;
   }
 
   /// @notice Overrides the score of a delegatee and locks it.
