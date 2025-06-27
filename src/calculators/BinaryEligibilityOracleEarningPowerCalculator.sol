@@ -192,11 +192,9 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     _revertIfPaused();
     uint256 _delegateesLength = _delegateeScoreUpdates.length;
     for (uint256 _i = 0; _i < _delegateesLength; _i++) {
-      DelegateeScoreUpdate calldata update = _delegateeScoreUpdates[_i];
-      address _delegatee = update.delegatee;
-      uint256 _newScore = update.newScore;
-      _revertIfDelegateeScoreLocked(_delegatee);
-      _updateDelegateeScore(_delegatee, _newScore);
+      DelegateeScoreUpdate calldata _update = _delegateeScoreUpdates[_i];
+      _revertIfDelegateeScoreLocked(_update.delegatee);
+      _updateDelegateeScore(_update.delegatee, _update.newScore);
     }
     lastOracleUpdateTime = block.timestamp;
   }
