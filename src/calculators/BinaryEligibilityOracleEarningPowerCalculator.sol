@@ -170,15 +170,9 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// @param _delegatee The address of the delegatee whose score is being updated.
   /// @param _newScore The new score to be assigned to the delegatee.
   function updateDelegateeScore(address _delegatee, uint256 _newScore) public {
-    if (msg.sender != scoreOracle) {
-      revert BinaryEligibilityOracleEarningPowerCalculator__Unauthorized("not oracle", msg.sender);
-    }
-    if (delegateeScoreLockStatus[_delegatee]) {
-      revert BinaryEligibilityOracleEarningPowerCalculator__DelegateeScoreLocked(_delegatee);
-    }
-    if (isOraclePaused) {
-      revert BinaryEligibilityOracleEarningPowerCalculator__DisallowedWhilePaused();
-    }
+    _revertIfNotScoreOracle();
+    _revertIfPaused();
+    _revertIfDelegateeScoreLocked(_delegatee);
     _updateDelegateeScore(_delegatee, _newScore);
     lastOracleUpdateTime = block.timestamp;
   }
@@ -193,18 +187,14 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// @param _delegateeScoreUpdates An array of DelegateeScoreUpdate structs containing delegatee
   /// addresses and their new scores.
   function updateDelegateeScores(DelegateeScoreUpdate[] calldata _delegateeScoreUpdates) public {
-    if (msg.sender != scoreOracle) {
-      revert BinaryEligibilityOracleEarningPowerCalculator__Unauthorized("not oracle", msg.sender);
-    }
-    if (isOraclePaused) {
-      revert BinaryEligibilityOracleEarningPowerCalculator__DisallowedWhilePaused();
-    }
-    for (uint256 _i = 0; _i < _delegateeScoreUpdates.length; _i++) {
-      address _delegatee = _delegateeScoreUpdates[_i].delegatee;
-      uint256 _newScore = _delegateeScoreUpdates[_i].newScore;
-      if (delegateeScoreLockStatus[_delegatee]) {
-        revert BinaryEligibilityOracleEarningPowerCalculator__DelegateeScoreLocked(_delegatee);
-      }
+    _revertIfNotScoreOracle();
+    _revertIfPaused();
+    uint256 _delegateesLength = _delegateeScoreUpdates.length;
+    for (uint256 _i = 0; _i < _delegateesLength; _i++) {
+      DelegateeScoreUpdate calldata update = _delegateeScoreUpdates[_i];
+      address _delegatee = update.delegatee;
+      uint256 _newScore = update.newScore;
+      _revertIfDelegateeScoreLocked(_delegatee);
       _updateDelegateeScore(_delegatee, _newScore);
     }
     if (_delegateeScoreUpdates.length > 0) lastOracleUpdateTime = block.timestamp;
@@ -360,5 +350,27 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
       delegateeEligibilityThresholdScore, _newDelegateeScoreEligibilityThreshold
     );
     delegateeEligibilityThresholdScore = _newDelegateeScoreEligibilityThreshold;
+  }
+
+  /// @notice Internal function to revert when the function is not called by the score oracle.
+  function _revertIfNotScoreOracle() internal view {
+    if (msg.sender != scoreOracle) {
+      revert BinaryEligibilityOracleEarningPowerCalculator__Unauthorized("not oracle", msg.sender);
+    }
+  }
+
+  /// @notice Internal function to revert when the oracle is paused.
+  function _revertIfPaused() internal view {
+    if (isOraclePaused) {
+      revert BinaryEligibilityOracleEarningPowerCalculator__DisallowedWhilePaused();
+    }
+  }
+
+  /// @notice Internal function to revert when delegatee score is locked.
+  /// @param _delegatee The address of the delegatee whose score lock status is being checked.
+  function _revertIfDelegateeScoreLocked(address _delegatee) internal view {
+    if (delegateeScoreLockStatus[_delegatee]) {
+      revert BinaryEligibilityOracleEarningPowerCalculator__DelegateeScoreLocked(_delegatee);
+    }
   }
 }
