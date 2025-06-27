@@ -56,6 +56,8 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   event DelegateeEligibilityThresholdScoreSet(uint256 oldThreshold, uint256 newThreshold);
 
   /// @notice The data structure accepted as an argument to `updateDelegateeScores`.
+  /// @param delegatee The address of the delegatee whose score is being updated.
+  /// @param newScore The new score to be assigned to the delegatee.
   struct DelegateeScoreUpdate {
     address delegatee;
     uint256 newScore;
@@ -183,7 +185,6 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// @dev If any of the delegatees' scores is locked, the update will be reverted.
   /// @dev Updates are processed sequentially. If the same delegatee appears multiple times in the
   /// array, the last update will be applied.
-  /// @dev The `lastOracleUpdateTime` is only updated if the array contains at least one update.
   /// @param _delegateeScoreUpdates An array of DelegateeScoreUpdate structs containing delegatee
   /// addresses and their new scores.
   function updateDelegateeScores(DelegateeScoreUpdate[] calldata _delegateeScoreUpdates) public {
