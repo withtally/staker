@@ -51,7 +51,7 @@ abstract contract DelegateCompensationStaker is Staker {
     depositorTotalEarningPower[_delegate] += _earningPower;
     deposits[_depositId] = Deposit({
       balance: 0,
-      delegatee: address(0),
+      delegatee: _delegate, // so if used in earning power calculator it is the same
       earningPower: _earningPower.toUint96(),
       claimer: _delegate,
       owner: _delegate,
