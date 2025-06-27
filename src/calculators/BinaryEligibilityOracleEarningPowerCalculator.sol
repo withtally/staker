@@ -197,7 +197,7 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
       _revertIfDelegateeScoreLocked(_delegatee);
       _updateDelegateeScore(_delegatee, _newScore);
     }
-    if (_delegateeScoreUpdates.length > 0) lastOracleUpdateTime = block.timestamp;
+    lastOracleUpdateTime = block.timestamp;
   }
 
   /// @notice Overrides the score of a delegatee and locks it.
