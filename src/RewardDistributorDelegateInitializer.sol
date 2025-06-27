@@ -7,7 +7,12 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 abstract contract RewardDistributorDelegateInitializer is RewardDistributor {
   using SafeCast for uint256;
 
-  function initializeDelegateReward(address _delegate) external virtual override returns (DepositIdentifier) {
+  function initializeDelegateReward(address _delegate)
+    external
+    virtual
+    override
+    returns (DepositIdentifier)
+  {
     _checkpointGlobalReward();
 
     DepositIdentifier _depositId = _useDepositId();
@@ -26,6 +31,6 @@ abstract contract RewardDistributorDelegateInitializer is RewardDistributor {
       scaledUnclaimedRewardCheckpoint: 0
     });
     // TODO: Add event
-	return _depositId;
+    return _depositId;
   }
 }

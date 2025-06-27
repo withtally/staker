@@ -538,7 +538,7 @@ abstract contract RewardDistributor is INotifiableRewardReceiver {
     }
 
     rewardEndTime = block.timestamp + REWARD_DURATION;
-    lastCheckpointTime = block.timestamp ;
+    lastCheckpointTime = block.timestamp;
 
     if ((scaledRewardRate / SCALE_FACTOR) == 0) revert Staker__InvalidRewardRate();
 

@@ -84,7 +84,6 @@ contract BinaryVotingPowerEarningPowerCalculator is BinaryEligibilityOracleEarni
 
   // Add method to get the score at that rolling timepoint
   function _getVotingPowerTimepoint() internal view returns (uint48) {
-    return
-      uint48(block.number - ((block.number - UPDATE_START_TIME) % votingPowerUpdateFrequency));
+    return uint48(block.number - ((block.number - UPDATE_START_TIME) % votingPowerUpdateFrequency));
   }
 }
