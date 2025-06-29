@@ -788,7 +788,7 @@ contract PermitAndStake is StakerTest {
     vm.prank(_depositor);
     Staker.DepositIdentifier _depositId =
       govStaker.permitAndStake(_depositAmount, _delegatee, _claimer, _deadline, _v, _r, _s);
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    _fetchDeposit(_depositId);
   }
 
   function testFuzz_SuccessfullyStakeWhenApprovalExistsAndPermitSignatureIsInvalid(

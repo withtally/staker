@@ -2,9 +2,12 @@
 pragma solidity ^0.8.23;
 
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
-import {DelegateCompensationStakerHarness} from "../test/harnesses/DelegateCompensationStakerHarness.sol";
+import {DelegateCompensationStakerHarness} from
+  "../test/harnesses/DelegateCompensationStakerHarness.sol";
 import {BinaryVotingPowerEarningPowerCalculator} from
   "../../src/calculators/BinaryVotingPowerEarningPowerCalculator.sol";
+import {BinaryEligibilityOracleEarningPowerCalculator} from
+  "../../src/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
 import {Staker} from "../../src/Staker.sol";
 import {DelegateCompensationStaker} from "../../src/DelegateCompensationStaker.sol";
 
@@ -41,16 +44,16 @@ contract DelegateCompensationStakerBaseTest is DelegateCompensationStakerBase {
     address _scopeliftDelegate = 0x7C4b6f39D62Ca59ED3a4EFD4c347E23417ec5d5f;
 
     vm.createSelectFork(vm.rpcUrl("mainnet"), 22_773_964); // this needs to be changed
-    BinaryVotingPowerEarningPowerCalculator _votingPowerDistributor = new
-BinaryVotingPowerEarningPowerCalculator(
+    BinaryEligibilityOracleEarningPowerCalculator _binaryEarningPowerCalculator = new BinaryEligibilityOracleEarningPowerCalculator(
       _owner,
       _scoreOracle,
       _staleOracleWindow,
       _oraclePauseGuardian,
       _delegateeScoreEligibilityThreshold,
-      _updateEligibilityDelay,
-      _votingPowerUpdateFrequency,
-      _votingPowerToken
+      _updateEligibilityDelay
+    );
+    BinaryVotingPowerEarningPowerCalculator _votingPowerDistributor = new BinaryVotingPowerEarningPowerCalculator(
+      _owner, address(_binaryEarningPowerCalculator), _votingPowerToken, _votingPowerUpdateFrequency
     );
     delegateCompensation = new DelegateCompensationStakerHarness(
       IERC20(_votingPowerToken), _votingPowerDistributor, _maxBumpTip, _admin

@@ -5,6 +5,8 @@ import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Te
 import {RewardDistributorHarness} from "../test/harnesses/RewardDistributorHarness.sol";
 import {BinaryVotingPowerEarningPowerCalculator} from
   "../../src/calculators/BinaryVotingPowerEarningPowerCalculator.sol";
+import {BinaryEligibilityOracleEarningPowerCalculator} from
+  "../../src/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
 import {RewardDistributor} from "../../src/RewardDistributor.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -40,16 +42,19 @@ contract RewardDistributorTest is RewardDistributorBase {
     address _scopeliftDelegate = 0x7C4b6f39D62Ca59ED3a4EFD4c347E23417ec5d5f;
 
     vm.createSelectFork(vm.rpcUrl("mainnet"), 22_773_964); // this needs to be changed
-    BinaryVotingPowerEarningPowerCalculator _votingPowerDistributor = new BinaryVotingPowerEarningPowerCalculator(
+    BinaryEligibilityOracleEarningPowerCalculator _binaryEarningPowerCalculator = new BinaryEligibilityOracleEarningPowerCalculator(
       _owner,
       _scoreOracle,
       _staleOracleWindow,
       _oraclePauseGuardian,
       _delegateeScoreEligibilityThreshold,
-      _updateEligibilityDelay,
-      _votingPowerUpdateFrequency,
-      _votingPowerToken
+      _updateEligibilityDelay
     );
+
+    BinaryVotingPowerEarningPowerCalculator _votingPowerDistributor = new BinaryVotingPowerEarningPowerCalculator(
+      _owner, address(_binaryEarningPowerCalculator), _votingPowerToken, _votingPowerUpdateFrequency
+    );
+
     distributor = new RewardDistributorHarness(
       IERC20(_votingPowerToken), _votingPowerDistributor, _maxBumpTip, _admin
     );
@@ -66,7 +71,6 @@ contract RewardDistributorTest is RewardDistributorBase {
 
     // Go through period
     vm.warp(block.timestamp + distributor.REWARD_DURATION());
-    uint256 _x = _votingPowerDistributor.getEarningPower(0, _scopeliftDelegate, _scopeliftDelegate);
     distributor.delegateRewards(_depositId);
     // Check that rewrd was earned
     assertLteWithinOneUnit(distributor.unclaimedReward(_depositId), 100e18);
