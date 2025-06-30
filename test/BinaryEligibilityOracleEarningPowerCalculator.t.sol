@@ -589,7 +589,11 @@ contract UpdateDelegateeScore is EarningPowerCalculatorTest {
 }
 
 contract UpdateDelegateeScores is EarningPowerCalculatorTest {
-  function test_EmptyDelegateeUpdateArrayIsNoOp() public {
+  function testFuzz_EmptyDelegateeUpdateArrayOnlyBumpsLastOracleUpdateTime(uint256 _randomTimestamp)
+    public
+  {
+    vm.warp(_randomTimestamp);
+
     EarningPowerCalculator.DelegateeScoreUpdate[] memory _updates =
       new EarningPowerCalculator.DelegateeScoreUpdate[](0);
 
@@ -598,7 +602,7 @@ contract UpdateDelegateeScores is EarningPowerCalculatorTest {
     vm.prank(scoreOracle);
     calculator.updateDelegateeScores(_updates);
 
-    assertEq(calculator.lastOracleUpdateTime(), 1);
+    assertEq(calculator.lastOracleUpdateTime(), _randomTimestamp);
     assertEq(entries.length, 0);
   }
 
