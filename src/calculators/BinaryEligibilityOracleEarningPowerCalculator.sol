@@ -165,6 +165,23 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     return (_amountStaked, true);
   }
 
+  /// @notice Determines if a delegatee is eligible based on their score.
+  /// @dev A delegatee is considered eligible if their score is greater than or equal to the
+  /// eligibility threshold.
+  /// @param _delegatee The address of the delegatee to check.
+  /// @return bool Returns true if the delegatee is eligible, false otherwise.
+  function isDelegateeEligible(address _delegatee) external view returns (bool) {
+    return _isDelegateeEligible(_delegatee);
+  }
+
+  /// @notice Checks if the oracle's last update is considered stale.
+  /// @dev An oracle is considered stale if the time since its last update exceeds the
+  /// STALE_ORACLE_WINDOW.
+  /// @return bool Returns true if the oracle is stale, false otherwise.
+  function isOracleStale() external view returns (bool) {
+    return _isOracleStale();
+  }
+
   /// @notice Updates the eligibility score of a delegatee.
   /// @dev This function can only be called by the authorized `scoreOracle` address.
   /// @dev If the delegatee's score is locked, the update will be reverted.
@@ -286,7 +303,7 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     _setOraclePauseGuardian(_newOraclePauseGuardian);
   }
 
-  /// @notice Checks if the oracle's last update is considered stale.
+  /// @notice Internal function that checks if the oracle's last update is considered stale.
   /// @dev An oracle is considered stale if the time since its last update exceeds the
   /// STALE_ORACLE_WINDOW.
   /// @return bool Returns true if the oracle is stale, false otherwise.
@@ -294,7 +311,7 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
     return block.timestamp - lastOracleUpdateTime > STALE_ORACLE_WINDOW;
   }
 
-  /// @notice Determines if a delegatee is eligible based on their score.
+  /// @notice Internal function that determines if a delegatee is eligible based on their score.
   /// @dev A delegatee is considered eligible if their score is greater than or equal to the
   /// eligibility threshold.
   /// @param _delegatee The address of the delegatee to check.
