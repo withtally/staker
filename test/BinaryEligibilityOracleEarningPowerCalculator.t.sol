@@ -1145,11 +1145,9 @@ contract IsOracleStale is EarningPowerCalculatorTest {
     vm.warp(block.timestamp + staleOracleWindow + 1);
     assertTrue(calculator.isOracleStale());
 
-    // Update score, which should reset lastOracleUpdateTime
     vm.prank(scoreOracle);
     calculator.updateDelegateeScore(_delegatee, _score);
 
-    // Oracle should no longer be stale
     assertFalse(calculator.isOracleStale());
   }
 
