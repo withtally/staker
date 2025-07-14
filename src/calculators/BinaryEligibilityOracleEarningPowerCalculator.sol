@@ -202,6 +202,8 @@ contract BinaryEligibilityOracleEarningPowerCalculator is Ownable, IEarningPower
   /// @dev If any of the delegatees' scores is locked, the update will be reverted.
   /// @dev Updates are processed sequentially. If the same delegatee appears multiple times in the
   /// array, the last update will be applied.
+  /// @dev An empty array can be passed in by the oracle in order to update the
+  /// `lastOracleUpdateTime` keeping the oracle fresh without updating any scores.
   /// @param _delegateeScoreUpdates An array of DelegateeScoreUpdate structs containing delegatee
   /// addresses and their new scores.
   function updateDelegateeScores(DelegateeScoreUpdate[] calldata _delegateeScoreUpdates) public {
