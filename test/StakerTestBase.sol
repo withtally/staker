@@ -7,7 +7,7 @@ import {DelegationSurrogate} from "../src/DelegationSurrogate.sol";
 import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
 import {ERC20Fake} from "./fakes/ERC20Fake.sol";
 import {MockFullEarningPowerCalculator} from "./mocks/MockFullEarningPowerCalculator.sol";
-import {PercentAssertions} from "./helpers/PercentAssertions.sol";
+import {PercentAssertions} from "../src/test/helpers/PercentAssertions.sol";
 
 // Base utilities that can be used for testing concrete Staker implementations. Steps:
 // 1. Create a test file that inherits from StakerTestBase
