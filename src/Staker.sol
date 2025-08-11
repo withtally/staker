@@ -6,8 +6,9 @@ import {INotifiableRewardReceiver} from "./interfaces/INotifiableRewardReceiver.
 import {IEarningPowerCalculator} from "./interfaces/IEarningPowerCalculator.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {MulticallUpgradeable} from
+  "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 
 /// @title Staker
 /// @author [ScopeLift](https://scopelift.co)
@@ -34,7 +35,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 /// the Staker contract is a DAO, which is the expected common case, this means the DAO has
 /// the ability to define and iterate on its own definition of active, aligned participation,
 /// and to decide how to reward it.
-abstract contract Staker is INotifiableRewardReceiver, Multicall {
+abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
   using SafeCast for uint256;
 
   /// @notice A unique identifier assigned to each deposit.
@@ -188,11 +189,57 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     address feeCollector;
   }
 
-  /// @notice ERC20 token in which rewards are denominated and distributed.
-  IERC20 public immutable REWARD_TOKEN;
+  struct StakerStorage {
+    /// @notice ERC20 token in which rewards are denominated and distributed.
+    IERC20 _rewardToken;
+    /// @notice Delegable governance token which users stake to earn rewards.
+    IERC20 _stakeToken;
+    /// @notice The maximum value to which the claim fee can be set.
+    /// @dev For anything other than a zero value, this immutable parameter should be set in the
+    /// constructor of a concrete implementation inheriting from Staker.
+    uint256 _maxClaimFee;
+    /// @dev Unique identifier that will be used for the next deposit.
+    DepositIdentifier _nextDepositId;
+    /// @notice Permissioned actor that can enable/disable `rewardNotifier` addresses, set the max
+    /// bump tip, set the claim fee parameters, and update the earning power calculator.
+    address _admin;
+    /// @notice Maximum tip a bumper can request.
+    uint256 _maxBumpTip;
+    /// @notice Global amount currently staked across all deposits.
+    uint256 _totalStaked;
+    /// @notice Global amount of earning power for all deposits.
+    uint256 _totalEarningPower;
+    /// @notice Contract that determines a deposit's earning power based on their delegatee.
+    /// @dev An earning power calculator should take into account that a deposit's earning power is
+    /// a
+    /// uint96. There may be overflow issues within governance staker if this is not taken into
+    /// account. Also, there should be some mechanism to prevent the deposit from frequently being
+    /// bumpable: if earning power changes frequently, this will eat into a users unclaimed rewards.
+    IEarningPowerCalculator _earningPowerCalculator;
+    /// @notice Tracks the total staked by a depositor across all unique deposits.
+    mapping(address depositor => uint256 amount) _depositorTotalStaked;
+    /// @notice Tracks the total earning power by a depositor across all unique deposits.
+    mapping(address depositor => uint256 earningPower) _depositorTotalEarningPower;
+    /// @notice Stores the metadata associated with a given deposit.
+    mapping(DepositIdentifier depositId => Deposit deposit) _deposits;
+    /// @notice Time at which rewards distribution will complete if there are no new rewards.
+    uint256 _rewardEndTime;
+    /// @notice Last time at which the global rewards accumulator was updated.
+    uint256 _lastCheckpointTime;
+    /// @notice Global rate at which rewards are currently being distributed to stakers,
+    /// denominated in scaled reward tokens per second, using the SCALE_FACTOR.
+    uint256 _scaledRewardRate;
+    /// @notice Checkpoint value of the global reward per token accumulator.
+    uint256 _rewardPerTokenAccumulatedCheckpoint;
+    /// @notice Maps addresses to whether they are authorized to call `notifyRewardAmount`.
+    mapping(address rewardNotifier => bool) _isRewardNotifier;
+    /// @notice Current configuration parameters for the fee assessed on claiming.
+    ClaimFeeParameters _claimFeeParameters;
+  }
+  // keccak256(abi.encode(uint256(keccak256("storage.Staker")) - 1)) &~bytes32(uint256(0xff))
 
-  /// @notice Delegable governance token which users stake to earn rewards.
-  IERC20 public immutable STAKE_TOKEN;
+  bytes32 private constant STAKER_STORAGE_LOCATION =
+    0x587a86d9af0b7e1804e53a546ebb2307f72c0e29a89678476433276515d51100;
 
   /// @notice Length of time over which rewards sent to this contract are distributed to stakers.
   uint256 public constant REWARD_DURATION = 30 days;
@@ -200,62 +247,6 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Scale factor used in reward calculation math to reduce rounding errors caused by
   /// truncation during division.
   uint256 public constant SCALE_FACTOR = 1e36;
-
-  /// @notice The maximum value to which the claim fee can be set.
-  /// @dev For anything other than a zero value, this immutable parameter should be set in the
-  /// constructor of a concrete implementation inheriting from Staker.
-  uint256 public immutable MAX_CLAIM_FEE;
-
-  /// @dev Unique identifier that will be used for the next deposit.
-  DepositIdentifier private nextDepositId;
-
-  /// @notice Permissioned actor that can enable/disable `rewardNotifier` addresses, set the max
-  /// bump tip, set the claim fee parameters, and update the earning power calculator.
-  address public admin;
-
-  /// @notice Maximum tip a bumper can request.
-  uint256 public maxBumpTip;
-
-  /// @notice Global amount currently staked across all deposits.
-  uint256 public totalStaked;
-
-  /// @notice Global amount of earning power for all deposits.
-  uint256 public totalEarningPower;
-
-  /// @notice Contract that determines a deposit's earning power based on their delegatee.
-  /// @dev An earning power calculator should take into account that a deposit's earning power is a
-  /// uint96. There may be overflow issues within governance staker if this is not taken into
-  /// account. Also, there should be some mechanism to prevent the deposit from frequently being
-  /// bumpable: if earning power changes frequently, this will eat into a users unclaimed rewards.
-  IEarningPowerCalculator public earningPowerCalculator;
-
-  /// @notice Tracks the total staked by a depositor across all unique deposits.
-  mapping(address depositor => uint256 amount) public depositorTotalStaked;
-
-  /// @notice Tracks the total earning power by a depositor across all unique deposits.
-  mapping(address depositor => uint256 earningPower) public depositorTotalEarningPower;
-
-  /// @notice Stores the metadata associated with a given deposit.
-  mapping(DepositIdentifier depositId => Deposit deposit) public deposits;
-
-  /// @notice Time at which rewards distribution will complete if there are no new rewards.
-  uint256 public rewardEndTime;
-
-  /// @notice Last time at which the global rewards accumulator was updated.
-  uint256 public lastCheckpointTime;
-
-  /// @notice Global rate at which rewards are currently being distributed to stakers,
-  /// denominated in scaled reward tokens per second, using the SCALE_FACTOR.
-  uint256 public scaledRewardRate;
-
-  /// @notice Checkpoint value of the global reward per token accumulator.
-  uint256 public rewardPerTokenAccumulatedCheckpoint;
-
-  /// @notice Maps addresses to whether they are authorized to call `notifyRewardAmount`.
-  mapping(address rewardNotifier => bool) public isRewardNotifier;
-
-  /// @notice Current configuration parameters for the fee assessed on claiming.
-  ClaimFeeParameters public claimFeeParameters;
 
   /// @param _rewardToken ERC20 token in which rewards will be denominated.
   /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
@@ -272,6 +263,40 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   ) {
     REWARD_TOKEN = _rewardToken;
     STAKE_TOKEN = _stakeToken;
+    _setAdmin(_admin);
+    _setMaxBumpTip(_maxBumpTip);
+    _setEarningPowerCalculator(address(_earningPowerCalculator));
+  }
+
+  function _getStakerStorage() private pure returns (StakerStorage storage $) {
+    assembly {
+      $.slot := STAKER_STORAGE_LOCATION
+    }
+  }
+
+  function __Staker_init(
+    IERC20 _rewardToken,
+    IERC20 _stakeToken,
+    uint256 _maxClaimFee,
+    address _admin,
+    uint256 _maxBumpTip,
+    IEarningPowerCalculator _earningPowerCalculator
+  ) internal onlyInitializing {
+    __Staker_init_unchained(_rewardToken, _stakeToken);
+  }
+
+  function __Staker_init_unchained(
+    IERC20 _rewardToken,
+    IERC20 _stakeToken,
+    uint256 _maxClaimFee,
+    address _admin,
+    uint256 _maxBumpTip,
+    IEarningPowerCalculator _earningPowerCalculator
+  ) internal onlyInitializing {
+    StakerStorage storage $ = _getStakerStorage();
+    $._rewardToken = IERC20(address(_rewardToken));
+    $._stakeToken = IERC20(address(_stakeToken));
+    $._maxClaimFee = _maxClaimFee;
     _setAdmin(_admin);
     _setMaxBumpTip(_maxBumpTip);
     _setEarningPowerCalculator(address(_earningPowerCalculator));
