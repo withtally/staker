@@ -21,11 +21,30 @@ abstract contract StakerCapDeposits is Staker {
   /// cap.
   error StakerCapDeposits__CapExceeded();
 
+  struct StakerCapDepositsStorage {
   /// @notice The maximum total amount of tokens that can be staked across all deposits.
-  uint256 public totalStakeCap;
+  uint256 _totalStakeCap;
+  }
+
+  // keccak256(abi.encode(uint256(keccak256("storage.StakerCapDeposits")) - 1)) &~bytes32(uint256(0xff))
+  bytes32 private constant STAKER_CAP_DEPOSITS_STORAGE_LOCATION = 0x46a81a56bebd29f7ac25bcccfeb503450824f0cb51e1dc37a6009eb410111900;
 
   /// @param _initialTotalStakeCap The initial maximum total stake allowed.
   constructor(uint256 _initialTotalStakeCap) {
+    _setTotalStakeCap(_initialTotalStakeCap);
+  }
+
+  function _getStakerCapDepositsStorage() private pure returns (StakerCapDepositsStorage storage $) {
+    assembly {
+      $.slot := STAKER_CAP_DEPOSITS_STORAGE_LOCATION
+    }
+  }
+
+  function __StakerCapDeposits_init(uint256 _initialTotalStakeCap) internal onlyInitializing {
+    __StakerCapDeposits_init_unchained(_initialTotalStakeCap);
+  }
+
+  function __StakerCapDeposits_init_unchained(uint256 _initialTotalStakeCap) internal onlyInitializing {
     _setTotalStakeCap(_initialTotalStakeCap);
   }
 
@@ -37,11 +56,18 @@ abstract contract StakerCapDeposits is Staker {
     _setTotalStakeCap(_newTotalStakeCap);
   }
 
+  /// @notice The maximum total amount of tokens that can be staked across all deposits.
+  function totalStakeCap() public view returns (uint256) {
+    StakerCapDepositsStorage storage $ = _getStakerCapDepositsStorage();
+    return $._totalStakeCap;
+  }
+
   /// @notice Internal helper method which sets a new total stake cap.
   /// @param _newTotalStakeCap The new maximum total stake allowed.
   function _setTotalStakeCap(uint256 _newTotalStakeCap) internal {
-    emit TotalStakeCapSet(totalStakeCap, _newTotalStakeCap);
-    totalStakeCap = _newTotalStakeCap;
+    StakerCapDepositsStorage storage $ = _getStakerCapDepositsStorage();
+    emit TotalStakeCapSet($._totalStakeCap, _newTotalStakeCap);
+    $._totalStakeCap = _newTotalStakeCap;
   }
 
   /// @inheritdoc Staker
@@ -73,6 +99,7 @@ abstract contract StakerCapDeposits is Staker {
   /// @dev Reverts with StakerCapDeposits__CapExceeded if the amount would cause total stake to
   /// exceed the cap.
   function _revertIfCapExceeded(uint256 _amount) internal view virtual {
-    if ((totalStaked + _amount) > totalStakeCap) revert StakerCapDeposits__CapExceeded();
+    StakerCapDepositsStorage storage $ = _getStakerCapDepositsStorage();
+    if ((totalStaked() + _amount) > $._totalStakeCap) revert StakerCapDeposits__CapExceeded();
   }
 }
