@@ -31,7 +31,7 @@ contract StakerHarness is
     StakerDelegateSurrogateVotes(_stakeToken)
     EIP712(_name, "1")
   {
-    MAX_CLAIM_FEE = 1e18;
+    _setMaxClaimFee(1e18);
     _setClaimFeeParameters(ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)}));
   }
 

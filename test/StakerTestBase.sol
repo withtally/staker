@@ -143,15 +143,14 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     view
     returns (Staker.Deposit memory)
   {
-    (
-      uint96 _balance,
-      address _owner,
-      uint96 _earningPower,
-      address _delegatee,
-      address _claimer,
-      uint256 _rewardPerTokenCheckpoint,
-      uint256 _scaledUnclaimedRewardCheckpoint
-    ) = baseStaker.deposits(_depositId);
+    Staker.Deposit memory _deposit = baseStaker.deposits(_depositId);
+    uint96 _balance = _deposit.balance;
+    address _owner = _deposit.owner;
+    uint96 _earningPower = _deposit.earningPower;
+    address _delegatee = _deposit.delegatee;
+    address _claimer = _deposit.claimer;
+    uint256 _rewardPerTokenCheckpoint = _deposit.rewardPerTokenCheckpoint;
+    uint256 _scaledUnclaimedRewardCheckpoint = _deposit.scaledUnclaimedRewardCheckpoint;
     return Staker.Deposit({
       balance: _balance,
       owner: _owner,

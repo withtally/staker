@@ -27,7 +27,7 @@ contract MockStakerHarness is Staker, StakerPermitAndStake, StakerDelegateSurrog
     StakerPermitAndStake(_permitAndStakeStakeToken)
     StakerDelegateSurrogateVotes(_delegateSurrogateVotesStakeToken)
   {
-    MAX_CLAIM_FEE = 1e18;
+    _setMaxClaimFee(1e18);
     _setClaimFeeParameters(ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)}));
   }
 

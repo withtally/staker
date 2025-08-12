@@ -132,7 +132,8 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
     vm.assume(_depositIds[_currentActor].length > 0);
     Staker.DepositIdentifier _depositId =
       Staker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
-    (uint256 _balance,,,,,,) = govStaker.deposits(_depositId);
+    Staker.Deposit memory _deposit = govStaker.deposits(_depositId);
+    uint256 _balance = _deposit.balance;
     _amount = uint256(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
     stakeToken.approve(address(govStaker), _amount);
@@ -151,7 +152,8 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
     vm.assume(_depositIds[_currentActor].length > 0);
     Staker.DepositIdentifier _depositId =
       Staker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
-    (uint256 _balance,,,,,,) = govStaker.deposits(_depositId);
+    Staker.Deposit memory _deposit = govStaker.deposits(_depositId);
+    uint256 _balance = _deposit.balance;
     _amount = uint256(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
     govStaker.withdraw(_depositId, _amount);

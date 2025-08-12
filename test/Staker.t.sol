@@ -676,7 +676,7 @@ contract Stake is StakerTest {
     (, Staker.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _depositor);
 
-    (,, uint96 _actualEarningPower,,,,) = govStaker.deposits(_depositId);
+    uint96 _actualEarningPower = govStaker.deposits(_depositId).earningPower;
     uint256 _expectedEarningPower = (_stakeAmount * _multiplierBips) / 10_000;
     assertEq(_actualEarningPower, _expectedEarningPower);
   }
@@ -694,7 +694,7 @@ contract Stake is StakerTest {
     (, Staker.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _depositor);
 
-    (,, uint96 _actualEarningPower,,,,) = govStaker.deposits(_depositId);
+    uint96 _actualEarningPower = govStaker.deposits(_depositId).earningPower;
     assertEq(_actualEarningPower, _fixedEarningPower);
   }
 }
@@ -1191,7 +1191,7 @@ contract StakeMore is StakerTest {
     govStaker.stakeMore(_depositId, _addAmount);
     vm.stopPrank();
 
-    (,, uint96 _actualEarningPower,,,,) = govStaker.deposits(_depositId);
+    uint96 _actualEarningPower = govStaker.deposits(_depositId).earningPower;
     uint256 _expectedEarningPower = ((_depositAmount + _addAmount) * _multiplierBips) / 10_000;
     assertEq(_actualEarningPower, _expectedEarningPower);
   }
@@ -1216,7 +1216,7 @@ contract StakeMore is StakerTest {
     govStaker.stakeMore(_depositId, _addAmount);
     vm.stopPrank();
 
-    (,, uint96 _actualEarningPower,,,,) = govStaker.deposits(_depositId);
+    uint96 _actualEarningPower = govStaker.deposits(_depositId).earningPower;
     assertEq(_actualEarningPower, _fixedEarningPower);
   }
 
@@ -2464,7 +2464,9 @@ contract SetClaimFeeParameters is StakerTest {
     vm.prank(admin);
     govStaker.setClaimFeeParameters(_newParams);
 
-    (uint96 _feeAmount, address _feeCollector) = govStaker.claimFeeParameters();
+    Staker.ClaimFeeParameters memory _feeParams = govStaker.claimFeeParameters();
+    uint96 _feeAmount = _feeParams.feeAmount;
+    address _feeCollector = _feeParams.feeCollector;
     assertEq(_feeAmount, _newParams.feeAmount);
     assertEq(_feeCollector, _newParams.feeCollector);
   }
@@ -2486,7 +2488,9 @@ contract SetClaimFeeParameters is StakerTest {
     vm.prank(admin);
     govStaker.setClaimFeeParameters(_zeroParams);
 
-    (uint96 _feeAmount, address _feeCollector) = govStaker.claimFeeParameters();
+    Staker.ClaimFeeParameters memory _feeParams = govStaker.claimFeeParameters();
+    uint96 _feeAmount = _feeParams.feeAmount;
+    address _feeCollector = _feeParams.feeCollector;
     assertEq(_feeAmount, 0);
     assertEq(_feeCollector, address(0));
   }
@@ -2891,7 +2895,7 @@ contract BumpEarningPower is StakerRewardsTest {
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
 
-    (,, uint96 _newEarningPower,,,,) = govStaker.deposits(_depositId);
+    uint96 _newEarningPower = govStaker.deposits(_depositId).earningPower;
     assertEq(_newEarningPower, _stakeAmount + _earningPowerIncrease);
   }
 
@@ -3120,7 +3124,7 @@ contract BumpEarningPower is StakerRewardsTest {
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
 
-    (,, uint96 _newEarningPower,,,,) = govStaker.deposits(_depositId);
+    uint96 _newEarningPower = govStaker.deposits(_depositId).earningPower;
     assertEq(_newEarningPower, _stakeAmount - _earningPowerDecrease);
   }
 
@@ -3545,7 +3549,7 @@ contract BumpEarningPower is StakerRewardsTest {
     govStaker.bumpEarningPower(depositId, _depositor, 0);
 
     // Verify the earning power update
-    (,, uint96 actualEarningPower,,,,) = govStaker.deposits(depositId);
+    uint96 actualEarningPower = govStaker.deposits(depositId).earningPower;
     uint256 expectedEarningPower = (_stakeAmount * _multiplierBips) / 10_000;
     assertEq(actualEarningPower, expectedEarningPower, "Earning power should be updated");
   }
@@ -5447,12 +5451,11 @@ contract Multicall is StakerRewardsTest {
     govStaker.multicall(_calls);
     vm.stopPrank();
 
-    (uint96 _amountResult,,, address _delegateeResult, address _claimerResult,,) =
-      govStaker.deposits(_depositId);
+    Staker.Deposit memory _depositResult = govStaker.deposits(_depositId);
     assertEq(govStaker.depositorTotalStaked(_depositor), _stakeAmount0 + _stakeAmount1);
     assertEq(govStaker.depositorTotalEarningPower(_depositor), _stakeAmount0 + _stakeAmount1);
-    assertEq(_amountResult, _stakeAmount0 + _stakeAmount1);
-    assertEq(_delegateeResult, _delegatee1);
-    assertEq(_claimerResult, _claimer1);
+    assertEq(_depositResult.balance, _stakeAmount0 + _stakeAmount1);
+    assertEq(_depositResult.delegatee, _delegatee1);
+    assertEq(_depositResult.claimer, _claimer1);
   }
 }

@@ -1023,6 +1023,14 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
     $._claimFeeParameters = _params;
   }
 
+  /// @notice Internal helper method to set the max claim fee.
+  /// @param _maxClaimFee The maximum claim fee value.
+  /// @dev This should only be called in constructors of concrete implementations.
+  function _setMaxClaimFee(uint256 _maxClaimFee) internal virtual {
+    StakerStorage storage $ = _getStakerStorage();
+    $._maxClaimFee = _maxClaimFee;
+  }
+
   /// @notice Internal helper method which reverts Staker__Unauthorized if the message
   /// sender is not the admin.
   function _revertIfNotAdmin() internal view virtual {
