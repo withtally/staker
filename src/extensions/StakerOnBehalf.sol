@@ -114,7 +114,7 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
     uint256 _deadline,
     bytes memory _signature
   ) external virtual {
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, _depositor);
     _revertIfPastDeadline(_deadline);
     _revertIfSignatureIsNotValidNow(
@@ -147,7 +147,7 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
     uint256 _deadline,
     bytes memory _signature
   ) external virtual {
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, _depositor);
     _revertIfPastDeadline(_deadline);
     _revertIfSignatureIsNotValidNow(
@@ -186,7 +186,7 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
     uint256 _deadline,
     bytes memory _signature
   ) external virtual {
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, _depositor);
     _revertIfPastDeadline(_deadline);
     _revertIfSignatureIsNotValidNow(
@@ -224,7 +224,7 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
     uint256 _deadline,
     bytes memory _signature
   ) external virtual {
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, _depositor);
     _revertIfPastDeadline(_deadline);
     _revertIfSignatureIsNotValidNow(
@@ -255,7 +255,7 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
     bytes memory _signature
   ) external virtual returns (uint256) {
     _revertIfPastDeadline(_deadline);
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     bytes32 _claimerHash = _hashTypedDataV4(
       keccak256(abi.encode(CLAIM_REWARD_TYPEHASH, _depositId, nonces(deposit.claimer), _deadline))
     );

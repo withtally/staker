@@ -499,6 +499,14 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
     return $._nextDepositId;
   }
 
+  /// @notice Internal helper to get a deposit in storage.
+  /// @param _depositId The identifier of the deposit.
+  /// @return The deposit in storage.
+  function _getDeposit(DepositIdentifier _depositId) internal view virtual returns (Deposit storage) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._deposits[_depositId];
+  }
+
   /// @notice Stake tokens to a new deposit. The caller must pre-approve the staking contract to
   /// spend at least the would-be staked amount of the token.
   /// @param _amount The amount of the staking token to stake.

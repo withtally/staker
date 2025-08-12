@@ -18,7 +18,7 @@ abstract contract StakerPermitAndStake is Staker {
   /// @param _permitToken The token that is used for staking, which must support EIP-2612. It also
   /// must be the same as the parent Staker's STAKE_TOKEN.
   constructor(IERC20Permit _permitToken) {
-    if (address(STAKE_TOKEN) != address(_permitToken)) {
+    if (address(STAKE_TOKEN()) != address(_permitToken)) {
       revert StakerPermitAndStake__UnauthorizedToken();
     }
   }
@@ -45,7 +45,7 @@ abstract contract StakerPermitAndStake is Staker {
     bytes32 _r,
     bytes32 _s
   ) external virtual returns (DepositIdentifier _depositId) {
-    try IERC20Permit(address(STAKE_TOKEN)).permit(
+    try IERC20Permit(address(STAKE_TOKEN())).permit(
       msg.sender, address(this), _amount, _deadline, _v, _r, _s
     ) {} catch {}
     _depositId = _stake(msg.sender, _amount, _delegatee, _claimer);
@@ -70,10 +70,10 @@ abstract contract StakerPermitAndStake is Staker {
     bytes32 _r,
     bytes32 _s
   ) external virtual {
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, msg.sender);
 
-    try IERC20Permit(address(STAKE_TOKEN)).permit(
+    try IERC20Permit(address(STAKE_TOKEN())).permit(
       msg.sender, address(this), _amount, _deadline, _v, _r, _s
     ) {} catch {}
     _stakeMore(deposit, _depositId, _amount);

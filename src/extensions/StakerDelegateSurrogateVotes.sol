@@ -54,7 +54,7 @@ abstract contract StakerDelegateSurrogateVotes is Staker {
 
   /// @inheritdoc Staker
   function surrogates(address _delegatee) public view override returns (DelegationSurrogate) {
-    StakerStorage storage $ = _getStakerDelegateSurrogateStorage();
+    StakerDelegateSurrogateVotesStorage storage $ = _getStakerDelegateSurrogateStorage();
     return $._storedSurrogates[_delegatee];
   }
 
@@ -62,7 +62,7 @@ abstract contract StakerDelegateSurrogateVotes is Staker {
   /// @param _delegatee The address of the delegatee.
   /// @return The surrogate contract address for the given delegatee.
   function storedSurrogates(address _delegatee) public view returns (DelegationSurrogate) {
-    StakerStorage storage $ = _getStakerDelegateSurrogateStorage();
+    StakerDelegateSurrogateVotesStorage storage $ = _getStakerDelegateSurrogateStorage();
     return $._storedSurrogates[_delegatee];
   }
 
@@ -73,7 +73,7 @@ abstract contract StakerDelegateSurrogateVotes is Staker {
     override
     returns (DelegationSurrogate _surrogate)
   {
-    StakerStorage storage $ = _getStakerDelegateSurrogateStorage();
+    StakerDelegateSurrogateVotesStorage storage $ = _getStakerDelegateSurrogateStorage();
     _surrogate = $._storedSurrogates[_delegatee];
 
     if (address(_surrogate) == address(0)) {
