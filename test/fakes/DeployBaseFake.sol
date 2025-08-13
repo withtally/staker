@@ -85,5 +85,6 @@ contract DeployBaseFake is
       _config.earningPowerCalculator,
       name
     );
+    return _staker;
   }
 }

@@ -84,7 +84,13 @@ contract Constructor is StakerTest {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     StakerHarness _govStaker = new StakerHarness();
     _govStaker.initialize(
-      rewardToken, govToken, 1e18, admin, maxBumpTip, earningPowerCalculator, _name 
+      IERC20(_rewardToken),
+      IERC20(_stakeToken),
+      1e18,
+      _admin,
+      _maxBumpTip,
+      IEarningPowerCalculator(_earningPowerCalculator),
+      _name
     );
 
     assertEq(address(_govStaker.REWARD_TOKEN()), address(_rewardToken));
@@ -104,17 +110,18 @@ contract Constructor is StakerTest {
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     vm.assume(address(_stakerStateToken) != address(_delegateSurrogateStakeToken));
+    MockStakerHarness _staker = new MockStakerHarness();
     vm.expectRevert(
       StakerDelegateSurrogateVotes.StakerDelegateSurrogateVotes__UnauthorizedToken.selector
     );
-    new MockStakerHarness(
+    _staker.initialize(
       IERC20(_rewardToken),
       IERC20Staking(_stakerStateToken),
       IERC20Staking(_stakerStateToken),
       IERC20Staking(_delegateSurrogateStakeToken),
       IEarningPowerCalculator(_earningPowerCalculator),
-      _maxBumpTip,
-      _admin
+      _admin,
+      _maxBumpTip
     );
   }
 
@@ -128,15 +135,16 @@ contract Constructor is StakerTest {
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     vm.assume(address(_stakerStateToken) != address(_permitAndStakeStakeToken));
+    MockStakerHarness _staker = new MockStakerHarness();
     vm.expectRevert(StakerPermitAndStake.StakerPermitAndStake__UnauthorizedToken.selector);
-    new MockStakerHarness(
+    _staker.initialize(
       IERC20(_rewardToken),
       IERC20Staking(_stakerStateToken),
       IERC20Staking(_permitAndStakeStakeToken),
       IERC20Staking(_stakerStateToken),
       IEarningPowerCalculator(_earningPowerCalculator),
-      _maxBumpTip,
-      _admin
+      _admin,
+      _maxBumpTip
     );
   }
 }

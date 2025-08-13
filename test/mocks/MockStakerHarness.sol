@@ -14,15 +14,44 @@ import {DelegationSurrogate} from "../../src/DelegationSurrogate.sol";
 /// contract, unlike StakerHarness which uses the same token. This contract is used to test reverts
 /// when stake tokens mismatch.
 contract MockStakerHarness is Staker, StakerPermitAndStake, StakerDelegateSurrogateVotes {
-  constructor(
+  // constructor(
+  //   IERC20 _rewardsToken,
+  //   IERC20Staking _stakerStakeToken,
+  //   IERC20Staking _permitAndStakeStakeToken,
+  //   IERC20Staking _delegateSurrogateVotesStakeToken,
+  //   IEarningPowerCalculator _earningPowerCalculator,
+  //   uint256 _maxBumpTip,
+  //   address _admin
+  // ) {
+  //   _setMaxClaimFee(1e18);
+  //   _setClaimFeeParameters(ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)}));
+  // }
+  //     IERC20 _rewardsToken,
+  //     IERC20Staking _stakerStakeToken,
+  //     IERC20Staking _permitAndStakeStakeToken,
+  //     IERC20Staking _delegateSurrogateVotesStakeToken,
+  //     IEarningPowerCalculator _earningPowerCalculator,
+  //     uint256 _maxBumpTip,
+  //     address _admin
+  //
+  //     Staker(_rewardsToken, _stakerStakeToken, _earningPowerCalculator, _maxBumpTip, _admin)
+  //     StakerPermitAndStake(_permitAndStakeStakeToken)
+  //    StakerDelegateSurrogateVotes(_delegateSurrogateVotesStakeToken)
+  //  {
+  function initialize(
     IERC20 _rewardsToken,
-    IERC20Staking _stakerStakeToken,
+    IERC20Staking _stakeToken,
     IERC20Staking _permitAndStakeStakeToken,
     IERC20Staking _delegateSurrogateVotesStakeToken,
     IEarningPowerCalculator _earningPowerCalculator,
-    uint256 _maxBumpTip,
-    address _admin
-  ) {
+    address _admin,
+    uint256 _maxBumpTip
+  ) public initializer {
+    __Staker_init(_rewardsToken, _stakeToken, 1e18, _admin, _maxBumpTip, _earningPowerCalculator);
+    __StakerPermitAndStake_init(_permitAndStakeStakeToken);
+    __StakerDelegateSurrogateVotes_init(_delegateSurrogateVotesStakeToken);
+    // __EIP712_init("Staker", "1");
+    // __Nonces_init();
     _setMaxClaimFee(1e18);
     _setClaimFeeParameters(ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)}));
   }
