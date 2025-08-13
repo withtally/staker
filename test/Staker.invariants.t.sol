@@ -34,8 +34,9 @@ contract StakerInvariants is Test {
     earningPowerCalculator = new MockFullEarningPowerCalculator();
     vm.label(address(earningPowerCalculator), "Full Earning Power Calculator");
 
-    govStaker = new StakerHarness(
-      rewardToken, govToken, earningPowerCalculator, maxBumpTip, rewardsNotifier, STAKER_NAME
+    govStaker = new StakerHarness();
+    govStaker.initialize(
+      rewardToken, govToken, 1e18, rewardsNotifier, maxBumpTip, earningPowerCalculator, STAKER_NAME
     );
     handler = new StakerHandler(govStaker);
 

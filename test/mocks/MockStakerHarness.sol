@@ -22,11 +22,7 @@ contract MockStakerHarness is Staker, StakerPermitAndStake, StakerDelegateSurrog
     IEarningPowerCalculator _earningPowerCalculator,
     uint256 _maxBumpTip,
     address _admin
-  )
-    Staker(_rewardsToken, _stakerStakeToken, _earningPowerCalculator, _maxBumpTip, _admin)
-    StakerPermitAndStake(_permitAndStakeStakeToken)
-    StakerDelegateSurrogateVotes(_delegateSurrogateVotesStakeToken)
-  {
+  ) {
     _setMaxClaimFee(1e18);
     _setClaimFeeParameters(ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)}));
   }

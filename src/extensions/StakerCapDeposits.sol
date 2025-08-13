@@ -22,17 +22,18 @@ abstract contract StakerCapDeposits is Staker {
   error StakerCapDeposits__CapExceeded();
 
   struct StakerCapDepositsStorage {
-  /// @notice The maximum total amount of tokens that can be staked across all deposits.
-  uint256 _totalStakeCap;
+    /// @notice The maximum total amount of tokens that can be staked across all deposits.
+    uint256 _totalStakeCap;
   }
 
-  // keccak256(abi.encode(uint256(keccak256("storage.StakerCapDeposits")) - 1)) &~bytes32(uint256(0xff))
-  bytes32 private constant STAKER_CAP_DEPOSITS_STORAGE_LOCATION = 0x46a81a56bebd29f7ac25bcccfeb503450824f0cb51e1dc37a6009eb410111900;
+  // keccak256(abi.encode(uint256(keccak256("storage.StakerCapDeposits")) - 1))
+  // &~bytes32(uint256(0xff))
+  bytes32 private constant STAKER_CAP_DEPOSITS_STORAGE_LOCATION =
+    0x46a81a56bebd29f7ac25bcccfeb503450824f0cb51e1dc37a6009eb410111900;
 
-  /// @param _initialTotalStakeCap The initial maximum total stake allowed.
-  constructor(uint256 _initialTotalStakeCap) {
-    _setTotalStakeCap(_initialTotalStakeCap);
-  }
+  // constructor(uint256 _initialTotalStakeCap) {
+  //   _setTotalStakeCap(_initialTotalStakeCap);
+  // }
 
   function _getStakerCapDepositsStorage() private pure returns (StakerCapDepositsStorage storage $) {
     assembly {
@@ -40,11 +41,15 @@ abstract contract StakerCapDeposits is Staker {
     }
   }
 
+  /// @param _initialTotalStakeCap The initial maximum total stake allowed.
   function __StakerCapDeposits_init(uint256 _initialTotalStakeCap) internal onlyInitializing {
     __StakerCapDeposits_init_unchained(_initialTotalStakeCap);
   }
 
-  function __StakerCapDeposits_init_unchained(uint256 _initialTotalStakeCap) internal onlyInitializing {
+  function __StakerCapDeposits_init_unchained(uint256 _initialTotalStakeCap)
+    internal
+    onlyInitializing
+  {
     _setTotalStakeCap(_initialTotalStakeCap);
   }
 

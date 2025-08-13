@@ -33,12 +33,14 @@ contract Domain_Separator is StakerTest {
     string memory _name
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
-    StakerHarness _govStaker = new StakerHarness(
+    StakerHarness _govStaker = new StakerHarness();
+    _govStaker.initialize(
       IERC20(_rewardToken),
       IERC20Staking(_stakeToken),
-      IEarningPowerCalculator(_earningPowerCalculator),
-      _maxBumpTip,
+      1e18,
       _admin,
+      _maxBumpTip,
+      IEarningPowerCalculator(_earningPowerCalculator),
       _name
     );
 

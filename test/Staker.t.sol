@@ -31,8 +31,11 @@ contract StakerTest is StakerTestBase {
   }
 
   function _deployStaker() public virtual override(StakerTestBase) returns (Staker _staker) {
-    return
-      new StakerHarness(rewardToken, govToken, earningPowerCalculator, maxBumpTip, admin, "Staker");
+    StakerHarness _govStaker = new StakerHarness();
+    _govStaker.initialize(
+      rewardToken, govToken, 1e18, admin, maxBumpTip, earningPowerCalculator, "Staker"
+    );
+    return _govStaker;
   }
 
   function _sign(uint256 _privateKey, bytes32 _messageHash) internal pure returns (bytes memory) {
@@ -79,14 +82,11 @@ contract Constructor is StakerTest {
     string memory _name
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
-    StakerHarness _govStaker = new StakerHarness(
-      IERC20(_rewardToken),
-      IERC20Staking(_stakeToken),
-      IEarningPowerCalculator(_earningPowerCalculator),
-      _maxBumpTip,
-      _admin,
-      _name
+    StakerHarness _govStaker = new StakerHarness();
+    _govStaker.initialize(
+      rewardToken, govToken, 1e18, admin, maxBumpTip, earningPowerCalculator, _name 
     );
+
     assertEq(address(_govStaker.REWARD_TOKEN()), address(_rewardToken));
     assertEq(address(_govStaker.STAKE_TOKEN()), address(_stakeToken));
     assertEq(address(_govStaker.earningPowerCalculator()), address(_earningPowerCalculator));

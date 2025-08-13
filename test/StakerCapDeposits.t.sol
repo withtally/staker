@@ -13,15 +13,18 @@ contract StakerCapDepositsTest is StakerTestBase {
   uint256 initialTotalStakeCap = 1_000_000e18;
 
   function _deployStaker() public virtual override(StakerTestBase) returns (Staker _staker) {
-    return new StakerHarnessCapDeposits(
+    StakerHarnessCapDeposits _govStaker = new StakerHarnessCapDeposits();
+    _govStaker.initialize(
       rewardToken,
       govToken,
-      earningPowerCalculator,
-      maxBumpTip,
+      1e18,
       admin,
+      maxBumpTip,
+      earningPowerCalculator,
       "Staker",
       initialTotalStakeCap
     );
+    return _govStaker;
   }
 
   function setUp() public virtual override(StakerTestBase) {
@@ -39,12 +42,14 @@ contract Constructor is StakerCapDepositsTest {
   function testFuzz_SetsTheInitialTotalStakeCapToArbitraryValues(uint256 _initialTotalStakeCap)
     public
   {
-    StakerHarnessCapDeposits _govStaker = new StakerHarnessCapDeposits(
+    StakerHarnessCapDeposits _govStaker = new StakerHarnessCapDeposits();
+    _govStaker.initialize(
       rewardToken,
       govToken,
-      earningPowerCalculator,
-      maxBumpTip,
+      1e18,
       admin,
+      maxBumpTip,
+      earningPowerCalculator,
       "Staker",
       _initialTotalStakeCap
     );
@@ -54,12 +59,14 @@ contract Constructor is StakerCapDepositsTest {
   function testFuzz_EmitsATotalStakeCapSetEvent(uint256 _initialTotalStakeCap) public {
     vm.expectEmit();
     emit StakerCapDeposits.TotalStakeCapSet(0, _initialTotalStakeCap);
-    new StakerHarnessCapDeposits(
+    StakerHarnessCapDeposits _govStaker = new StakerHarnessCapDeposits();
+    _govStaker.initialize(
       rewardToken,
       govToken,
-      earningPowerCalculator,
-      maxBumpTip,
+      1e18,
       admin,
+      maxBumpTip,
+      earningPowerCalculator,
       "Staker",
       _initialTotalStakeCap
     );

@@ -237,6 +237,7 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
     ClaimFeeParameters _claimFeeParameters;
   }
   // keccak256(abi.encode(uint256(keccak256("storage.Staker")) - 1)) &~bytes32(uint256(0xff))
+
   bytes32 private constant STAKER_STORAGE_LOCATION =
     0x587a86d9af0b7e1804e53a546ebb2307f72c0e29a89678476433276515d51100;
 
@@ -247,26 +248,21 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
   /// truncation during division.
   uint256 public constant SCALE_FACTOR = 1e36;
 
-  /// @param _rewardToken ERC20 token in which rewards will be denominated.
-  /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
-  /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
-  /// earning power for the staker system.
-  /// @param _admin Address which will have permission to manage reward notifiers, claim fee
   /// parameters, the max bump tip, and the reward calculator.
-  constructor(
-    IERC20 _rewardToken,
-    IERC20 _stakeToken,
-    IEarningPowerCalculator _earningPowerCalculator,
-    uint256 _maxBumpTip,
-    address _admin
-  ) {
-    StakerStorage storage $ = _getStakerStorage();
-    $._rewardToken = _rewardToken;
-    $._stakeToken = _stakeToken;
-    _setAdmin(_admin);
-    _setMaxBumpTip(_maxBumpTip);
-    _setEarningPowerCalculator(address(_earningPowerCalculator));
-  }
+  // constructor(
+  //   IERC20 _rewardToken,
+  //   IERC20 _stakeToken,
+  //   IEarningPowerCalculator _earningPowerCalculator,
+  //   uint256 _maxBumpTip,
+  //   address _admin
+  // ) {
+  //   StakerStorage storage $ = _getStakerStorage();
+  //   $._rewardToken = _rewardToken;
+  //   $._stakeToken = _stakeToken;
+  //   _setAdmin(_admin);
+  //   _setMaxBumpTip(_maxBumpTip);
+  //   _setEarningPowerCalculator(address(_earningPowerCalculator));
+  // }
 
   function _getStakerStorage() private pure returns (StakerStorage storage $) {
     assembly {
@@ -282,7 +278,9 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
     uint256 _maxBumpTip,
     IEarningPowerCalculator _earningPowerCalculator
   ) internal onlyInitializing {
-    __Staker_init_unchained(_rewardToken, _stakeToken, _maxClaimFee, _admin, _maxBumpTip, _earningPowerCalculator);
+    __Staker_init_unchained(
+      _rewardToken, _stakeToken, _maxClaimFee, _admin, _maxBumpTip, _earningPowerCalculator
+    );
   }
 
   function __Staker_init_unchained(
@@ -370,7 +368,8 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
     if ($._totalEarningPower == 0) return $._rewardPerTokenAccumulatedCheckpoint;
 
     return $._rewardPerTokenAccumulatedCheckpoint
-      + ($._scaledRewardRate * (lastTimeRewardDistributed() - $._lastCheckpointTime)) / $._totalEarningPower;
+      + ($._scaledRewardRate * (lastTimeRewardDistributed() - $._lastCheckpointTime))
+        / $._totalEarningPower;
   }
 
   /// @notice Live value of the unclaimed rewards earned by a given deposit. It is the
@@ -502,7 +501,12 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
   /// @notice Internal helper to get a deposit in storage.
   /// @param _depositId The identifier of the deposit.
   /// @return The deposit in storage.
-  function _getDeposit(DepositIdentifier _depositId) internal view virtual returns (Deposit storage) {
+  function _getDeposit(DepositIdentifier _depositId)
+    internal
+    view
+    virtual
+    returns (Deposit storage)
+  {
     StakerStorage storage $ = _getStakerStorage();
     return $._deposits[_depositId];
   }
@@ -643,7 +647,8 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
     // critical that only safe reward notifier contracts are approved to call this method by the
     // admin.
     if (
-      ($._scaledRewardRate * REWARD_DURATION) > ($._rewardToken.balanceOf(address(this)) * SCALE_FACTOR)
+      ($._scaledRewardRate * REWARD_DURATION)
+        > ($._rewardToken.balanceOf(address(this)) * SCALE_FACTOR)
     ) revert Staker__InsufficientRewardBalance();
 
     emit RewardNotified(_amount, msg.sender);
@@ -672,9 +677,9 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
 
     uint256 _unclaimedRewards = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
 
-    (uint256 _newEarningPower, bool _isQualifiedForBump) = $._earningPowerCalculator.getNewEarningPower(
-      deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower
-    );
+    (uint256 _newEarningPower, bool _isQualifiedForBump) = $
+      ._earningPowerCalculator
+      .getNewEarningPower(deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower);
     if (!_isQualifiedForBump || _newEarningPower == deposit.earningPower) {
       revert Staker__Unqualified(_newEarningPower);
     }
@@ -684,10 +689,9 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
     }
 
     // Note: underflow causes a revert if the requested  tip is more than unclaimed rewards
-    if (_newEarningPower < deposit.earningPower && (_unclaimedRewards - _requestedTip) < $._maxBumpTip)
-    {
-      revert Staker__InsufficientUnclaimedRewards();
-    }
+    if (
+      _newEarningPower < deposit.earningPower && (_unclaimedRewards - _requestedTip) < $._maxBumpTip
+    ) revert Staker__InsufficientUnclaimedRewards();
 
     emit EarningPowerBumped(
       _depositId, deposit.earningPower, _newEarningPower, msg.sender, _tipReceiver, _requestedTip
@@ -765,7 +769,8 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
     _depositId = _useDepositId();
 
     StakerStorage storage $ = _getStakerStorage();
-    uint256 _earningPower = $._earningPowerCalculator.getEarningPower(_amount, _depositor, _delegatee);
+    uint256 _earningPower =
+      $._earningPowerCalculator.getEarningPower(_amount, _depositor, _delegatee);
 
     $._totalStaked += _amount;
     $._totalEarningPower += _earningPower;

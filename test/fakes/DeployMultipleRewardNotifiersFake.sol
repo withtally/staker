@@ -100,13 +100,16 @@ contract DeployMultipleRewardNotifiersFake is
     returns (Staker)
   {
     StakerConfiguration memory _config = _stakerConfiguration(_earningPowerCalculator);
-    return new StakerHarness(
+    StakerHarness _staker = new StakerHarness();
+    _staker.initialize(
       _config.rewardToken,
       IERC20Staking(address(_config.stakeToken)),
-      _config.earningPowerCalculator,
-      _config.maxBumpTip,
+      1e18,
       deployer,
+      _config.maxBumpTip,
+      _config.earningPowerCalculator,
       name
     );
+    return _staker;
   }
 }

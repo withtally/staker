@@ -23,34 +23,36 @@ abstract contract StakerDelegateSurrogateVotes is Staker {
     mapping(address delegatee => DelegationSurrogate surrogate) _storedSurrogates;
   }
 
-  // keccak256(abi.encode(uint256(keccak256("storage.StakerDelegateSurrogateVotes")) - 1)) &~bytes32(uint256(0xff))
-  bytes32 private constant STAKER_DELEGATE_SURROGATE_STORAGE_LOCATION = 0x2186d4a7f8e27d9f3f491b144161a10376bddb43a9c124160e3a246528969400;
+  // keccak256(abi.encode(uint256(keccak256("storage.StakerDelegateSurrogateVotes")) - 1))
+  // &~bytes32(uint256(0xff))
+  bytes32 private constant STAKER_DELEGATE_SURROGATE_STORAGE_LOCATION =
+    0x2186d4a7f8e27d9f3f491b144161a10376bddb43a9c124160e3a246528969400;
 
-  /// @param _votingToken The token that is used for voting, which must be the same as the parent
-  /// Staker's STAKE_TOKEN.
-  constructor(IERC20Delegates _votingToken) {
-    if (address(STAKE_TOKEN()) != address(_votingToken)) {
-      revert StakerDelegateSurrogateVotes__UnauthorizedToken();
-    }
-  }
-
-  function _getStakerDelegateSurrogateStorage() private pure returns (StakerDelegateSurrogateVotesStorage storage $) {
+  function _getStakerDelegateSurrogateStorage()
+    private
+    pure
+    returns (StakerDelegateSurrogateVotesStorage storage $)
+  {
     assembly {
       $.slot := STAKER_DELEGATE_SURROGATE_STORAGE_LOCATION
     }
   }
 
-  function __StakerDelegateSurrogateVotes_init( IERC20Delegates _votingToken
-  ) internal onlyInitializing {
+  function __StakerDelegateSurrogateVotes_init(IERC20Delegates _votingToken)
+    internal
+    onlyInitializing
+  {
     __StakerDelegateSurrogateVotes_init_unchained(_votingToken);
   }
 
-  function __StakerDelegateSurrogateVotes_init_unchained(IERC20Delegates _votingToken) internal onlyInitializing {
+  function __StakerDelegateSurrogateVotes_init_unchained(IERC20Delegates _votingToken)
+    internal
+    onlyInitializing
+  {
     if (address(STAKE_TOKEN()) != address(_votingToken)) {
       revert StakerDelegateSurrogateVotes__UnauthorizedToken();
     }
   }
-
 
   /// @inheritdoc Staker
   function surrogates(address _delegatee) public view override returns (DelegationSurrogate) {

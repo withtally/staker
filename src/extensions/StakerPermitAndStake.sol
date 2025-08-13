@@ -16,8 +16,14 @@ abstract contract StakerPermitAndStake is Staker {
   error StakerPermitAndStake__UnauthorizedToken();
 
   /// @param _permitToken The token that is used for staking, which must support EIP-2612. It also
-  /// must be the same as the parent Staker's STAKE_TOKEN.
-  constructor(IERC20Permit _permitToken) {
+  function __StakerPermitAndStake_init(IERC20Permit _permitToken) internal onlyInitializing {
+    __StakerPermitAndStake_init_unchained(_permitToken);
+  }
+
+  function __StakerPermitAndStake_init_unchained(IERC20Permit _permitToken)
+    internal
+    onlyInitializing
+  {
     if (address(STAKE_TOKEN()) != address(_permitToken)) {
       revert StakerPermitAndStake__UnauthorizedToken();
     }

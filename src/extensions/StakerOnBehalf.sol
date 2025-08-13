@@ -4,7 +4,9 @@ pragma solidity ^0.8.23;
 import {Staker} from "../Staker.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
-import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {EIP712Upgradeable} from
+  "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 
 /// @title StakerOnBehalf
 /// @author [ScopeLift](https://scopelift.co)
@@ -14,7 +16,7 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 /// altering delegatees and claimers, and claiming rewards. Each operation requires a unique
 /// signature that is validated against the appropriate signer (owner or claimer) before
 /// execution.
-abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
+abstract contract StakerOnBehalf is Staker, EIP712Upgradeable, NoncesUpgradeable {
   /// @notice Thrown when an onBehalf method is called with a deadline that has expired.
   error StakerOnBehalf__ExpiredDeadline();
 
@@ -50,6 +52,10 @@ abstract contract StakerOnBehalf is Staker, EIP712, Nonces {
   function DOMAIN_SEPARATOR() external view returns (bytes32) {
     return _domainSeparatorV4();
   }
+
+  function __StakerOnBehalf_init() internal onlyInitializing {}
+
+  function __StakerOnBehalf_init_unchained() internal onlyInitializing {}
 
   /// @notice Allows an address to increment their nonce and therefore invalidate any pending signed
   /// actions.
