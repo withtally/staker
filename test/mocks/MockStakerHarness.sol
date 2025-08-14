@@ -14,18 +14,9 @@ import {DelegationSurrogate} from "../../src/DelegationSurrogate.sol";
 /// contract, unlike StakerHarness which uses the same token. This contract is used to test reverts
 /// when stake tokens mismatch.
 contract MockStakerHarness is Staker, StakerPermitAndStake, StakerDelegateSurrogateVotes {
-  // constructor(
-  //   IERC20 _rewardsToken,
-  //   IERC20Staking _stakerStakeToken,
-  //   IERC20Staking _permitAndStakeStakeToken,
-  //   IERC20Staking _delegateSurrogateVotesStakeToken,
-  //   IEarningPowerCalculator _earningPowerCalculator,
-  //   uint256 _maxBumpTip,
-  //   address _admin
-  // ) {
-  //   _setMaxClaimFee(1e18);
-  //   _setClaimFeeParameters(ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)}));
-  // }
+  constructor() {
+    _disableInitializers();
+  }
   //     IERC20 _rewardsToken,
   //     IERC20Staking _stakerStakeToken,
   //     IERC20Staking _permitAndStakeStakeToken,

@@ -7,6 +7,7 @@ import {StakerTest, StakerRewardsTest} from "./Staker.t.sol";
 import {StakerHarness} from "./harnesses/StakerHarness.sol";
 import {Staker, IERC20, IEarningPowerCalculator} from "../src/Staker.sol";
 import {IERC20Staking} from "../src/interfaces/IERC20Staking.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract Domain_Separator is StakerTest {
   function _buildDomainSeparator(string memory _name, string memory _version, address _contract)
@@ -33,16 +34,15 @@ contract Domain_Separator is StakerTest {
     string memory _name
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
-    StakerHarness _govStaker = new StakerHarness();
-    _govStaker.initialize(
-      IERC20(_rewardToken),
-      IERC20Staking(_stakeToken),
-      1e18,
-      _admin,
-      _maxBumpTip,
-      IEarningPowerCalculator(_earningPowerCalculator),
-      _name
+    StakerHarness implementation = new StakerHarness();
+    ERC1967Proxy proxy = new ERC1967Proxy(
+      address(implementation),
+      abi.encodeCall(
+        StakerHarness.initialize,
+        (IERC20(_rewardToken), IERC20Staking(_stakeToken), 1e18, _admin, _maxBumpTip, IEarningPowerCalculator(_earningPowerCalculator), _name)
+      )
     );
+    StakerHarness _govStaker = StakerHarness(address(proxy));
 
     bytes32 _separator = _govStaker.DOMAIN_SEPARATOR();
     bytes32 _expectedSeparator = _buildDomainSeparator(_name, "1", address(_govStaker));

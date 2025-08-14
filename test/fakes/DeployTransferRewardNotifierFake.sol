@@ -12,6 +12,7 @@ import {Staker} from "../../src/Staker.sol";
 import {StakerHarness} from "../harnesses/StakerHarness.sol";
 import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract DeployTransferRewardNotifierFake is
   DeployBase,
@@ -73,16 +74,14 @@ contract DeployTransferRewardNotifierFake is
     returns (Staker)
   {
     StakerConfiguration memory _config = _stakerConfiguration(_earningPowerCalculator);
-    StakerHarness _staker = new StakerHarness();
-    _staker.initialize(
-      _config.rewardToken,
-      IERC20Staking(address(_config.stakeToken)),
-      1e18,
-      deployer,
-      _config.maxBumpTip,
-      _config.earningPowerCalculator,
-      name
+    StakerHarness implementation = new StakerHarness();
+    ERC1967Proxy proxy = new ERC1967Proxy(
+      address(implementation),
+      abi.encodeCall(
+        StakerHarness.initialize,
+        (_config.rewardToken, IERC20Staking(address(_config.stakeToken)), 1e18, deployer, _config.maxBumpTip, _config.earningPowerCalculator, name)
+      )
     );
-    return _staker;
+    return StakerHarness(address(proxy));
   }
 }

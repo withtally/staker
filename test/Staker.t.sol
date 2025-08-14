@@ -13,6 +13,7 @@ import {
   StakerPermitAndStake
 } from "./mocks/MockStakerHarness.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract StakerTest is StakerTestBase {
   StakerHarness govStaker;
@@ -32,10 +33,14 @@ contract StakerTest is StakerTestBase {
 
   function _deployStaker() public virtual override(StakerTestBase) returns (Staker _staker) {
     StakerHarness _govStaker = new StakerHarness();
-    _govStaker.initialize(
-      rewardToken, govToken, 1e18, admin, maxBumpTip, earningPowerCalculator, "Staker"
-    );
-    return _govStaker;
+	ERC1967Proxy proxy = new ERC1967Proxy(
+      address(_govStaker),
+      abi.encodeCall(
+        StakerHarness.initialize,
+        (rewardToken, govToken, 1e18, admin, maxBumpTip, earningPowerCalculator, "Staker")
+      )
+	);
+    return StakerHarness(address(proxy));
   }
 
   function _sign(uint256 _privateKey, bytes32 _messageHash) internal pure returns (bytes memory) {
@@ -82,16 +87,15 @@ contract Constructor is StakerTest {
     string memory _name
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
-    StakerHarness _govStaker = new StakerHarness();
-    _govStaker.initialize(
-      IERC20(_rewardToken),
-      IERC20(_stakeToken),
-      1e18,
-      _admin,
-      _maxBumpTip,
-      IEarningPowerCalculator(_earningPowerCalculator),
-      _name
+    StakerHarness implementation = new StakerHarness();
+    ERC1967Proxy proxy = new ERC1967Proxy(
+      address(implementation),
+      abi.encodeCall(
+        StakerHarness.initialize,
+        (IERC20(_rewardToken), IERC20(_stakeToken), 1e18, _admin, _maxBumpTip, IEarningPowerCalculator(_earningPowerCalculator), _name)
+      )
     );
+    StakerHarness _govStaker = StakerHarness(address(proxy));
 
     assertEq(address(_govStaker.REWARD_TOKEN()), address(_rewardToken));
     assertEq(address(_govStaker.STAKE_TOKEN()), address(_stakeToken));
@@ -110,18 +114,16 @@ contract Constructor is StakerTest {
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     vm.assume(address(_stakerStateToken) != address(_delegateSurrogateStakeToken));
-    MockStakerHarness _staker = new MockStakerHarness();
+    MockStakerHarness implementation = new MockStakerHarness();
     vm.expectRevert(
       StakerDelegateSurrogateVotes.StakerDelegateSurrogateVotes__UnauthorizedToken.selector
     );
-    _staker.initialize(
-      IERC20(_rewardToken),
-      IERC20Staking(_stakerStateToken),
-      IERC20Staking(_stakerStateToken),
-      IERC20Staking(_delegateSurrogateStakeToken),
-      IEarningPowerCalculator(_earningPowerCalculator),
-      _admin,
-      _maxBumpTip
+    new ERC1967Proxy(
+      address(implementation),
+      abi.encodeCall(
+        MockStakerHarness.initialize,
+        (IERC20(_rewardToken), IERC20Staking(_stakerStateToken), IERC20Staking(_stakerStateToken), IERC20Staking(_delegateSurrogateStakeToken), IEarningPowerCalculator(_earningPowerCalculator), _admin, _maxBumpTip)
+      )
     );
   }
 
@@ -135,16 +137,14 @@ contract Constructor is StakerTest {
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     vm.assume(address(_stakerStateToken) != address(_permitAndStakeStakeToken));
-    MockStakerHarness _staker = new MockStakerHarness();
+    MockStakerHarness implementation = new MockStakerHarness();
     vm.expectRevert(StakerPermitAndStake.StakerPermitAndStake__UnauthorizedToken.selector);
-    _staker.initialize(
-      IERC20(_rewardToken),
-      IERC20Staking(_stakerStateToken),
-      IERC20Staking(_permitAndStakeStakeToken),
-      IERC20Staking(_stakerStateToken),
-      IEarningPowerCalculator(_earningPowerCalculator),
-      _admin,
-      _maxBumpTip
+    new ERC1967Proxy(
+      address(implementation),
+      abi.encodeCall(
+        MockStakerHarness.initialize,
+        (IERC20(_rewardToken), IERC20Staking(_stakerStateToken), IERC20Staking(_permitAndStakeStakeToken), IERC20Staking(_stakerStateToken), IEarningPowerCalculator(_earningPowerCalculator), _admin, _maxBumpTip)
+      )
     );
   }
 }

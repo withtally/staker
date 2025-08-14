@@ -20,15 +20,9 @@ contract StakerHarness is
   StakerOnBehalf,
   StakerDelegateSurrogateVotes
 {
-  // constructor(
-  //   IERC20 _rewardsToken,
-  //   IERC20Staking _stakeToken,
-  //   IEarningPowerCalculator _earningPowerCalculator,
-  //   uint256 _maxBumpTip,
-  //   address _admin,
-  //   string memory _name
-  // )
-  // {}
+  constructor() {
+    _disableInitializers();
+  }
 
   function initialize(
     IERC20 _rewardToken,
