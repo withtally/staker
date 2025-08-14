@@ -26,14 +26,10 @@ abstract contract StakerCapDepositsUpgradeable is StakerUpgradeable {
     uint256 _totalStakeCap;
   }
 
-  // keccak256(abi.encode(uint256(keccak256("storage.StakerCapDeposits")) - 1))
+  // keccak256(abi.encode(uint256(keccak256("storage.scopelift.StakerCapDeposits")) - 1))
   // &~bytes32(uint256(0xff))
   bytes32 private constant STAKER_CAP_DEPOSITS_STORAGE_LOCATION =
-    0x46a81a56bebd29f7ac25bcccfeb503450824f0cb51e1dc37a6009eb410111900;
-
-  // constructor(uint256 _initialTotalStakeCap) {
-  //   _setTotalStakeCap(_initialTotalStakeCap);
-  // }
+    0x965a89691c17af92914eadf0e487b628b4de164741f52e43f2d8c224cfe56100;
 
   function _getStakerCapDepositsStorage() private pure returns (StakerCapDepositsStorage storage $) {
     assembly {
@@ -41,6 +37,7 @@ abstract contract StakerCapDepositsUpgradeable is StakerUpgradeable {
     }
   }
 
+  /// @notice Initializes the the contract.
   /// @param _initialTotalStakeCap The initial maximum total stake allowed.
   function __StakerCapDepositsUpgradeable_init(uint256 _initialTotalStakeCap)
     internal
@@ -49,6 +46,8 @@ abstract contract StakerCapDepositsUpgradeable is StakerUpgradeable {
     __StakerCapDepositsUpgradeable_init_unchained(_initialTotalStakeCap);
   }
 
+  /// @notice Initializes the the contract.
+  /// @param _initialTotalStakeCap The initial maximum total stake allowed.
   function __StakerCapDepositsUpgradeable_init_unchained(uint256 _initialTotalStakeCap)
     internal
     onlyInitializing

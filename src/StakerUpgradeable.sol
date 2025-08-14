@@ -236,10 +236,11 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     /// @notice Current configuration parameters for the fee assessed on claiming.
     ClaimFeeParameters _claimFeeParameters;
   }
-  // keccak256(abi.encode(uint256(keccak256("storage.Staker")) - 1)) &~bytes32(uint256(0xff))
+  // keccak256(abi.encode(uint256(keccak256("storage.scopelift.Staker")) - 1))
+  // &~bytes32(uint256(0xff))
 
   bytes32 private constant STAKER_STORAGE_LOCATION =
-    0x587a86d9af0b7e1804e53a546ebb2307f72c0e29a89678476433276515d51100;
+    0x3ddb462ea09b2a712726a8a8a271a0d79e7f965b28139434d52ac706825d5200;
 
   /// @notice Length of time over which rewards sent to this contract are distributed to stakers.
   uint256 public constant REWARD_DURATION = 30 days;
@@ -248,28 +249,21 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
   /// truncation during division.
   uint256 public constant SCALE_FACTOR = 1e36;
 
-  /// parameters, the max bump tip, and the reward calculator.
-  // constructor(
-  //   IERC20 _rewardToken,
-  //   IERC20 _stakeToken,
-  //   IEarningPowerCalculator _earningPowerCalculator,
-  //   uint256 _maxBumpTip,
-  //   address _admin
-  // ) {
-  //   StakerStorage storage $ = _getStakerStorage();
-  //   $._rewardToken = _rewardToken;
-  //   $._stakeToken = _stakeToken;
-  //   _setAdmin(_admin);
-  //   _setMaxBumpTip(_maxBumpTip);
-  //   _setEarningPowerCalculator(address(_earningPowerCalculator));
-  // }
-
   function _getStakerStorage() private pure returns (StakerStorage storage $) {
     assembly {
       $.slot := STAKER_STORAGE_LOCATION
     }
   }
 
+  /// @notice Initializes the the contract.
+  /// @param _rewardToken ERC20 token in which rewards will be denominated.
+  /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
+  /// @param _maxClaimFee The maximum value to which the claim fee can be set.
+  /// @param _admin Address which will have permission to manage reward notifiers, claim fee
+  /// parameters, the max bump tip, and the reward calculator.
+  /// @param _maxBumpTip Maximum tip a bumper can request.
+  /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
+  /// earning power for the staker system.
   function __StakerUpgradeable_init(
     IERC20 _rewardToken,
     IERC20 _stakeToken,
@@ -283,6 +277,15 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     );
   }
 
+  /// @notice Initializes the the contract
+  /// @param _rewardToken ERC20 token in which rewards will be denominated.
+  /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
+  /// @param _maxClaimFee The maximum value to which the claim fee can be set.
+  /// @param _admin Address which will have permission to manage reward notifiers, claim fee
+  /// parameters, the max bump tip, and the reward calculator.
+  /// @param _maxBumpTip Maximum tip a bumper can request.
+  /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
+  /// earning power for the staker system.
   function __StakerUpgradeable_init_unchained(
     IERC20 _rewardToken,
     IERC20 _stakeToken,
@@ -387,8 +390,6 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     StakerStorage storage $ = _getStakerStorage();
     return _scaledUnclaimedReward($._deposits[_depositId]) / SCALE_FACTOR;
   }
-
-  // Public getter functions for storage variables
 
   /// @notice ERC20 token in which rewards are denominated and distributed.
   function REWARD_TOKEN() public view virtual returns (IERC20) {

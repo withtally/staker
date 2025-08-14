@@ -56,8 +56,10 @@ abstract contract StakerOnBehalfUpgradeable is
     return _domainSeparatorV4();
   }
 
+  /// @notice Initializes the the contract.
   function __StakerOnBehalfUpgradeable_init() internal onlyInitializing {}
 
+  /// @notice Initializes the the contract.
   function __StakerOnBehalfUpgradeable_init_unchained() internal onlyInitializing {}
 
   /// @notice Allows an address to increment their nonce and therefore invalidate any pending signed

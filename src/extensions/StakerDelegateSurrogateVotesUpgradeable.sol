@@ -23,10 +23,10 @@ abstract contract StakerDelegateSurrogateVotesUpgradeable is StakerUpgradeable {
     mapping(address delegatee => DelegationSurrogate surrogate) _storedSurrogates;
   }
 
-  // keccak256(abi.encode(uint256(keccak256("storage.StakerDelegateSurrogateVotes")) - 1))
+  // keccak256(abi.encode(uint256(keccak256("storage.scopelift.StakerDelegateSurrogateVotes")) - 1))
   // &~bytes32(uint256(0xff))
   bytes32 private constant STAKER_DELEGATE_SURROGATE_STORAGE_LOCATION =
-    0x2186d4a7f8e27d9f3f491b144161a10376bddb43a9c124160e3a246528969400;
+    0x010103b2a019a28f51fa63a98fe162dac866120b721518e29f318125463ff100;
 
   function _getStakerDelegateSurrogateStorage()
     private
@@ -38,6 +38,9 @@ abstract contract StakerDelegateSurrogateVotesUpgradeable is StakerUpgradeable {
     }
   }
 
+  /// @notice Initializes the the contract.
+  /// @param _votingToken The token that is used for voting, which must be the same as the parent
+  /// Staker's STAKE_TOKEN.
   function __StakerDelegateSurrogateVotesUpgradeable_init(IERC20Delegates _votingToken)
     internal
     onlyInitializing
@@ -45,6 +48,9 @@ abstract contract StakerDelegateSurrogateVotesUpgradeable is StakerUpgradeable {
     __StakerDelegateSurrogateVotesUpgradeable_init_unchained(_votingToken);
   }
 
+  /// @notice Initializes the the contract.
+  /// @param _votingToken The token that is used for voting, which must be the same as the parent
+  /// Staker's STAKE_TOKEN.
   function __StakerDelegateSurrogateVotesUpgradeable_init_unchained(IERC20Delegates _votingToken)
     internal
     onlyInitializing
