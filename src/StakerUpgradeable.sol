@@ -35,7 +35,7 @@ import {MulticallUpgradeable} from
 /// the Staker contract is a DAO, which is the expected common case, this means the DAO has
 /// the ability to define and iterate on its own definition of active, aligned participation,
 /// and to decide how to reward it.
-abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
+abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgradeable {
   using SafeCast for uint256;
 
   /// @notice A unique identifier assigned to each deposit.
@@ -270,7 +270,7 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
     }
   }
 
-  function __Staker_init(
+  function __StakerUpgradeable_init(
     IERC20 _rewardToken,
     IERC20 _stakeToken,
     uint256 _maxClaimFee,
@@ -278,12 +278,12 @@ abstract contract Staker is INotifiableRewardReceiver, MulticallUpgradeable {
     uint256 _maxBumpTip,
     IEarningPowerCalculator _earningPowerCalculator
   ) internal onlyInitializing {
-    __Staker_init_unchained(
+    __StakerUpgradeable_init_unchained(
       _rewardToken, _stakeToken, _maxClaimFee, _admin, _maxBumpTip, _earningPowerCalculator
     );
   }
 
-  function __Staker_init_unchained(
+  function __StakerUpgradeable_init_unchained(
     IERC20 _rewardToken,
     IERC20 _stakeToken,
     uint256 _maxClaimFee,

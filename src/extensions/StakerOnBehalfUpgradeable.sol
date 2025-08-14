@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {Staker} from "../Staker.sol";
+import {StakerUpgradeable} from "../StakerUpgradeable.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 import {EIP712Upgradeable} from
   "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
@@ -16,12 +15,16 @@ import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Nonce
 /// altering delegatees and claimers, and claiming rewards. Each operation requires a unique
 /// signature that is validated against the appropriate signer (owner or claimer) before
 /// execution.
-abstract contract StakerOnBehalf is Staker, EIP712Upgradeable, NoncesUpgradeable {
+abstract contract StakerOnBehalfUpgradeable is
+  StakerUpgradeable,
+  EIP712Upgradeable,
+  NoncesUpgradeable
+{
   /// @notice Thrown when an onBehalf method is called with a deadline that has expired.
-  error StakerOnBehalf__ExpiredDeadline();
+  error StakerOnBehalfUpgradeable__ExpiredDeadline();
 
   /// @notice Thrown if a caller supplies an invalid signature to a method that requires one.
-  error StakerOnBehalf__InvalidSignature();
+  error StakerOnBehalfUpgradeable__InvalidSignature();
 
   /// @notice Type hash used when encoding data for `stakeOnBehalf` calls.
   bytes32 public constant STAKE_TYPEHASH = keccak256(
@@ -53,9 +56,9 @@ abstract contract StakerOnBehalf is Staker, EIP712Upgradeable, NoncesUpgradeable
     return _domainSeparatorV4();
   }
 
-  function __StakerOnBehalf_init() internal onlyInitializing {}
+  function __StakerOnBehalfUpgradeable_init() internal onlyInitializing {}
 
-  function __StakerOnBehalf_init_unchained() internal onlyInitializing {}
+  function __StakerOnBehalfUpgradeable_init_unchained() internal onlyInitializing {}
 
   /// @notice Allows an address to increment their nonce and therefore invalidate any pending signed
   /// actions.
@@ -277,7 +280,7 @@ abstract contract StakerOnBehalf is Staker, EIP712Upgradeable, NoncesUpgradeable
     );
     bool _isValidOwnerClaim =
       SignatureChecker.isValidSignatureNow(deposit.owner, _ownerHash, _signature);
-    if (!_isValidOwnerClaim) revert StakerOnBehalf__InvalidSignature();
+    if (!_isValidOwnerClaim) revert StakerOnBehalfUpgradeable__InvalidSignature();
     return _claimReward(_depositId, deposit, deposit.owner);
   }
 
@@ -285,7 +288,7 @@ abstract contract StakerOnBehalf is Staker, EIP712Upgradeable, NoncesUpgradeable
   /// provided deadline has passed.
   /// @param _deadline The timestamp that represents when the operation should no longer be valid.
   function _revertIfPastDeadline(uint256 _deadline) internal view virtual {
-    if (block.timestamp > _deadline) revert StakerOnBehalf__ExpiredDeadline();
+    if (block.timestamp > _deadline) revert StakerOnBehalfUpgradeable__ExpiredDeadline();
   }
 
   /// @notice Internal helper method which reverts with Staker__InvalidSignature if the
@@ -299,6 +302,6 @@ abstract contract StakerOnBehalf is Staker, EIP712Upgradeable, NoncesUpgradeable
     virtual
   {
     bool _isValid = SignatureChecker.isValidSignatureNow(_signer, _hash, _signature);
-    if (!_isValid) revert StakerOnBehalf__InvalidSignature();
+    if (!_isValid) revert StakerOnBehalfUpgradeable__InvalidSignature();
   }
 }

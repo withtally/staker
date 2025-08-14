@@ -9,7 +9,7 @@ import {DeployIdentityEarningPowerCalculator} from
 import {IMintable} from "../../src/interfaces/IMintable.sol";
 
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
-import {Staker} from "../../src/Staker.sol";
+import {StakerUpgradeable} from "../../src/StakerUpgradeable.sol";
 import {StakerHarness} from "../harnesses/StakerHarness.sol";
 import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -73,7 +73,7 @@ contract DeployBaseInvalidStakerAdminFake is
     internal
     virtual
     override
-    returns (Staker)
+    returns (StakerUpgradeable)
   {
     StakerConfiguration memory _config = _stakerConfiguration(_earningPowerCalculator);
     StakerHarness implementation = new StakerHarness();

@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {IEarningPowerCalculator} from "../src/Staker.sol";
+import {IEarningPowerCalculator} from "../src/StakerUpgradeable.sol";
 import {StakerHandler} from "./helpers/Staker.handler.sol";
 import {StakerHarness} from "./harnesses/StakerHarness.sol";
 import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";

@@ -5,7 +5,7 @@ pragma solidity ^0.8.23;
 
 import {Script} from "forge-std/Script.sol";
 import {IEarningPowerCalculator} from "../interfaces/IEarningPowerCalculator.sol";
-import {Staker} from "../Staker.sol";
+import {StakerUpgradeable} from "../StakerUpgradeable.sol";
 
 /// @title DeployBase
 /// @author [ScopeLift](https://scopelift.co)
@@ -43,22 +43,22 @@ abstract contract DeployBase is Script {
   function _deployStaker(IEarningPowerCalculator _earningPowerCalculator)
     internal
     virtual
-    returns (Staker);
+    returns (StakerUpgradeable);
 
   /// @notice An interface method that deploys the earning power contract for the staking system.
   /// @return The earning power calculator contract.
   function _deployEarningPowerCalculator() internal virtual returns (IEarningPowerCalculator);
 
   /// @notice An interface method that deploys the reward notifiers.
-  /// @param _staker The Staker for the staking system.
+  /// @param _staker The StakerUpgradeable for the staking system.
   /// @dev When this method is overridden make sure to add the reward notifier to the
   /// `rewardNotifiers` array.
-  function _deployRewardNotifiers(Staker _staker) internal virtual;
+  function _deployRewardNotifiers(StakerUpgradeable _staker) internal virtual;
 
   /// @notice The method that is executed when the script runs which deploys the entire staking
   /// system.
   /// @return The Staker contract, earning power calculator, and array of reward notifiers.
-  function run() public returns (IEarningPowerCalculator, Staker, address[] memory) {
+  function run() public returns (IEarningPowerCalculator, StakerUpgradeable, address[] memory) {
     uint256 deployerPrivateKey = vm.envOr(
       "DEPLOYER_PRIVATE_KEY",
       uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
@@ -67,7 +67,7 @@ abstract contract DeployBase is Script {
     deployer = vm.rememberKey(deployerPrivateKey);
     vm.startBroadcast(deployer);
     IEarningPowerCalculator _earningPowerCalculator = _deployEarningPowerCalculator();
-    Staker _staker = _deployStaker(_earningPowerCalculator);
+    StakerUpgradeable _staker = _deployStaker(_earningPowerCalculator);
     if (_staker.admin() != deployer) revert DeployBase__InvalidInitialStakerAdmin();
 
     _deployRewardNotifiers(_staker);

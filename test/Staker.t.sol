@@ -3,14 +3,14 @@ pragma solidity ^0.8.23;
 
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
 import {StakerTestBase} from "./StakerTestBase.sol";
-import {Staker, IERC20, IEarningPowerCalculator} from "../src/Staker.sol";
+import {StakerUpgradeable, IERC20, IEarningPowerCalculator} from "../src/StakerUpgradeable.sol";
 import {IERC20Staking} from "../src/interfaces/IERC20Staking.sol";
 import {DelegationSurrogate} from "../src/DelegationSurrogate.sol";
 import {StakerHarness} from "./harnesses/StakerHarness.sol";
 import {
   MockStakerHarness,
-  StakerDelegateSurrogateVotes,
-  StakerPermitAndStake
+  StakerDelegateSurrogateVotesUpgradeable,
+  StakerPermitAndStakeUpgradeable
 } from "./mocks/MockStakerHarness.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -31,7 +31,12 @@ contract StakerTest is StakerTestBase {
     EIP712_DOMAIN_SEPARATOR = govStaker.DOMAIN_SEPARATOR();
   }
 
-  function _deployStaker() public virtual override(StakerTestBase) returns (Staker _staker) {
+  function _deployStaker()
+    public
+    virtual
+    override(StakerTestBase)
+    returns (StakerUpgradeable _staker)
+  {
     StakerHarness _govStaker = new StakerHarness();
     ERC1967Proxy proxy = new ERC1967Proxy(
       address(_govStaker),
@@ -124,7 +129,9 @@ contract Constructor is StakerTest {
     vm.assume(address(_stakerStateToken) != address(_delegateSurrogateStakeToken));
     MockStakerHarness implementation = new MockStakerHarness();
     vm.expectRevert(
-      StakerDelegateSurrogateVotes.StakerDelegateSurrogateVotes__UnauthorizedToken.selector
+      StakerDelegateSurrogateVotesUpgradeable
+        .StakerDelegateSurrogateVotesUpgradeable__UnauthorizedToken
+        .selector
     );
     new ERC1967Proxy(
       address(implementation),
@@ -154,7 +161,9 @@ contract Constructor is StakerTest {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
     vm.assume(address(_stakerStateToken) != address(_permitAndStakeStakeToken));
     MockStakerHarness implementation = new MockStakerHarness();
-    vm.expectRevert(StakerPermitAndStake.StakerPermitAndStake__UnauthorizedToken.selector);
+    vm.expectRevert(
+      StakerPermitAndStakeUpgradeable.StakerPermitAndStakeUpgradeable__UnauthorizedToken.selector
+    );
     new ERC1967Proxy(
       address(implementation),
       abi.encodeCall(
@@ -201,9 +210,9 @@ contract Stake is StakerTest {
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
 
-    Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
+    StakerUpgradeable.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.claimer, _depositor);
   }
 
@@ -214,16 +223,18 @@ contract Stake is StakerTest {
   ) public {
     _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
-    Staker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
+    StakerUpgradeable.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
     vm.assume(_delegatee != address(0));
 
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
     vm.expectEmit();
-    emit Staker.StakeDeposited(
+    emit StakerUpgradeable.StakeDeposited(
       _depositor,
-      Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
+      StakerUpgradeable.DepositIdentifier.wrap(
+        StakerUpgradeable.DepositIdentifier.unwrap(depositId) + 1
+      ),
       _amount,
       _amount,
       _amount
@@ -240,15 +251,17 @@ contract Stake is StakerTest {
   ) public {
     _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
-    Staker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
+    StakerUpgradeable.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
     vm.assume(_delegatee != address(0));
 
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
     vm.expectEmit();
-    emit Staker.ClaimerAltered(
-      Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
+    emit StakerUpgradeable.ClaimerAltered(
+      StakerUpgradeable.DepositIdentifier.wrap(
+        StakerUpgradeable.DepositIdentifier.unwrap(depositId) + 1
+      ),
       address(0),
       _depositor,
       _amount
@@ -265,15 +278,17 @@ contract Stake is StakerTest {
   ) public {
     _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
-    Staker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
+    StakerUpgradeable.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
     vm.assume(_delegatee != address(0));
 
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
     vm.expectEmit();
-    emit Staker.DelegateeAltered(
-      Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
+    emit StakerUpgradeable.DelegateeAltered(
+      StakerUpgradeable.DepositIdentifier.wrap(
+        StakerUpgradeable.DepositIdentifier.unwrap(depositId) + 1
+      ),
       address(0),
       _delegatee,
       _amount
@@ -295,9 +310,10 @@ contract Stake is StakerTest {
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
 
-    Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee, _claimer);
+    StakerUpgradeable.DepositIdentifier _depositId =
+      _stake(_depositor, _amount, _delegatee, _claimer);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.claimer, _claimer);
   }
 
@@ -309,16 +325,18 @@ contract Stake is StakerTest {
   ) public {
     _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
-    Staker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
+    StakerUpgradeable.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
     vm.assume(_delegatee != address(0) && _claimer != address(0));
 
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
     vm.expectEmit();
-    emit Staker.StakeDeposited(
+    emit StakerUpgradeable.StakeDeposited(
       _depositor,
-      Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
+      StakerUpgradeable.DepositIdentifier.wrap(
+        StakerUpgradeable.DepositIdentifier.unwrap(depositId) + 1
+      ),
       _amount,
       _amount,
       _amount
@@ -336,15 +354,17 @@ contract Stake is StakerTest {
   ) public {
     _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
-    Staker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
+    StakerUpgradeable.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
     vm.assume(_delegatee != address(0) && _claimer != address(0));
 
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
     vm.expectEmit();
-    emit Staker.ClaimerAltered(
-      Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
+    emit StakerUpgradeable.ClaimerAltered(
+      StakerUpgradeable.DepositIdentifier.wrap(
+        StakerUpgradeable.DepositIdentifier.unwrap(depositId) + 1
+      ),
       address(0),
       _claimer,
       _amount
@@ -362,15 +382,17 @@ contract Stake is StakerTest {
   ) public {
     _amount = bound(_amount, 1, type(uint96).max);
     _mintGovToken(_depositor, _amount);
-    Staker.DepositIdentifier depositId = govStaker.exposed_useDepositId();
+    StakerUpgradeable.DepositIdentifier depositId = govStaker.exposed_useDepositId();
 
     vm.assume(_delegatee != address(0) && _claimer != address(0));
 
     vm.startPrank(_depositor);
     govToken.approve(address(govStaker), _amount);
     vm.expectEmit();
-    emit Staker.DelegateeAltered(
-      Staker.DepositIdentifier.wrap(Staker.DepositIdentifier.unwrap(depositId) + 1),
+    emit StakerUpgradeable.DelegateeAltered(
+      StakerUpgradeable.DepositIdentifier.wrap(
+        StakerUpgradeable.DepositIdentifier.unwrap(depositId) + 1
+      ),
       address(0),
       _delegatee,
       _amount
@@ -565,8 +587,8 @@ contract Stake is StakerTest {
     _amount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _amount);
 
-    Staker.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.DepositIdentifier _depositId = _stake(_depositor, _amount, _delegatee);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.balance, _amount);
     assertEq(_deposit.owner, _depositor);
     assertEq(_deposit.delegatee, _delegatee);
@@ -584,10 +606,10 @@ contract Stake is StakerTest {
     _mintGovToken(_depositor, _amount1 + _amount2);
 
     // Perform both deposits and track their identifiers separately
-    Staker.DepositIdentifier _depositId1 = _stake(_depositor, _amount1, _delegatee1);
-    Staker.DepositIdentifier _depositId2 = _stake(_depositor, _amount2, _delegatee2);
-    Staker.Deposit memory _deposit1 = _fetchDeposit(_depositId1);
-    Staker.Deposit memory _deposit2 = _fetchDeposit(_depositId2);
+    StakerUpgradeable.DepositIdentifier _depositId1 = _stake(_depositor, _amount1, _delegatee1);
+    StakerUpgradeable.DepositIdentifier _depositId2 = _stake(_depositor, _amount2, _delegatee2);
+    StakerUpgradeable.Deposit memory _deposit1 = _fetchDeposit(_depositId1);
+    StakerUpgradeable.Deposit memory _deposit2 = _fetchDeposit(_depositId2);
 
     // Check that the deposits have been recorded independently
     assertEq(_deposit1.balance, _amount1);
@@ -612,10 +634,10 @@ contract Stake is StakerTest {
     _mintGovToken(_depositor2, _amount2);
 
     // Perform both deposits and track their identifiers separately
-    Staker.DepositIdentifier _depositId1 = _stake(_depositor1, _amount1, _delegatee1);
-    Staker.DepositIdentifier _depositId2 = _stake(_depositor2, _amount2, _delegatee2);
-    Staker.Deposit memory _deposit1 = _fetchDeposit(_depositId1);
-    Staker.Deposit memory _deposit2 = _fetchDeposit(_depositId2);
+    StakerUpgradeable.DepositIdentifier _depositId1 = _stake(_depositor1, _amount1, _delegatee1);
+    StakerUpgradeable.DepositIdentifier _depositId2 = _stake(_depositor2, _amount2, _delegatee2);
+    StakerUpgradeable.Deposit memory _deposit1 = _fetchDeposit(_depositId1);
+    StakerUpgradeable.Deposit memory _deposit2 = _fetchDeposit(_depositId2);
 
     // Check that the deposits have been recorded independently
     assertEq(_deposit1.balance, _amount1);
@@ -626,14 +648,14 @@ contract Stake is StakerTest {
     assertEq(_deposit2.delegatee, _delegatee2);
   }
 
-  mapping(Staker.DepositIdentifier depositId => bool isUsed) isIdUsed;
+  mapping(StakerUpgradeable.DepositIdentifier depositId => bool isUsed) isIdUsed;
 
   function test_NeverReusesADepositIdentifier() public {
     address _depositor = address(0xdeadbeef);
     uint256 _amount = 116;
     address _delegatee = address(0xaceface);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
 
     vm.pauseGasMetering();
 
@@ -675,7 +697,7 @@ contract Stake is StakerTest {
     govToken.approve(address(govStaker), _amount);
 
     vm.prank(_depositor);
-    vm.expectRevert(Staker.Staker__InvalidAddress.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InvalidAddress.selector);
     govStaker.stake(_amount, address(0));
   }
 
@@ -691,7 +713,7 @@ contract Stake is StakerTest {
     govToken.approve(address(govStaker), _amount);
 
     vm.prank(_depositor);
-    vm.expectRevert(Staker.Staker__InvalidAddress.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InvalidAddress.selector);
     govStaker.stake(_amount, _delegatee, address(0));
   }
 
@@ -705,7 +727,7 @@ contract Stake is StakerTest {
 
     earningPowerCalculator.__setMultiplierBips(_multiplierBips);
 
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _depositor);
 
     uint96 _actualEarningPower = govStaker.deposits(_depositId).earningPower;
@@ -723,7 +745,7 @@ contract Stake is StakerTest {
 
     earningPowerCalculator.__setFixedReturn(_fixedEarningPower);
 
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _depositor);
 
     uint96 _actualEarningPower = govStaker.deposits(_depositId).earningPower;
@@ -769,9 +791,9 @@ contract PermitAndStake is StakerTest {
     (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(_depositorPrivateKey, _messageHash);
 
     vm.prank(_depositor);
-    Staker.DepositIdentifier _depositId =
+    StakerUpgradeable.DepositIdentifier _depositId =
       govStaker.permitAndStake(_depositAmount, _delegatee, _claimer, _deadline, _v, _r, _s);
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.balance, _depositAmount);
     assertEq(_deposit.owner, _depositor);
@@ -818,9 +840,9 @@ contract PermitAndStake is StakerTest {
     govToken.permit(_depositor, address(govStaker), _depositAmount, _deadline, _v, _r, _s);
 
     vm.prank(_depositor);
-    Staker.DepositIdentifier _depositId =
+    StakerUpgradeable.DepositIdentifier _depositId =
       govStaker.permitAndStake(_depositAmount, _delegatee, _claimer, _deadline, _v, _r, _s);
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
   }
 
   function testFuzz_SuccessfullyStakeWhenApprovalExistsAndPermitSignatureIsInvalid(
@@ -948,11 +970,11 @@ contract PermitAndStake is StakerTest {
     (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(_depositorPrivateKey, _messageHash);
 
     vm.prank(_depositor);
-    Staker.DepositIdentifier _depositId =
+    StakerUpgradeable.DepositIdentifier _depositId =
       govStaker.permitAndStake(_depositAmount, _delegatee, _claimer, _deadline, _v, _r, _s);
 
     uint256 _expectedEarningPower = (_depositAmount * _multiplierBips) / 10_000;
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.earningPower, _expectedEarningPower);
     assertEq(govStaker.totalEarningPower(), _expectedEarningPower);
@@ -998,10 +1020,10 @@ contract PermitAndStake is StakerTest {
     (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(_depositorPrivateKey, _messageHash);
 
     vm.prank(_depositor);
-    Staker.DepositIdentifier _depositId =
+    StakerUpgradeable.DepositIdentifier _depositId =
       govStaker.permitAndStake(_depositAmount, _delegatee, _claimer, _deadline, _v, _r, _s);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.earningPower, _fixedEarningPower);
     assertEq(govStaker.totalEarningPower(), _fixedEarningPower);
@@ -1017,10 +1039,10 @@ contract StakeMore is StakerTest {
     address _delegatee,
     address _claimer
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     DelegationSurrogate _surrogate = govStaker.surrogates(_deposit.delegatee);
 
     _addAmount = _boundToRealisticStake(_addAmount);
@@ -1041,7 +1063,7 @@ contract StakeMore is StakerTest {
     address _delegatee,
     address _claimer
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1063,7 +1085,7 @@ contract StakeMore is StakerTest {
     address _delegatee,
     address _claimer
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1085,7 +1107,7 @@ contract StakeMore is StakerTest {
     address _delegatee,
     address _claimer
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1107,7 +1129,7 @@ contract StakeMore is StakerTest {
     address _delegatee,
     address _claimer
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1119,7 +1141,7 @@ contract StakeMore is StakerTest {
     govStaker.stakeMore(_depositId, _addAmount);
     vm.stopPrank();
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.balance, _depositAmount + _addAmount);
   }
@@ -1132,7 +1154,7 @@ contract StakeMore is StakerTest {
     address _claimer
   ) public {
     uint256 _totalAdditionalStake;
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
     // Second stake
@@ -1150,7 +1172,7 @@ contract StakeMore is StakerTest {
     uint256 _total = _depositAmount + _totalAdditionalStake;
 
     vm.expectEmit();
-    emit Staker.StakeDeposited(_depositor, _depositId, _addAmount, _total, _total);
+    emit StakerUpgradeable.StakeDeposited(_depositor, _depositId, _addAmount, _total, _total);
 
     govStaker.stakeMore(_depositId, _addAmount);
     vm.stopPrank();
@@ -1166,7 +1188,7 @@ contract StakeMore is StakerTest {
   ) public {
     vm.assume(_notDepositor != _depositor);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1179,7 +1201,7 @@ contract StakeMore is StakerTest {
     vm.prank(_notDepositor);
     vm.expectRevert(
       abi.encodeWithSelector(
-        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     govStaker.stakeMore(_depositId, _addAmount);
@@ -1187,7 +1209,7 @@ contract StakeMore is StakerTest {
 
   function testFuzz_RevertIf_TheDepositIdentifierIsInvalid(
     address _depositor,
-    Staker.DepositIdentifier _depositId,
+    StakerUpgradeable.DepositIdentifier _depositId,
     uint256 _addAmount
   ) public {
     vm.assume(_depositor != address(0));
@@ -1198,7 +1220,9 @@ contract StakeMore is StakerTest {
     // being address zero, which means the address attempting to alter it won't be able to.
     vm.prank(_depositor);
     vm.expectRevert(
-      abi.encodeWithSelector(Staker.Staker__Unauthorized.selector, bytes32("not owner"), _depositor)
+      abi.encodeWithSelector(
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _depositor
+      )
     );
     govStaker.stakeMore(_depositId, _addAmount);
   }
@@ -1213,7 +1237,7 @@ contract StakeMore is StakerTest {
     _multiplierBips = bound(_multiplierBips, 0, 20_000);
     earningPowerCalculator.__setMultiplierBips(_multiplierBips);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
 
     _addAmount = _boundToRealisticStake(_addAmount);
@@ -1238,7 +1262,7 @@ contract StakeMore is StakerTest {
     _fixedEarningPower = _boundToRealisticStake(_fixedEarningPower);
     earningPowerCalculator.__setFixedReturn(_fixedEarningPower);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
 
     _addAmount = _boundToRealisticStake(_addAmount);
@@ -1262,7 +1286,7 @@ contract StakeMore is StakerTest {
     _multiplierBips = bound(_multiplierBips, 0, 20_000);
     earningPowerCalculator.__setMultiplierBips(_multiplierBips);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
 
     _addAmount = _boundToRealisticStake(_addAmount);
@@ -1294,7 +1318,7 @@ contract PermitAndStakeMore is StakerTest {
     address _depositor = vm.addr(_depositorPrivateKey);
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
 
@@ -1326,7 +1350,7 @@ contract PermitAndStakeMore is StakerTest {
       govStaker.permitAndStakeMore(_depositId, _stakeMoreAmount, _deadline, _v, _r, _s);
     }
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.balance, _initialDepositAmount + _stakeMoreAmount);
     assertEq(_deposit.owner, _depositor);
@@ -1349,7 +1373,7 @@ contract PermitAndStakeMore is StakerTest {
     address _depositor = vm.addr(_depositorPrivateKey);
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
 
@@ -1394,7 +1418,7 @@ contract PermitAndStakeMore is StakerTest {
   ) public {
     vm.assume(_delegatee != address(0) && _claimer != address(0));
     (address _depositor, uint256 _depositorPrivateKey) = makeAddrAndKey("depositor");
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
     _stakeMoreAmount = bound(_stakeMoreAmount, 0, type(uint96).max - _initialDepositAmount);
@@ -1442,7 +1466,7 @@ contract PermitAndStakeMore is StakerTest {
     vm.assume(_depositor != _notDepositor);
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
 
@@ -1469,7 +1493,7 @@ contract PermitAndStakeMore is StakerTest {
       vm.prank(_notDepositor);
       vm.expectRevert(
         abi.encodeWithSelector(
-          Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
+          StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
         )
       );
       govStaker.permitAndStakeMore(_depositId, _stakeMoreAmount, _deadline, _v, _r, _s);
@@ -1491,7 +1515,7 @@ contract PermitAndStakeMore is StakerTest {
     uint256 _wrongNonce = 1;
     uint256 _approvalAmount = _stakeMoreAmount - 1;
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
     _mintGovToken(_depositor, _stakeMoreAmount);
@@ -1538,7 +1562,7 @@ contract PermitAndStakeMore is StakerTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1550,7 +1574,7 @@ contract PermitAndStakeMore is StakerTest {
 
     uint256 _totalStaked = _depositAmount + _addAmount;
     uint256 _expectedEarningPower = (_totalStaked * _multiplierBips) / 10_000;
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.earningPower, _expectedEarningPower);
     assertEq(govStaker.totalEarningPower(), _expectedEarningPower);
@@ -1569,7 +1593,7 @@ contract PermitAndStakeMore is StakerTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1579,7 +1603,7 @@ contract PermitAndStakeMore is StakerTest {
 
     _executePermitAndStakeMore(_depositor, _depositorPrivateKey, _depositId, _addAmount);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.earningPower, _fixedEarningPower);
     assertEq(govStaker.totalEarningPower(), _fixedEarningPower);
@@ -1590,7 +1614,7 @@ contract PermitAndStakeMore is StakerTest {
   function _executePermitAndStakeMore(
     address _depositor,
     uint256 _depositorPrivateKey,
-    Staker.DepositIdentifier _depositId,
+    StakerUpgradeable.DepositIdentifier _depositId,
     uint256 _addAmount
   ) internal {
     _mintGovToken(_depositor, _addAmount);
@@ -1626,7 +1650,7 @@ contract AlterDelegatee is StakerTest {
   ) public {
     vm.assume(_newDelegatee != address(0) && _newDelegatee != _firstDelegatee);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _claimer);
     address _firstSurrogate = address(govStaker.surrogates(_firstDelegatee));
@@ -1634,7 +1658,7 @@ contract AlterDelegatee is StakerTest {
     vm.prank(_depositor);
     govStaker.alterDelegatee(_depositId, _newDelegatee);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     address _newSurrogate = address(govStaker.surrogates(_deposit.delegatee));
 
     assertEq(_deposit.delegatee, _newDelegatee);
@@ -1648,7 +1672,7 @@ contract AlterDelegatee is StakerTest {
     address _delegatee,
     address _claimer
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
     address _beforeSurrogate = address(govStaker.surrogates(_delegatee));
@@ -1658,7 +1682,7 @@ contract AlterDelegatee is StakerTest {
     vm.prank(_depositor);
     govStaker.alterDelegatee(_depositId, _delegatee);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     address _afterSurrogate = address(govStaker.surrogates(_deposit.delegatee));
 
     assertEq(_deposit.delegatee, _delegatee);
@@ -1675,12 +1699,14 @@ contract AlterDelegatee is StakerTest {
   ) public {
     vm.assume(_newDelegatee != address(0) && _newDelegatee != _firstDelegatee);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _claimer);
 
     vm.expectEmit();
-    emit Staker.DelegateeAltered(_depositId, _firstDelegatee, _newDelegatee, _depositAmount);
+    emit StakerUpgradeable.DelegateeAltered(
+      _depositId, _firstDelegatee, _newDelegatee, _depositAmount
+    );
 
     vm.prank(_depositor);
     govStaker.alterDelegatee(_depositId, _newDelegatee);
@@ -1696,7 +1722,7 @@ contract AlterDelegatee is StakerTest {
   ) public {
     vm.assume(_newDelegatee != address(0) && _newDelegatee != _firstDelegatee);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _claimer);
 
@@ -1707,7 +1733,7 @@ contract AlterDelegatee is StakerTest {
     vm.prank(_depositor);
     govStaker.alterDelegatee(_depositId, _newDelegatee);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.earningPower, _newEarningPower);
   }
@@ -1722,7 +1748,7 @@ contract AlterDelegatee is StakerTest {
   ) public {
     vm.assume(_newDelegatee != address(0) && _newDelegatee != _firstDelegatee);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _claimer);
 
@@ -1746,7 +1772,7 @@ contract AlterDelegatee is StakerTest {
   ) public {
     vm.assume(_newDelegatee != address(0) && _newDelegatee != _firstDelegatee);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _claimer);
 
@@ -1772,14 +1798,14 @@ contract AlterDelegatee is StakerTest {
       _depositor != _notDepositor && _newDelegatee != address(0) && _newDelegatee != _firstDelegatee
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _claimer);
 
     vm.prank(_notDepositor);
     vm.expectRevert(
       abi.encodeWithSelector(
-        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     govStaker.alterDelegatee(_depositId, _newDelegatee);
@@ -1787,7 +1813,7 @@ contract AlterDelegatee is StakerTest {
 
   function testFuzz_RevertIf_TheDepositIdentifierIsInvalid(
     address _depositor,
-    Staker.DepositIdentifier _depositId,
+    StakerUpgradeable.DepositIdentifier _depositId,
     address _newDelegatee
   ) public {
     vm.assume(_depositor != address(0) && _newDelegatee != address(0));
@@ -1797,7 +1823,9 @@ contract AlterDelegatee is StakerTest {
     // address zero, which means the address attempting to alter it won't be able to.
     vm.prank(_depositor);
     vm.expectRevert(
-      abi.encodeWithSelector(Staker.Staker__Unauthorized.selector, bytes32("not owner"), _depositor)
+      abi.encodeWithSelector(
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _depositor
+      )
     );
     govStaker.alterDelegatee(_depositId, _newDelegatee);
   }
@@ -1807,11 +1835,11 @@ contract AlterDelegatee is StakerTest {
     uint256 _depositAmount,
     address _delegatee
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
 
     vm.prank(_depositor);
-    vm.expectRevert(Staker.Staker__InvalidAddress.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InvalidAddress.selector);
     govStaker.alterDelegatee(_depositId, address(0));
   }
 
@@ -1828,7 +1856,7 @@ contract AlterDelegatee is StakerTest {
     _multiplierBips = bound(_multiplierBips, 0, 20_000);
     earningPowerCalculator.__setMultiplierBips(_multiplierBips);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _claimer);
 
@@ -1837,7 +1865,7 @@ contract AlterDelegatee is StakerTest {
 
     uint256 _expectedEarningPower = (_depositAmount * _multiplierBips) / 10_000;
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.earningPower, _expectedEarningPower);
     assertEq(govStaker.totalEarningPower(), _expectedEarningPower);
     assertEq(govStaker.depositorTotalEarningPower(_depositor), _expectedEarningPower);
@@ -1856,14 +1884,14 @@ contract AlterDelegatee is StakerTest {
     _fixedEarningPower = _boundToRealisticStake(_fixedEarningPower);
     earningPowerCalculator.__setFixedReturn(_fixedEarningPower);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _firstDelegatee, _claimer);
 
     vm.prank(_depositor);
     govStaker.alterDelegatee(_depositId, _newDelegatee);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.earningPower, _fixedEarningPower);
     assertEq(govStaker.totalEarningPower(), _fixedEarningPower);
     assertEq(govStaker.depositorTotalEarningPower(_depositor), _fixedEarningPower);
@@ -1880,14 +1908,14 @@ contract AlterClaimer is StakerTest {
   ) public {
     vm.assume(_newClaimer != address(0) && _newClaimer != _firstClaimer);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstClaimer);
 
     vm.prank(_depositor);
     govStaker.alterClaimer(_depositId, _newClaimer);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.claimer, _newClaimer);
   }
@@ -1898,7 +1926,7 @@ contract AlterClaimer is StakerTest {
     address _delegatee,
     address _claimer
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1907,7 +1935,7 @@ contract AlterClaimer is StakerTest {
     vm.prank(_depositor);
     govStaker.alterClaimer(_depositId, _claimer);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.claimer, _claimer);
   }
@@ -1921,12 +1949,12 @@ contract AlterClaimer is StakerTest {
   ) public {
     vm.assume(_newClaimer != address(0) && _newClaimer != _firstClaimer);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstClaimer);
 
     vm.expectEmit();
-    emit Staker.ClaimerAltered(_depositId, _firstClaimer, _newClaimer, _depositAmount);
+    emit StakerUpgradeable.ClaimerAltered(_depositId, _firstClaimer, _newClaimer, _depositAmount);
 
     vm.prank(_depositor);
     govStaker.alterClaimer(_depositId, _newClaimer);
@@ -1942,7 +1970,7 @@ contract AlterClaimer is StakerTest {
   ) public {
     vm.assume(_newClaimer != address(0) && _newClaimer != _firstClaimer);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstClaimer);
 
@@ -1953,7 +1981,7 @@ contract AlterClaimer is StakerTest {
     vm.prank(_depositor);
     govStaker.alterClaimer(_depositId, _newClaimer);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.earningPower, _newEarningPower);
   }
@@ -1968,7 +1996,7 @@ contract AlterClaimer is StakerTest {
   ) public {
     vm.assume(_newClaimer != address(0) && _newClaimer != _firstClaimer);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstClaimer);
 
@@ -1992,7 +2020,7 @@ contract AlterClaimer is StakerTest {
   ) public {
     vm.assume(_newClaimer != address(0) && _newClaimer != _firstClaimer);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstClaimer);
 
@@ -2018,14 +2046,14 @@ contract AlterClaimer is StakerTest {
       _notDepositor != _depositor && _newClaimer != address(0) && _newClaimer != _firstClaimer
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstClaimer);
 
     vm.prank(_notDepositor);
     vm.expectRevert(
       abi.encodeWithSelector(
-        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     govStaker.alterClaimer(_depositId, _newClaimer);
@@ -2033,7 +2061,7 @@ contract AlterClaimer is StakerTest {
 
   function testFuzz_RevertIf_TheDepositIdentifierIsInvalid(
     address _depositor,
-    Staker.DepositIdentifier _depositId,
+    StakerUpgradeable.DepositIdentifier _depositId,
     address _newClaimer
   ) public {
     vm.assume(_depositor != address(0) && _newClaimer != address(0));
@@ -2043,7 +2071,9 @@ contract AlterClaimer is StakerTest {
     // address zero, which means the address attempting to alter it won't be able to.
     vm.prank(_depositor);
     vm.expectRevert(
-      abi.encodeWithSelector(Staker.Staker__Unauthorized.selector, bytes32("not owner"), _depositor)
+      abi.encodeWithSelector(
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _depositor
+      )
     );
     govStaker.alterClaimer(_depositId, _newClaimer);
   }
@@ -2053,11 +2083,11 @@ contract AlterClaimer is StakerTest {
     uint256 _depositAmount,
     address _delegatee
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
 
     vm.prank(_depositor);
-    vm.expectRevert(Staker.Staker__InvalidAddress.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InvalidAddress.selector);
     govStaker.alterClaimer(_depositId, address(0));
   }
 
@@ -2074,7 +2104,7 @@ contract AlterClaimer is StakerTest {
     _multiplierBips = bound(_multiplierBips, 0, 20_000);
     earningPowerCalculator.__setMultiplierBips(_multiplierBips);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstClaimer);
 
@@ -2083,7 +2113,7 @@ contract AlterClaimer is StakerTest {
 
     uint256 _expectedEarningPower = (_depositAmount * _multiplierBips) / 10_000;
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.earningPower, _expectedEarningPower);
     assertEq(govStaker.totalEarningPower(), _expectedEarningPower);
     assertEq(govStaker.depositorTotalEarningPower(_depositor), _expectedEarningPower);
@@ -2102,14 +2132,14 @@ contract AlterClaimer is StakerTest {
     _fixedEarningPower = _boundToRealisticStake(_fixedEarningPower);
     earningPowerCalculator.__setFixedReturn(_fixedEarningPower);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _firstClaimer);
 
     vm.prank(_depositor);
     govStaker.alterClaimer(_depositId, _newClaimer);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.earningPower, _fixedEarningPower);
     assertEq(govStaker.totalEarningPower(), _fixedEarningPower);
     assertEq(govStaker.depositorTotalEarningPower(_depositor), _fixedEarningPower);
@@ -2123,14 +2153,14 @@ contract Withdraw is StakerTest {
     address _delegatee,
     uint256 _withdrawalAmount
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
     _withdrawalAmount = bound(_withdrawalAmount, 0, _depositAmount);
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId, _withdrawalAmount);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     address _surrogate = address(govStaker.surrogates(_deposit.delegatee));
 
     assertEq(govToken.balanceOf(_depositor), _withdrawalAmount);
@@ -2144,7 +2174,7 @@ contract Withdraw is StakerTest {
     address _delegatee,
     uint256 _withdrawalAmount
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
     _withdrawalAmount = bound(_withdrawalAmount, 0, _depositAmount);
 
@@ -2165,9 +2195,9 @@ contract Withdraw is StakerTest {
     uint256 _withdrawalAmount2
   ) public {
     // Make two separate deposits
-    Staker.DepositIdentifier _depositId1;
+    StakerUpgradeable.DepositIdentifier _depositId1;
     (_depositAmount1, _depositId1) = _boundMintAndStake(_depositor1, _depositAmount1, _delegatee1);
-    Staker.DepositIdentifier _depositId2;
+    StakerUpgradeable.DepositIdentifier _depositId2;
     (_depositAmount2, _depositId2) = _boundMintAndStake(_depositor2, _depositAmount2, _delegatee2);
 
     // Calculate withdrawal amounts
@@ -2194,9 +2224,9 @@ contract Withdraw is StakerTest {
     uint256 _withdrawalAmount
   ) public {
     // Make two separate deposits
-    Staker.DepositIdentifier _depositId1;
+    StakerUpgradeable.DepositIdentifier _depositId1;
     (_depositAmount1, _depositId1) = _boundMintAndStake(_depositor, _depositAmount1, _delegatee1);
-    Staker.DepositIdentifier _depositId2;
+    StakerUpgradeable.DepositIdentifier _depositId2;
     (_depositAmount2, _depositId2) = _boundMintAndStake(_depositor, _depositAmount2, _delegatee2);
 
     // Withdraw part of the first deposit
@@ -2221,9 +2251,9 @@ contract Withdraw is StakerTest {
     uint256 _withdrawalAmount
   ) public {
     // Make two separate deposits
-    Staker.DepositIdentifier _depositId1;
+    StakerUpgradeable.DepositIdentifier _depositId1;
     (_depositAmount1, _depositId1) = _boundMintAndStake(_depositor, _depositAmount1, _delegatee1);
-    Staker.DepositIdentifier _depositId2;
+    StakerUpgradeable.DepositIdentifier _depositId2;
     (_depositAmount2, _depositId2) = _boundMintAndStake(_depositor, _depositAmount2, _delegatee2);
 
     // Withdraw part of the first deposit
@@ -2245,14 +2275,16 @@ contract Withdraw is StakerTest {
     address _delegatee,
     uint256 _withdrawalAmount
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
     _withdrawalAmount = bound(_withdrawalAmount, 0, _depositAmount);
 
     uint256 _newAmount = _depositAmount - _withdrawalAmount;
 
     vm.expectEmit();
-    emit Staker.StakeWithdrawn(_depositor, _depositId, _withdrawalAmount, _newAmount, _newAmount);
+    emit StakerUpgradeable.StakeWithdrawn(
+      _depositor, _depositId, _withdrawalAmount, _newAmount, _newAmount
+    );
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId, _withdrawalAmount);
@@ -2264,14 +2296,14 @@ contract Withdraw is StakerTest {
     address _delegatee,
     address _notDepositor
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee);
     vm.assume(_depositor != _notDepositor);
 
     vm.prank(_notDepositor);
     vm.expectRevert(
       abi.encodeWithSelector(
-        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     govStaker.withdraw(_depositId, _amount);
@@ -2283,7 +2315,7 @@ contract Withdraw is StakerTest {
     uint256 _amountOver,
     address _delegatee
   ) public {
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee);
     _amountOver = bound(_amountOver, 1, type(uint128).max);
 
@@ -2302,14 +2334,14 @@ contract Withdraw is StakerTest {
     _multiplierBips = bound(_multiplierBips, 0, 20_000);
     earningPowerCalculator.__setMultiplierBips(_multiplierBips);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
     _withdrawalAmount = bound(_withdrawalAmount, 0, _depositAmount);
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId, _withdrawalAmount);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     uint256 _remainingStake = _depositAmount - _withdrawalAmount;
     uint256 _expectedEarningPower = (_remainingStake * _multiplierBips) / 10_000;
     assertEq(_deposit.earningPower, _expectedEarningPower);
@@ -2325,14 +2357,14 @@ contract Withdraw is StakerTest {
     _fixedEarningPower = _boundToRealisticStake(_fixedEarningPower);
     earningPowerCalculator.__setFixedReturn(_fixedEarningPower);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) = _boundMintAndStake(_depositor, _depositAmount, _delegatee);
     _withdrawalAmount = bound(_withdrawalAmount, 0, _depositAmount);
 
     vm.prank(_depositor);
     govStaker.withdraw(_depositId, _withdrawalAmount);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.earningPower, _fixedEarningPower);
   }
 }
@@ -2356,7 +2388,7 @@ contract SetRewardNotifier is StakerTest {
     public
   {
     vm.expectEmit();
-    emit Staker.RewardNotifierSet(_rewardNotifier, _isEnabled);
+    emit StakerUpgradeable.RewardNotifierSet(_rewardNotifier, _isEnabled);
     vm.prank(admin);
     govStaker.setRewardNotifier(_rewardNotifier, _isEnabled);
   }
@@ -2370,7 +2402,9 @@ contract SetRewardNotifier is StakerTest {
 
     vm.prank(_notAdmin);
     vm.expectRevert(
-      abi.encodeWithSelector(Staker.Staker__Unauthorized.selector, bytes32("not admin"), _notAdmin)
+      abi.encodeWithSelector(
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not admin"), _notAdmin
+      )
     );
     govStaker.setRewardNotifier(_newRewardNotifier, _isEnabled);
   }
@@ -2390,7 +2424,7 @@ contract SetAdmin is StakerTest {
     vm.assume(_newAdmin != address(0));
 
     vm.expectEmit();
-    emit Staker.AdminSet(admin, _newAdmin);
+    emit StakerUpgradeable.AdminSet(admin, _newAdmin);
 
     vm.prank(admin);
     govStaker.setAdmin(_newAdmin);
@@ -2401,14 +2435,16 @@ contract SetAdmin is StakerTest {
 
     vm.prank(_notAdmin);
     vm.expectRevert(
-      abi.encodeWithSelector(Staker.Staker__Unauthorized.selector, bytes32("not admin"), _notAdmin)
+      abi.encodeWithSelector(
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not admin"), _notAdmin
+      )
     );
     govStaker.setAdmin(_newAdmin);
   }
 
   function test_RevertIf_NewAdminAddressIsZeroAddress() public {
     vm.prank(admin);
-    vm.expectRevert(Staker.Staker__InvalidAddress.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InvalidAddress.selector);
     govStaker.setAdmin(address(0));
   }
 }
@@ -2431,7 +2467,7 @@ contract SetEarningPowerCalculator is StakerTest {
     vm.assume(_newEarningPowerCalculator != address(0));
 
     vm.expectEmit();
-    emit Staker.EarningPowerCalculatorSet(
+    emit StakerUpgradeable.EarningPowerCalculatorSet(
       address(govStaker.earningPowerCalculator()), _newEarningPowerCalculator
     );
 
@@ -2447,14 +2483,16 @@ contract SetEarningPowerCalculator is StakerTest {
 
     vm.prank(_notAdmin);
     vm.expectRevert(
-      abi.encodeWithSelector(Staker.Staker__Unauthorized.selector, bytes32("not admin"), _notAdmin)
+      abi.encodeWithSelector(
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not admin"), _notAdmin
+      )
     );
     govStaker.setEarningPowerCalculator(_newEarningPowerCalculator);
   }
 
   function test_RevertIf_NewEarningPowerCalculatorAddressIsZeroAddress() public {
     vm.prank(admin);
-    vm.expectRevert(Staker.Staker__InvalidAddress.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InvalidAddress.selector);
     govStaker.setEarningPowerCalculator(address(0));
   }
 }
@@ -2469,7 +2507,7 @@ contract SetMaxBumpTip is StakerTest {
 
   function testFuzz_EmitsEventWhenMaxBumpTipIsSet(uint256 _newMaxBumpTip) public {
     vm.expectEmit();
-    emit Staker.MaxBumpTipSet(govStaker.maxBumpTip(), _newMaxBumpTip);
+    emit StakerUpgradeable.MaxBumpTipSet(govStaker.maxBumpTip(), _newMaxBumpTip);
 
     vm.prank(admin);
     govStaker.setMaxBumpTip(_newMaxBumpTip);
@@ -2480,7 +2518,9 @@ contract SetMaxBumpTip is StakerTest {
 
     vm.prank(_caller);
     vm.expectRevert(
-      abi.encodeWithSelector(Staker.Staker__Unauthorized.selector, bytes32("not admin"), _caller)
+      abi.encodeWithSelector(
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not admin"), _caller
+      )
     );
     govStaker.setMaxBumpTip(_newMaxBumpTip);
   }
@@ -2488,7 +2528,7 @@ contract SetMaxBumpTip is StakerTest {
 
 contract SetClaimFeeParameters is StakerTest {
   function testFuzz_AllowsAdminToUpdateTheClaimFeeAmountAndFeeCollector(
-    Staker.ClaimFeeParameters memory _newParams
+    StakerUpgradeable.ClaimFeeParameters memory _newParams
   ) public {
     vm.assume(_newParams.feeCollector != address(0));
     _newParams.feeAmount = uint96(bound(_newParams.feeAmount, 0, govStaker.MAX_CLAIM_FEE()));
@@ -2496,7 +2536,7 @@ contract SetClaimFeeParameters is StakerTest {
     vm.prank(admin);
     govStaker.setClaimFeeParameters(_newParams);
 
-    Staker.ClaimFeeParameters memory _feeParams = govStaker.claimFeeParameters();
+    StakerUpgradeable.ClaimFeeParameters memory _feeParams = govStaker.claimFeeParameters();
     uint96 _feeAmount = _feeParams.feeAmount;
     address _feeCollector = _feeParams.feeCollector;
     assertEq(_feeAmount, _newParams.feeAmount);
@@ -2504,7 +2544,7 @@ contract SetClaimFeeParameters is StakerTest {
   }
 
   function testFuzz_AllowsAdminToSetFeeAmountAndFeeCollectorToZero(
-    Staker.ClaimFeeParameters memory _initialParams
+    StakerUpgradeable.ClaimFeeParameters memory _initialParams
   ) public {
     vm.assume(_initialParams.feeCollector != address(0));
     _initialParams.feeAmount = uint96(bound(_initialParams.feeAmount, 0, govStaker.MAX_CLAIM_FEE()));
@@ -2513,14 +2553,14 @@ contract SetClaimFeeParameters is StakerTest {
     vm.prank(admin);
     govStaker.setClaimFeeParameters(_initialParams);
 
-    Staker.ClaimFeeParameters memory _zeroParams =
-      Staker.ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)});
+    StakerUpgradeable.ClaimFeeParameters memory _zeroParams =
+      StakerUpgradeable.ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)});
 
     // Update the parameters to both be zero.
     vm.prank(admin);
     govStaker.setClaimFeeParameters(_zeroParams);
 
-    Staker.ClaimFeeParameters memory _feeParams = govStaker.claimFeeParameters();
+    StakerUpgradeable.ClaimFeeParameters memory _feeParams = govStaker.claimFeeParameters();
     uint96 _feeAmount = _feeParams.feeAmount;
     address _feeCollector = _feeParams.feeCollector;
     assertEq(_feeAmount, 0);
@@ -2528,8 +2568,8 @@ contract SetClaimFeeParameters is StakerTest {
   }
 
   function testFuzz_EmitsAClaimFeeParametersSetEvent(
-    Staker.ClaimFeeParameters memory _initialParams,
-    Staker.ClaimFeeParameters memory _newParams
+    StakerUpgradeable.ClaimFeeParameters memory _initialParams,
+    StakerUpgradeable.ClaimFeeParameters memory _newParams
   ) public {
     vm.assume(_initialParams.feeCollector != address(0) && _newParams.feeCollector != address(0));
     _newParams.feeAmount = uint96(bound(_newParams.feeAmount, 0, govStaker.MAX_CLAIM_FEE()));
@@ -2542,7 +2582,7 @@ contract SetClaimFeeParameters is StakerTest {
     // Update params, expecting appropriate event.
     vm.prank(admin);
     vm.expectEmit();
-    emit Staker.ClaimFeeParametersSet(
+    emit StakerUpgradeable.ClaimFeeParametersSet(
       _initialParams.feeAmount,
       _newParams.feeAmount,
       _initialParams.feeCollector,
@@ -2552,31 +2592,31 @@ contract SetClaimFeeParameters is StakerTest {
   }
 
   function testFuzz_RevertIf_FeeAmountIsMoreThanTheMaxClaimFee(
-    Staker.ClaimFeeParameters memory _newParams
+    StakerUpgradeable.ClaimFeeParameters memory _newParams
   ) public {
     vm.assume(_newParams.feeCollector != address(0));
     _newParams.feeAmount =
       uint96(bound(_newParams.feeAmount, govStaker.MAX_CLAIM_FEE() + 1, type(uint96).max));
 
     vm.prank(admin);
-    vm.expectRevert(Staker.Staker__InvalidClaimFeeParameters.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InvalidClaimFeeParameters.selector);
     govStaker.setClaimFeeParameters(_newParams);
   }
 
   function testFuzz_RevertIf_TheFeeCollectorIsAddressZeroWhileFeeAmountIsNotZero(
-    Staker.ClaimFeeParameters memory _newParams
+    StakerUpgradeable.ClaimFeeParameters memory _newParams
   ) public {
     _newParams.feeAmount = uint96(bound(_newParams.feeAmount, 1, govStaker.MAX_CLAIM_FEE()));
     _newParams.feeCollector = address(0);
 
     vm.prank(admin);
-    vm.expectRevert(Staker.Staker__InvalidClaimFeeParameters.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InvalidClaimFeeParameters.selector);
     govStaker.setClaimFeeParameters(_newParams);
   }
 
   function testFuzz_RevertIf_TheCallerIsNotTheAdmin(
     address _notAdmin,
-    Staker.ClaimFeeParameters memory _newParams
+    StakerUpgradeable.ClaimFeeParameters memory _newParams
   ) public {
     vm.assume(_newParams.feeCollector != address(0));
     vm.assume(_notAdmin != admin);
@@ -2584,7 +2624,9 @@ contract SetClaimFeeParameters is StakerTest {
 
     vm.prank(_notAdmin);
     vm.expectRevert(
-      abi.encodeWithSelector(Staker.Staker__Unauthorized.selector, bytes32("not admin"), _notAdmin)
+      abi.encodeWithSelector(
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not admin"), _notAdmin
+      )
     );
     govStaker.setClaimFeeParameters(_newParams);
   }
@@ -2616,8 +2658,8 @@ contract StakerRewardsTest is StakerTest {
     console2.log("-----------------------------------------------");
   }
 
-  function __dumpDebugDeposit(Staker.DepositIdentifier _depositId) public view {
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+  function __dumpDebugDeposit(StakerUpgradeable.DepositIdentifier _depositId) public view {
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     console2.log("deposit balance");
     console2.log(_deposit.balance);
     console2.log("deposit owner");
@@ -2806,7 +2848,7 @@ contract NotifyRewardAmount is StakerRewardsTest {
 
     // fox alters delegatee
     vm.prank(_fox);
-    govStaker.alterDelegatee(Staker.DepositIdentifier.wrap(1), address(0x2));
+    govStaker.alterDelegatee(StakerUpgradeable.DepositIdentifier.wrap(1), address(0x2));
 
     // fox checkpoints global rewards
     _mintGovToken(_fox, 0);
@@ -2814,14 +2856,14 @@ contract NotifyRewardAmount is StakerRewardsTest {
 
     // fox alters back to valid delegatee
     vm.prank(_fox);
-    govStaker.alterDelegatee(Staker.DepositIdentifier.wrap(1), address(0x2));
+    govStaker.alterDelegatee(StakerUpgradeable.DepositIdentifier.wrap(1), address(0x2));
 
     // fox claims double the rewards
     vm.prank(_fox);
-    govStaker.claimReward(Staker.DepositIdentifier.wrap(1));
+    govStaker.claimReward(StakerUpgradeable.DepositIdentifier.wrap(1));
 
     vm.prank(_doe);
-    govStaker.claimReward(Staker.DepositIdentifier.wrap(0));
+    govStaker.claimReward(StakerUpgradeable.DepositIdentifier.wrap(0));
     assertEq(rewardToken.balanceOf(_doe), rewardToken.balanceOf(_fox));
   }
 
@@ -2833,7 +2875,7 @@ contract NotifyRewardAmount is StakerRewardsTest {
     rewardToken.transfer(address(govStaker), _amount);
 
     vm.expectEmit();
-    emit Staker.RewardNotified(_amount, rewardNotifier);
+    emit StakerUpgradeable.RewardNotified(_amount, rewardNotifier);
 
     govStaker.notifyRewardAmount(_amount);
     vm.stopPrank();
@@ -2851,7 +2893,7 @@ contract NotifyRewardAmount is StakerRewardsTest {
     rewardToken.transfer(address(govStaker), _amount);
     vm.expectRevert(
       abi.encodeWithSelector(
-        Staker.Staker__Unauthorized.selector, bytes32("not notifier"), _notNotifier
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not notifier"), _notNotifier
       )
     );
     govStaker.notifyRewardAmount(_amount);
@@ -2865,7 +2907,7 @@ contract NotifyRewardAmount is StakerRewardsTest {
 
     vm.startPrank(rewardNotifier);
     rewardToken.transfer(address(govStaker), _amount);
-    vm.expectRevert(Staker.Staker__InvalidRewardRate.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InvalidRewardRate.selector);
     govStaker.notifyRewardAmount(_amount);
     vm.stopPrank();
   }
@@ -2887,7 +2929,7 @@ contract NotifyRewardAmount is StakerRewardsTest {
     // Something less than the supposed reward is sent
     rewardToken.transfer(address(govStaker), _transferAmount);
     // The reward notification should revert because the contract doesn't have enough tokens
-    vm.expectRevert(Staker.Staker__InsufficientRewardBalance.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InsufficientRewardBalance.selector);
     govStaker.notifyRewardAmount(_amount);
     vm.stopPrank();
   }
@@ -2910,7 +2952,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -2947,7 +2989,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -2983,7 +3025,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3020,7 +3062,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3058,7 +3100,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3096,7 +3138,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerIncrease = uint96(bound(_earningPowerIncrease, 1, type(uint48).max));
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3115,7 +3157,7 @@ contract BumpEarningPower is StakerRewardsTest {
     // Bump earning power is called
     vm.prank(_bumpCaller);
     vm.expectEmit();
-    emit Staker.EarningPowerBumped(
+    emit StakerUpgradeable.EarningPowerBumped(
       _depositId, _oldEarningPower, _newEarningPower, _bumpCaller, _tipReceiver, _requestedTip
     );
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
@@ -3138,7 +3180,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3176,7 +3218,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3213,7 +3255,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3251,7 +3293,7 @@ contract BumpEarningPower is StakerRewardsTest {
     uint256 _initialTipReceiverBalance = rewardToken.balanceOf(_tipReceiver);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3290,7 +3332,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3327,7 +3369,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3347,7 +3389,7 @@ contract BumpEarningPower is StakerRewardsTest {
     // Bump earning power is called
     vm.prank(_bumpCaller);
     vm.expectEmit();
-    emit Staker.EarningPowerBumped(
+    emit StakerUpgradeable.EarningPowerBumped(
       _depositId, _oldEarningPower, _newEarningPower, _bumpCaller, _tipReceiver, _requestedTip
     );
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
@@ -3367,7 +3409,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3379,7 +3421,7 @@ contract BumpEarningPower is StakerRewardsTest {
     // The staker's earning power changes
     earningPowerCalculator.__setEarningPowerForDelegatee(_delegatee, _newEarningPower);
     // Bump earning power is called
-    vm.expectRevert(Staker.Staker__InvalidTip.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InvalidTip.selector);
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
@@ -3398,7 +3440,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3412,7 +3454,9 @@ contract BumpEarningPower is StakerRewardsTest {
       _delegatee, _newEarningPower, false
     );
     // Bump earning power is called
-    vm.expectRevert(abi.encodeWithSelector(Staker.Staker__Unqualified.selector, _newEarningPower));
+    vm.expectRevert(
+      abi.encodeWithSelector(StakerUpgradeable.Staker__Unqualified.selector, _newEarningPower)
+    );
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
@@ -3430,7 +3474,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3442,7 +3486,9 @@ contract BumpEarningPower is StakerRewardsTest {
     // The staker's earning power changes
     earningPowerCalculator.__setEarningPowerForDelegatee(_delegatee, _stakeAmount);
     // Bump earning power is called
-    vm.expectRevert(abi.encodeWithSelector(Staker.Staker__Unqualified.selector, _stakeAmount));
+    vm.expectRevert(
+      abi.encodeWithSelector(StakerUpgradeable.Staker__Unqualified.selector, _stakeAmount)
+    );
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
@@ -3462,7 +3508,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _rewardAmount = bound(_rewardAmount, 200e6, maxBumpTip - 1);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3476,7 +3522,7 @@ contract BumpEarningPower is StakerRewardsTest {
       _delegatee, _stakeAmount + _earningPowerIncrease
     );
     // // Bump earning power is called
-    vm.expectRevert(Staker.Staker__InsufficientUnclaimedRewards.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InsufficientUnclaimedRewards.selector);
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
@@ -3497,7 +3543,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3511,7 +3557,7 @@ contract BumpEarningPower is StakerRewardsTest {
       _delegatee, _stakeAmount - _earningPowerDecrease
     );
     // Bump earning power is called
-    vm.expectRevert(Staker.Staker__InsufficientUnclaimedRewards.selector);
+    vm.expectRevert(StakerUpgradeable.Staker__InsufficientUnclaimedRewards.selector);
     vm.prank(_bumpCaller);
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
   }
@@ -3532,7 +3578,7 @@ contract BumpEarningPower is StakerRewardsTest {
     _earningPowerDecrease = bound(_earningPowerDecrease, 1, _stakeAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3568,7 +3614,7 @@ contract BumpEarningPower is StakerRewardsTest {
     vm.prank(admin);
     govStaker.setRewardNotifier(rewardNotifier, true);
 
-    (, Staker.DepositIdentifier depositId) =
+    (, StakerUpgradeable.DepositIdentifier depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _depositor);
 
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3690,12 +3736,12 @@ contract RewardPerTokenAccumulated is StakerRewardsTest {
     _durationPercent3 = bound(_durationPercent3, 0, 200);
 
     // First deposit
-    Staker.DepositIdentifier _depositId1;
+    StakerUpgradeable.DepositIdentifier _depositId1;
     (_stakeAmount1, _depositId1) = _boundMintAndStake(_depositor1, _stakeAmount1, _depositor1);
     _jumpAheadByPercentOfRewardDuration(_durationPercent1);
 
     // Second deposit
-    (, Staker.DepositIdentifier _depositId2) =
+    (, StakerUpgradeable.DepositIdentifier _depositId2) =
       _boundMintAndStake(_depositor2, _stakeAmount2, _depositor2);
     _jumpAheadByPercentOfRewardDuration(_durationPercent2);
 
@@ -3731,7 +3777,7 @@ contract RewardPerTokenAccumulated is StakerRewardsTest {
     _durationPercent3 = _bound(_durationPercent3, 0, 200);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _depositor);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3770,7 +3816,7 @@ contract RewardPerTokenAccumulated is StakerRewardsTest {
     _durationPercent3 = _bound(_durationPercent3, 0, 200);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _depositor);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3806,7 +3852,7 @@ contract RewardPerTokenAccumulated is StakerRewardsTest {
     _durationPercent1 = _bound(_durationPercent1, 0, 200);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _depositor);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -3951,7 +3997,7 @@ contract RewardPerTokenAccumulated is StakerRewardsTest {
     _durationPercent1 = _bound(_durationPercent1, 0, 100);
     _durationPercent2 = _bound(_durationPercent2, 0, 100 - _durationPercent1);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
 
     // A user deposits staking tokens
     (, _depositId) = _boundMintAndStake(_depositor, _stakeAmount, _depositor);
@@ -4085,7 +4131,7 @@ contract UnclaimedReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4106,7 +4152,7 @@ contract UnclaimedReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens w/ a claimer
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4128,7 +4174,7 @@ contract UnclaimedReward is StakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4154,7 +4200,7 @@ contract UnclaimedReward is StakerRewardsTest {
     // Two thirds of the duration time passes
     _jumpAheadByPercentOfRewardDuration(66);
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The rest of the duration elapses
     _jumpAheadByPercentOfRewardDuration(34);
@@ -4173,7 +4219,7 @@ contract UnclaimedReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4202,7 +4248,7 @@ contract UnclaimedReward is StakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4241,7 +4287,7 @@ contract UnclaimedReward is StakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4278,12 +4324,12 @@ contract UnclaimedReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId1) =
+    (, StakerUpgradeable.DepositIdentifier _depositId1) =
       _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // Some time passes
     _jumpAhead(3000);
     // Another depositor deposits the same number of staking tokens
-    (, Staker.DepositIdentifier _depositId2) =
+    (, StakerUpgradeable.DepositIdentifier _depositId2) =
       _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4306,12 +4352,12 @@ contract UnclaimedReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId1) =
+    (, StakerUpgradeable.DepositIdentifier _depositId1) =
       _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // Some time passes
     _jumpAhead(3000);
     // Another depositor deposits the same number of staking tokens
-    (, Staker.DepositIdentifier _depositId2) =
+    (, StakerUpgradeable.DepositIdentifier _depositId2) =
       _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4352,12 +4398,12 @@ contract UnclaimedReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId1) =
+    (, StakerUpgradeable.DepositIdentifier _depositId1) =
       _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // Some time passes
     _jumpAhead(3000);
     // Another depositor deposits the same number of staking tokens
-    (, Staker.DepositIdentifier _depositId2) =
+    (, StakerUpgradeable.DepositIdentifier _depositId2) =
       _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4396,12 +4442,12 @@ contract UnclaimedReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId1) =
+    (, StakerUpgradeable.DepositIdentifier _depositId1) =
       _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // Some time passes
     _jumpAhead(3000);
     // Another depositor deposits the same number of staking tokens
-    (, Staker.DepositIdentifier _depositId2) =
+    (, StakerUpgradeable.DepositIdentifier _depositId2) =
       _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4449,7 +4495,7 @@ contract UnclaimedReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // The first user stakes some tokens
-    (, Staker.DepositIdentifier _depositId1) =
+    (, StakerUpgradeable.DepositIdentifier _depositId1) =
       _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // A small amount of time passes
     _jumpAhead(3000);
@@ -4458,7 +4504,7 @@ contract UnclaimedReward is StakerRewardsTest {
     // Two thirds of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(66);
     // A second user stakes the same amount of tokens
-    (, Staker.DepositIdentifier _depositId2) =
+    (, StakerUpgradeable.DepositIdentifier _depositId2) =
       _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // The rest of the duration elapses
     _jumpAheadByPercentOfRewardDuration(34);
@@ -4485,7 +4531,7 @@ contract UnclaimedReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount2) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount2);
 
     // A user stakes tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount1);
@@ -4523,12 +4569,12 @@ contract UnclaimedReward is StakerRewardsTest {
     // One quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
     // A user stakes some tokens
-    (, Staker.DepositIdentifier _depositId1) =
+    (, StakerUpgradeable.DepositIdentifier _depositId1) =
       _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // Another 40 percent of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(40);
     // Another user stakes some tokens
-    (, Staker.DepositIdentifier _depositId2) =
+    (, StakerUpgradeable.DepositIdentifier _depositId2) =
       _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // Another quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
@@ -4575,12 +4621,12 @@ contract UnclaimedReward is StakerRewardsTest {
     // One quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
     // A user stakes some tokens
-    (, Staker.DepositIdentifier _depositId1) =
+    (, StakerUpgradeable.DepositIdentifier _depositId1) =
       _boundMintAndStake(_depositor1, _stakeAmount1, _delegatee);
     // Another 40 percent of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(40);
     // Another user stakes some tokens
-    (, Staker.DepositIdentifier _depositId2) =
+    (, StakerUpgradeable.DepositIdentifier _depositId2) =
       _boundMintAndStake(_depositor2, _stakeAmount2, _delegatee);
     // Another quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
@@ -4626,7 +4672,7 @@ contract UnclaimedReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount3) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount3);
 
     // A user stakes tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount1);
@@ -4674,12 +4720,12 @@ contract UnclaimedReward is StakerRewardsTest {
     // One quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
     // A user stakes some tokens
-    (, Staker.DepositIdentifier _depositId1) =
+    (, StakerUpgradeable.DepositIdentifier _depositId1) =
       _boundMintAndStake(_depositor1, _stakeAmount, _delegatee);
     // Another 20 percent of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(20);
     // Another user stakes some tokens
-    (, Staker.DepositIdentifier _depositId2) =
+    (, StakerUpgradeable.DepositIdentifier _depositId2) =
       _boundMintAndStake(_depositor2, _stakeAmount, _delegatee);
     // Another 20 percent of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(20);
@@ -4741,12 +4787,12 @@ contract UnclaimedReward is StakerRewardsTest {
     // One quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(25);
     // A user stakes some tokens
-    (, Staker.DepositIdentifier _depositId1) =
+    (, StakerUpgradeable.DepositIdentifier _depositId1) =
       _boundMintAndStake(_depositor1, _stakeAmount1, _delegatee);
     // Another 40 percent of the duration time elapses
     _jumpAheadByPercentOfRewardDuration(20);
     // Another user stakes some tokens
-    (, Staker.DepositIdentifier _depositId2) =
+    (, StakerUpgradeable.DepositIdentifier _depositId2) =
       _boundMintAndStake(_depositor2, _stakeAmount2, _delegatee);
     // Another quarter of the duration elapses
     _jumpAheadByPercentOfRewardDuration(20);
@@ -4802,14 +4848,14 @@ contract UnclaimedReward is StakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId1) =
+    (, StakerUpgradeable.DepositIdentifier _depositId1) =
       _boundMintAndStake(_depositor1, _stakeAmount1, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
     // A portion of the duration passes
     _jumpAheadByPercentOfRewardDuration(_durationPercent);
     // Another user deposits stake
-    (, Staker.DepositIdentifier _depositId2) =
+    (, StakerUpgradeable.DepositIdentifier _depositId2) =
       _boundMintAndStake(_depositor2, _stakeAmount2, _delegatee);
     // The rest of the duration elapses
     _jumpAheadByPercentOfRewardDuration(100 - _durationPercent);
@@ -4843,14 +4889,16 @@ contract UnclaimedReward is StakerRewardsTest {
     vm.stopPrank();
 
     // User deposit staking tokens
-    Staker.DepositIdentifier _depositId1 = _stake(_depositor1, _smallDepositAmount, _delegatee);
-    Staker.DepositIdentifier _depositId2 = _stake(_depositor2, _smallDepositAmount, _delegatee);
+    StakerUpgradeable.DepositIdentifier _depositId1 =
+      _stake(_depositor1, _smallDepositAmount, _delegatee);
+    StakerUpgradeable.DepositIdentifier _depositId2 =
+      _stake(_depositor2, _smallDepositAmount, _delegatee);
     _stake(_depositor3, _largeDepositAmount, _delegatee);
 
     // Every block _attacker deposits 0 stake and assigns _depositor1 as claimer, thus leading
     // to frequent updates of the reward checkpoint for _depositor1, during which rounding errors
     // could accrue.
-    Staker.DepositIdentifier _depositId = _stake(_attacker, 0, _delegatee, _depositor1);
+    StakerUpgradeable.DepositIdentifier _depositId = _stake(_attacker, 0, _delegatee, _depositor1);
     for (uint256 i = 0; i < 1000; ++i) {
       _jumpAhead(12);
       vm.prank(_attacker);
@@ -4880,7 +4928,7 @@ contract ClaimReward is StakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4909,7 +4957,7 @@ contract ClaimReward is StakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4937,7 +4985,7 @@ contract ClaimReward is StakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4963,7 +5011,7 @@ contract ClaimReward is StakerRewardsTest {
     _durationPercent = bound(_durationPercent, 0, 100);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -4988,7 +5036,7 @@ contract ClaimReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     vm.assume(_stakeAmount != _newEarningPower);
 
@@ -5003,7 +5051,7 @@ contract ClaimReward is StakerRewardsTest {
     vm.prank(_depositor);
     govStaker.claimReward(_depositId);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.earningPower, _newEarningPower);
   }
@@ -5020,7 +5068,7 @@ contract ClaimReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     vm.assume(_stakeAmount != _newEarningPower);
 
@@ -5050,7 +5098,7 @@ contract ClaimReward is StakerRewardsTest {
     (_stakeAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_stakeAmount, _rewardAmount);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     vm.assume(_stakeAmount != _newEarningPower);
 
@@ -5080,7 +5128,7 @@ contract ClaimReward is StakerRewardsTest {
     _durationPercent = bound(_durationPercent, 1, 100);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -5090,7 +5138,7 @@ contract ClaimReward is StakerRewardsTest {
     uint256 _earned = govStaker.unclaimedReward(_depositId);
 
     vm.expectEmit();
-    emit Staker.RewardClaimed(_depositId, _depositor, _earned, _stakeAmount);
+    emit StakerUpgradeable.RewardClaimed(_depositId, _depositor, _earned, _stakeAmount);
 
     vm.prank(_depositor);
     govStaker.claimReward(_depositId);
@@ -5108,7 +5156,7 @@ contract ClaimReward is StakerRewardsTest {
     _durationPercent = bound(_durationPercent, 1, 100);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -5118,7 +5166,7 @@ contract ClaimReward is StakerRewardsTest {
     uint256 _earned = govStaker.unclaimedReward(_depositId);
 
     vm.expectEmit();
-    emit Staker.RewardClaimed(_depositId, _claimer, _earned, _stakeAmount);
+    emit StakerUpgradeable.RewardClaimed(_depositId, _claimer, _earned, _stakeAmount);
 
     vm.prank(_claimer);
     govStaker.claimReward(_depositId);
@@ -5144,7 +5192,7 @@ contract ClaimReward is StakerRewardsTest {
     // The admin sets a claim fee
     _setClaimFeeAndCollector(_feeAmount, _feeCollector);
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -5180,7 +5228,7 @@ contract ClaimReward is StakerRewardsTest {
     // The admin sets a claim fee
     _setClaimFeeAndCollector(_feeAmount, _feeCollector);
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -5215,7 +5263,7 @@ contract ClaimReward is StakerRewardsTest {
     // The admin sets a claim fee
     _setClaimFeeAndCollector(_feeAmount, _feeCollector);
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -5226,7 +5274,7 @@ contract ClaimReward is StakerRewardsTest {
 
     vm.prank(_depositor);
     vm.expectEmit();
-    emit Staker.RewardClaimed(_depositId, _depositor, _earned - _feeAmount, _stakeAmount);
+    emit StakerUpgradeable.RewardClaimed(_depositId, _depositor, _earned - _feeAmount, _stakeAmount);
     govStaker.claimReward(_depositId);
   }
 
@@ -5244,7 +5292,7 @@ contract ClaimReward is StakerRewardsTest {
     _durationPercent = bound(_durationPercent, 1, 100);
 
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -5254,7 +5302,9 @@ contract ClaimReward is StakerRewardsTest {
     vm.prank(_notClaimer);
     vm.expectRevert(
       abi.encodeWithSelector(
-        Staker.Staker__Unauthorized.selector, bytes32("not claimer or owner"), _notClaimer
+        StakerUpgradeable.Staker__Unauthorized.selector,
+        bytes32("not claimer or owner"),
+        _notClaimer
       )
     );
     govStaker.claimReward(_depositId);
@@ -5277,7 +5327,7 @@ contract ClaimReward is StakerRewardsTest {
     // The admin sets a claim fee
     _setClaimFeeAndCollector(uint96(govStaker.MAX_CLAIM_FEE()), _feeCollector);
     // A user deposits staking tokens
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
     // The contract is notified of a reward
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -5303,7 +5353,7 @@ contract ClaimReward is StakerRewardsTest {
     _multiplierBips = bound(_multiplierBips, 0, 20_000);
     earningPowerCalculator.__setMultiplierBips(_multiplierBips);
 
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
 
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -5314,7 +5364,7 @@ contract ClaimReward is StakerRewardsTest {
 
     uint256 _expectedEarningPower = (_stakeAmount * _multiplierBips) / 10_000;
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.earningPower, _expectedEarningPower);
     assertEq(govStaker.totalEarningPower(), _expectedEarningPower);
     assertEq(govStaker.depositorTotalEarningPower(_depositor), _expectedEarningPower);
@@ -5334,7 +5384,7 @@ contract ClaimReward is StakerRewardsTest {
 
     earningPowerCalculator.__setFixedReturn(_fixedEarningPower);
 
-    (, Staker.DepositIdentifier _depositId) =
+    (, StakerUpgradeable.DepositIdentifier _depositId) =
       _boundMintAndStake(_depositor, _stakeAmount, _delegatee, _claimer);
 
     _mintTransferAndNotifyReward(_rewardAmount);
@@ -5343,7 +5393,7 @@ contract ClaimReward is StakerRewardsTest {
     vm.prank(_depositor);
     govStaker.claimReward(_depositId);
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     assertEq(_deposit.earningPower, _fixedEarningPower);
     assertEq(govStaker.totalEarningPower(), _fixedEarningPower);
     assertEq(govStaker.depositorTotalEarningPower(_depositor), _fixedEarningPower);
@@ -5385,7 +5435,7 @@ contract Multicall is StakerRewardsTest {
     );
   }
 
-  function _encodeStakeMore(Staker.DepositIdentifier _depositId, uint256 _stakeAmount)
+  function _encodeStakeMore(StakerUpgradeable.DepositIdentifier _depositId, uint256 _stakeAmount)
     internal
     pure
     returns (bytes memory)
@@ -5395,7 +5445,7 @@ contract Multicall is StakerRewardsTest {
     );
   }
 
-  function _encodeWithdraw(Staker.DepositIdentifier _depositId, uint256 _amount)
+  function _encodeWithdraw(StakerUpgradeable.DepositIdentifier _depositId, uint256 _amount)
     internal
     pure
     returns (bytes memory)
@@ -5404,7 +5454,7 @@ contract Multicall is StakerRewardsTest {
       abi.encodeWithSelector(bytes4(keccak256("withdraw(uint256,uint256)")), _depositId, _amount);
   }
 
-  function _encodeAlterClaimer(Staker.DepositIdentifier _depositId, address _claimer)
+  function _encodeAlterClaimer(StakerUpgradeable.DepositIdentifier _depositId, address _claimer)
     internal
     pure
     returns (bytes memory)
@@ -5414,7 +5464,7 @@ contract Multicall is StakerRewardsTest {
     );
   }
 
-  function _encodeAlterDelegatee(Staker.DepositIdentifier _depositId, address _delegatee)
+  function _encodeAlterDelegatee(StakerUpgradeable.DepositIdentifier _depositId, address _delegatee)
     internal
     pure
     returns (bytes memory)
@@ -5470,7 +5520,8 @@ contract Multicall is StakerRewardsTest {
     govToken.approve(address(govStaker), _stakeAmount0 + _stakeAmount1);
 
     // first, do initial stake without multicall
-    Staker.DepositIdentifier _depositId = govStaker.stake(_stakeAmount0, _delegatee0, _claimer0);
+    StakerUpgradeable.DepositIdentifier _depositId =
+      govStaker.stake(_stakeAmount0, _delegatee0, _claimer0);
 
     // some time goes by...
     vm.warp(_timeElapsed);
@@ -5483,7 +5534,7 @@ contract Multicall is StakerRewardsTest {
     govStaker.multicall(_calls);
     vm.stopPrank();
 
-    Staker.Deposit memory _depositResult = govStaker.deposits(_depositId);
+    StakerUpgradeable.Deposit memory _depositResult = govStaker.deposits(_depositId);
     assertEq(govStaker.depositorTotalStaked(_depositor), _stakeAmount0 + _stakeAmount1);
     assertEq(govStaker.depositorTotalEarningPower(_depositor), _stakeAmount0 + _stakeAmount1);
     assertEq(_depositResult.balance, _stakeAmount0 + _stakeAmount1);

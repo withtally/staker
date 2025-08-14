@@ -5,7 +5,7 @@ import {INotifiableRewardReceiver} from "../../interfaces/INotifiableRewardRecei
 import {IMintable} from "../../interfaces/IMintable.sol";
 import {DeployBase} from "../DeployBase.sol";
 import {MintRewardNotifier} from "../../notifiers/MintRewardNotifier.sol";
-import {Staker} from "../../Staker.sol";
+import {StakerUpgradeable} from "../../StakerUpgradeable.sol";
 
 /// @title DeployMintRewardNotifer
 /// @author [ScopeLift](https://scopelift.co)
@@ -40,7 +40,7 @@ abstract contract DeployMintRewardNotifier is DeployBase {
   /// @inheritdoc DeployBase
   /// @dev When this method is overridden make sure to call super so it is added to the reward
   /// notifiers array.
-  function _deployRewardNotifiers(Staker _staker) internal virtual override {
+  function _deployRewardNotifiers(StakerUpgradeable _staker) internal virtual override {
     MintRewardNotifierConfiguration memory _config = _mintRewardNotifierConfiguration();
     MintRewardNotifier _notifier = new MintRewardNotifier(
       INotifiableRewardReceiver(address(_staker)),

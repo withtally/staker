@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import {Test} from "forge-std/Test.sol";
-import {Staker} from "../../src/Staker.sol";
+import {StakerUpgradeable} from "../../src/StakerUpgradeable.sol";
 import {TransferFromRewardNotifier} from "../../src/notifiers/TransferFromRewardNotifier.sol";
 import {DeployTransferFromRewardNotifierFake} from
   "../fakes/DeployTransferFromRewardNotifierFake.sol";
@@ -27,7 +27,7 @@ contract DeployTransferFromRewardNotifierTest is Test {
 
 contract Run is DeployTransferFromRewardNotifierTest {
   function test_DeployedNotifierHasCorrectConfig() public {
-    (, Staker _staker, address[] memory _notifiers) = deployScript.run();
+    (, StakerUpgradeable _staker, address[] memory _notifiers) = deployScript.run();
 
     TransferFromRewardNotifier _transferFromNotifier = TransferFromRewardNotifier(_notifiers[0]);
     assertEq(address(_staker), address(_transferFromNotifier.RECEIVER()));
@@ -40,7 +40,7 @@ contract Run is DeployTransferFromRewardNotifierTest {
   }
 
   function test_DeployedNotifierMatchesExpectedBytecode() public {
-    (, Staker _staker, address[] memory _notifiers) = deployScript.run();
+    (, StakerUpgradeable _staker, address[] memory _notifiers) = deployScript.run();
     address deployedNotifier = _notifiers[0];
 
     // Encode constructor arguments with the same value as Fake

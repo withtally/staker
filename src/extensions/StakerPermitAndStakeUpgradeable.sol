@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {Staker} from "../Staker.sol";
+import {StakerUpgradeable} from "../StakerUpgradeable.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 
 /// @title StakerPermitAndStake
@@ -11,21 +11,24 @@ import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC2
 /// The permit functionality is used in conjunction with staking operations, improving UX by
 /// enabling users to approve and stake tokens in a single transaction. Note that this extension
 /// requires the stake token to support EIP-2612 permit functionality.
-abstract contract StakerPermitAndStake is Staker {
+abstract contract StakerPermitAndStakeUpgradeable is StakerUpgradeable {
   /// @notice Thrown if an inheritor misconfigures the staking token on deployment.
-  error StakerPermitAndStake__UnauthorizedToken();
+  error StakerPermitAndStakeUpgradeable__UnauthorizedToken();
 
   /// @param _permitToken The token that is used for staking, which must support EIP-2612. It also
-  function __StakerPermitAndStake_init(IERC20Permit _permitToken) internal onlyInitializing {
-    __StakerPermitAndStake_init_unchained(_permitToken);
+  function __StakerPermitAndStakeUpgradeable_init(IERC20Permit _permitToken)
+    internal
+    onlyInitializing
+  {
+    __StakerPermitAndStakeUpgradeable_init_unchained(_permitToken);
   }
 
-  function __StakerPermitAndStake_init_unchained(IERC20Permit _permitToken)
+  function __StakerPermitAndStakeUpgradeable_init_unchained(IERC20Permit _permitToken)
     internal
     onlyInitializing
   {
     if (address(STAKE_TOKEN()) != address(_permitToken)) {
-      revert StakerPermitAndStake__UnauthorizedToken();
+      revert StakerPermitAndStakeUpgradeable__UnauthorizedToken();
     }
   }
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import {Test} from "forge-std/Test.sol";
-import {Staker} from "../../src/Staker.sol";
+import {StakerUpgradeable} from "../../src/StakerUpgradeable.sol";
 import {DeployBinaryEligibilityOracleEarningPowerCalculatorFake} from
   "../fakes/DeployBinaryEligibilityOracleEarningPowerCalculatorFake.sol";
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
@@ -31,7 +31,7 @@ contract DeployBinaryEligibilityOracleEarningPowerCalculatorTest is Test {
 
 contract Run is DeployBinaryEligibilityOracleEarningPowerCalculatorTest {
   function test_DeployedCalculatorHasCorrectConfig() public {
-    (IEarningPowerCalculator _calculator, Staker _staker,) = deployScript.run();
+    (IEarningPowerCalculator _calculator, StakerUpgradeable _staker,) = deployScript.run();
     BinaryEligibilityOracleEarningPowerCalculator _binaryEligibilityOracleCalculator =
       BinaryEligibilityOracleEarningPowerCalculator(address(_calculator));
 

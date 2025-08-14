@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {Staker} from "../../src/Staker.sol";
-import {StakerPermitAndStake} from "../../src/extensions/StakerPermitAndStake.sol";
-import {StakerDelegateSurrogateVotes} from "../../src/extensions/StakerDelegateSurrogateVotes.sol";
+import {StakerUpgradeable} from "../../src/StakerUpgradeable.sol";
+import {StakerPermitAndStakeUpgradeable} from
+  "../../src/extensions/StakerPermitAndStakeUpgradeable.sol";
+import {StakerDelegateSurrogateVotesUpgradeable} from
+  "../../src/extensions/StakerDelegateSurrogateVotesUpgradeable.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
@@ -13,7 +15,11 @@ import {DelegationSurrogate} from "../../src/DelegationSurrogate.sol";
 /// @dev Mock version of StakerHarness that accepts different stake tokens for each inherited
 /// contract, unlike StakerHarness which uses the same token. This contract is used to test reverts
 /// when stake tokens mismatch.
-contract MockStakerHarness is Staker, StakerPermitAndStake, StakerDelegateSurrogateVotes {
+contract MockStakerHarness is
+  StakerUpgradeable,
+  StakerPermitAndStakeUpgradeable,
+  StakerDelegateSurrogateVotesUpgradeable
+{
   constructor() {
     _disableInitializers();
   }
@@ -39,9 +45,11 @@ contract MockStakerHarness is Staker, StakerPermitAndStake, StakerDelegateSurrog
     address _admin,
     uint256 _maxBumpTip
   ) public initializer {
-    __Staker_init(_rewardsToken, _stakeToken, 1e18, _admin, _maxBumpTip, _earningPowerCalculator);
-    __StakerPermitAndStake_init(_permitAndStakeStakeToken);
-    __StakerDelegateSurrogateVotes_init(_delegateSurrogateVotesStakeToken);
+    __StakerUpgradeable_init(
+      _rewardsToken, _stakeToken, 1e18, _admin, _maxBumpTip, _earningPowerCalculator
+    );
+    __StakerPermitAndStakeUpgradeable_init(_permitAndStakeStakeToken);
+    __StakerDelegateSurrogateVotesUpgradeable_init(_delegateSurrogateVotesStakeToken);
     // __EIP712_init("Staker", "1");
     // __Nonces_init();
     _setMaxClaimFee(1e18);

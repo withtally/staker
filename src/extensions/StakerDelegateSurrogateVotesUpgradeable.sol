@@ -3,19 +3,19 @@ pragma solidity ^0.8.23;
 
 import {DelegationSurrogate} from "../DelegationSurrogate.sol";
 import {DelegationSurrogateVotes} from "../DelegationSurrogateVotes.sol";
-import {Staker} from "../Staker.sol";
+import {StakerUpgradeable} from "../StakerUpgradeable.sol";
 import {IERC20Delegates} from "../interfaces/IERC20Delegates.sol";
 
 /// @title StakerDelegateSurrogateVotes
 /// @author [ScopeLift](https://scopelift.co)
 /// @notice This contract extension adds delegation surrogates to the Staker base
 /// contract, allowing staked tokens to be delegated to a specific delegate.
-abstract contract StakerDelegateSurrogateVotes is Staker {
+abstract contract StakerDelegateSurrogateVotesUpgradeable is StakerUpgradeable {
   /// @notice Emitted when a surrogate contract is deployed.
   event SurrogateDeployed(address indexed delegatee, address indexed surrogate);
 
   /// @notice Thrown if an inheritor misconfigures the staking token on deployment.
-  error StakerDelegateSurrogateVotes__UnauthorizedToken();
+  error StakerDelegateSurrogateVotesUpgradeable__UnauthorizedToken();
 
   struct StakerDelegateSurrogateVotesStorage {
     /// @notice Maps the account of each governance delegate with the surrogate contract which holds
@@ -38,23 +38,23 @@ abstract contract StakerDelegateSurrogateVotes is Staker {
     }
   }
 
-  function __StakerDelegateSurrogateVotes_init(IERC20Delegates _votingToken)
+  function __StakerDelegateSurrogateVotesUpgradeable_init(IERC20Delegates _votingToken)
     internal
     onlyInitializing
   {
-    __StakerDelegateSurrogateVotes_init_unchained(_votingToken);
+    __StakerDelegateSurrogateVotesUpgradeable_init_unchained(_votingToken);
   }
 
-  function __StakerDelegateSurrogateVotes_init_unchained(IERC20Delegates _votingToken)
+  function __StakerDelegateSurrogateVotesUpgradeable_init_unchained(IERC20Delegates _votingToken)
     internal
     onlyInitializing
   {
     if (address(STAKE_TOKEN()) != address(_votingToken)) {
-      revert StakerDelegateSurrogateVotes__UnauthorizedToken();
+      revert StakerDelegateSurrogateVotesUpgradeable__UnauthorizedToken();
     }
   }
 
-  /// @inheritdoc Staker
+  /// @inheritdoc StakerUpgradeable
   function surrogates(address _delegatee) public view override returns (DelegationSurrogate) {
     StakerDelegateSurrogateVotesStorage storage $ = _getStakerDelegateSurrogateStorage();
     return $._storedSurrogates[_delegatee];
@@ -68,7 +68,7 @@ abstract contract StakerDelegateSurrogateVotes is Staker {
     return $._storedSurrogates[_delegatee];
   }
 
-  /// @inheritdoc Staker
+  /// @inheritdoc StakerUpgradeable
   function _fetchOrDeploySurrogate(address _delegatee)
     internal
     virtual

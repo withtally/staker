@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {Staker} from "../../src/Staker.sol";
-import {StakerPermitAndStake} from "../../src/extensions/StakerPermitAndStake.sol";
-import {StakerOnBehalf} from "../../src/extensions/StakerOnBehalf.sol";
-import {StakerDelegateSurrogateVotes} from "../../src/extensions/StakerDelegateSurrogateVotes.sol";
+import {StakerUpgradeable} from "../../src/StakerUpgradeable.sol";
+import {StakerPermitAndStakeUpgradeable} from
+  "../../src/extensions/StakerPermitAndStakeUpgradeable.sol";
+import {StakerOnBehalfUpgradeable} from "../../src/extensions/StakerOnBehalfUpgradeable.sol";
+import {StakerDelegateSurrogateVotesUpgradeable} from
+  "../../src/extensions/StakerDelegateSurrogateVotesUpgradeable.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
@@ -15,10 +17,10 @@ import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalcula
 import {DelegationSurrogate} from "../../src/DelegationSurrogate.sol";
 
 contract StakerHarness is
-  Staker,
-  StakerPermitAndStake,
-  StakerOnBehalf,
-  StakerDelegateSurrogateVotes
+  StakerUpgradeable,
+  StakerPermitAndStakeUpgradeable,
+  StakerOnBehalfUpgradeable,
+  StakerDelegateSurrogateVotesUpgradeable
 {
   constructor() {
     _disableInitializers();
@@ -33,11 +35,11 @@ contract StakerHarness is
     IEarningPowerCalculator _earningPowerCalculator,
     string memory _name
   ) public initializer {
-    __Staker_init(
+    __StakerUpgradeable_init(
       _rewardToken, _stakeToken, _maxClaimFee, _admin, _maxBumpTip, _earningPowerCalculator
     );
-    __StakerPermitAndStake_init(IERC20Permit(address(_stakeToken)));
-    __StakerDelegateSurrogateVotes_init(IERC20Delegates(address(_stakeToken)));
+    __StakerPermitAndStakeUpgradeable_init(IERC20Permit(address(_stakeToken)));
+    __StakerDelegateSurrogateVotesUpgradeable_init(IERC20Delegates(address(_stakeToken)));
     __EIP712_init(_name, "1");
     __Nonces_init();
     _setMaxClaimFee(_maxClaimFee);

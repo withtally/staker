@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
 import {MintRewardNotifier} from "../../src/notifiers/MintRewardNotifier.sol";
 import {TransferRewardNotifier} from "../../src/notifiers/TransferRewardNotifier.sol";
-import {Staker} from "../../src/Staker.sol";
+import {StakerUpgradeable} from "../../src/StakerUpgradeable.sol";
 import {DeployBase} from "../../src/script/DeployBase.sol";
 import {DeployBaseFake} from "../fakes/DeployBaseFake.sol";
 import {DeployMultipleRewardNotifiersFake} from "../fakes/DeployMultipleRewardNotifiersFake.sol";
@@ -29,7 +29,7 @@ contract DeployBaseTest is Test {
 contract Run is DeployBaseTest {
   function test_StakingSystemDeploy() public {
     DeployBaseFake _deployScript = new DeployBaseFake(rewardToken, govToken);
-    (IEarningPowerCalculator _calculator, Staker _staker, address[] memory _notifiers) =
+    (IEarningPowerCalculator _calculator, StakerUpgradeable _staker, address[] memory _notifiers) =
       _deployScript.run();
     MintRewardNotifier _mintNotifier = MintRewardNotifier(_notifiers[0]);
     assertEq(address(_staker), address(_mintNotifier.RECEIVER()));
@@ -49,7 +49,7 @@ contract Run is DeployBaseTest {
   function test_StakingSystemMultipleRewardNotifiersDeploy() public {
     DeployMultipleRewardNotifiersFake _deployScript =
       new DeployMultipleRewardNotifiersFake(rewardToken, govToken);
-    (IEarningPowerCalculator _calculator, Staker _staker, address[] memory _notifiers) =
+    (IEarningPowerCalculator _calculator, StakerUpgradeable _staker, address[] memory _notifiers) =
       _deployScript.run();
     MintRewardNotifier _mintNotifier = MintRewardNotifier(_notifiers[0]);
     assertEq(address(_staker), address(_mintNotifier.RECEIVER()));

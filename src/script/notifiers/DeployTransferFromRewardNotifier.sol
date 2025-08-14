@@ -4,7 +4,7 @@ pragma solidity ^0.8.23;
 import {INotifiableRewardReceiver} from "../../interfaces/INotifiableRewardReceiver.sol";
 import {TransferFromRewardNotifier} from "../../notifiers/TransferFromRewardNotifier.sol";
 import {DeployBase} from "../DeployBase.sol";
-import {Staker} from "../../Staker.sol";
+import {StakerUpgradeable} from "../../StakerUpgradeable.sol";
 
 /// @title DeployTransferFromRewardNotifier
 /// @author [ScopeLift](https://scopelift.co)
@@ -38,7 +38,7 @@ abstract contract DeployTransferFromRewardNotifier is DeployBase {
   /// @inheritdoc DeployBase
   /// @dev When this method is overridden make sure to call super so it is added to the reward
   /// notifiers array.
-  function _deployRewardNotifiers(Staker _staker) internal virtual override {
+  function _deployRewardNotifiers(StakerUpgradeable _staker) internal virtual override {
     TransferFromRewardNotifierConfiguration memory _config =
       _transferFromRewardNotifierConfiguration();
     TransferFromRewardNotifier _notifier = new TransferFromRewardNotifier(
