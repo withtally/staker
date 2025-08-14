@@ -40,7 +40,15 @@ contract StakerInvariants is Test {
       address(implementation),
       abi.encodeCall(
         StakerHarness.initialize,
-        (rewardToken, govToken, 1e18, rewardsNotifier, maxBumpTip, earningPowerCalculator, STAKER_NAME)
+        (
+          rewardToken,
+          govToken,
+          1e18,
+          rewardsNotifier,
+          maxBumpTip,
+          earningPowerCalculator,
+          STAKER_NAME
+        )
       )
     );
     govStaker = StakerHarness(address(proxy));

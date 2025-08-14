@@ -29,6 +29,7 @@ contract MockStakerHarness is Staker, StakerPermitAndStake, StakerDelegateSurrog
   //     StakerPermitAndStake(_permitAndStakeStakeToken)
   //    StakerDelegateSurrogateVotes(_delegateSurrogateVotesStakeToken)
   //  {
+
   function initialize(
     IERC20 _rewardsToken,
     IERC20Staking _stakeToken,

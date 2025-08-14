@@ -106,7 +106,15 @@ contract DeployMultipleRewardNotifiersFake is
       address(implementation),
       abi.encodeCall(
         StakerHarness.initialize,
-        (_config.rewardToken, IERC20Staking(address(_config.stakeToken)), 1e18, deployer, _config.maxBumpTip, _config.earningPowerCalculator, name)
+        (
+          _config.rewardToken,
+          IERC20Staking(address(_config.stakeToken)),
+          1e18,
+          deployer,
+          _config.maxBumpTip,
+          _config.earningPowerCalculator,
+          name
+        )
       )
     );
     return StakerHarness(address(proxy));

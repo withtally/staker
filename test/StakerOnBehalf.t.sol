@@ -39,7 +39,15 @@ contract Domain_Separator is StakerTest {
       address(implementation),
       abi.encodeCall(
         StakerHarness.initialize,
-        (IERC20(_rewardToken), IERC20Staking(_stakeToken), 1e18, _admin, _maxBumpTip, IEarningPowerCalculator(_earningPowerCalculator), _name)
+        (
+          IERC20(_rewardToken),
+          IERC20Staking(_stakeToken),
+          1e18,
+          _admin,
+          _maxBumpTip,
+          IEarningPowerCalculator(_earningPowerCalculator),
+          _name
+        )
       )
     );
     StakerHarness _govStaker = StakerHarness(address(proxy));
