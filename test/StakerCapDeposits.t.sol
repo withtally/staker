@@ -7,24 +7,31 @@ import {StakerHarnessCapDeposits} from "./harnesses/StakerHarnessCapDeposits.sol
 import {Staker} from "../src/Staker.sol";
 import {StakerCapDeposits} from "../src/extensions/StakerCapDeposits.sol";
 import {DelegationSurrogate} from "../src/DelegationSurrogate.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract StakerCapDepositsTest is StakerTestBase {
   StakerHarnessCapDeposits govStaker;
   uint256 initialTotalStakeCap = 1_000_000e18;
 
   function _deployStaker() public virtual override(StakerTestBase) returns (Staker _staker) {
-    StakerHarnessCapDeposits _govStaker = new StakerHarnessCapDeposits();
-    _govStaker.initialize(
-      rewardToken,
-      govToken,
-      1e18,
-      admin,
-      maxBumpTip,
-      earningPowerCalculator,
-      "Staker",
-      initialTotalStakeCap
+    StakerHarnessCapDeposits implementation = new StakerHarnessCapDeposits();
+    ERC1967Proxy proxy = new ERC1967Proxy(
+      address(implementation),
+      abi.encodeCall(
+        StakerHarnessCapDeposits.initialize,
+        (
+          rewardToken,
+          govToken,
+          1e18,
+          admin,
+          maxBumpTip,
+          earningPowerCalculator,
+          "Staker",
+          initialTotalStakeCap
+        )
+      )
     );
-    return _govStaker;
+    return StakerHarnessCapDeposits(address(proxy));
   }
 
   function setUp() public virtual override(StakerTestBase) {
@@ -42,33 +49,46 @@ contract Constructor is StakerCapDepositsTest {
   function testFuzz_SetsTheInitialTotalStakeCapToArbitraryValues(uint256 _initialTotalStakeCap)
     public
   {
-    StakerHarnessCapDeposits _govStaker = new StakerHarnessCapDeposits();
-    _govStaker.initialize(
-      rewardToken,
-      govToken,
-      1e18,
-      admin,
-      maxBumpTip,
-      earningPowerCalculator,
-      "Staker",
-      _initialTotalStakeCap
+    StakerHarnessCapDeposits implementation = new StakerHarnessCapDeposits();
+    ERC1967Proxy proxy = new ERC1967Proxy(
+      address(implementation),
+      abi.encodeCall(
+        StakerHarnessCapDeposits.initialize,
+        (
+          rewardToken,
+          govToken,
+          1e18,
+          admin,
+          maxBumpTip,
+          earningPowerCalculator,
+          "Staker",
+          _initialTotalStakeCap
+        )
+      )
     );
+    StakerHarnessCapDeposits _govStaker = StakerHarnessCapDeposits(address(proxy));
     assertEq(_govStaker.totalStakeCap(), _initialTotalStakeCap);
   }
 
   function testFuzz_EmitsATotalStakeCapSetEvent(uint256 _initialTotalStakeCap) public {
     vm.expectEmit();
     emit StakerCapDeposits.TotalStakeCapSet(0, _initialTotalStakeCap);
-    StakerHarnessCapDeposits _govStaker = new StakerHarnessCapDeposits();
-    _govStaker.initialize(
-      rewardToken,
-      govToken,
-      1e18,
-      admin,
-      maxBumpTip,
-      earningPowerCalculator,
-      "Staker",
-      _initialTotalStakeCap
+    StakerHarnessCapDeposits implementation = new StakerHarnessCapDeposits();
+    ERC1967Proxy proxy = new ERC1967Proxy(
+      address(implementation),
+      abi.encodeCall(
+        StakerHarnessCapDeposits.initialize,
+        (
+          rewardToken,
+          govToken,
+          1e18,
+          admin,
+          maxBumpTip,
+          earningPowerCalculator,
+          "Staker",
+          _initialTotalStakeCap
+        )
+      )
     );
   }
 }
