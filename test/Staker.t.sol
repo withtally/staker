@@ -1451,7 +1451,7 @@ contract PermitAndStakeMore is StakerTest {
   ) public {
     vm.assume(_delegatee != address(0) && _claimer != address(0));
 
-    // We can't fuzz the these values because we need to pre-compute the invalid
+    // We can't fuzz these values because we need to pre-compute the invalid
     // recovered signer so we can expect it in the revert error message thrown
     (address _depositor, uint256 _depositorPrivateKey) = makeAddrAndKey("depositor");
     uint256 _stakeMoreAmount = 1578e18;

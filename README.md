@@ -135,7 +135,7 @@ forge install withtally/staker
 
 Staker is not currently distributed as a package on npm, but it can still be added to a HardHat project by referencing the github repository directly.
 
-Add the following lines to to your `package.json` in the `dependencies` key:
+Add the following lines to your `package.json` in the `dependencies` key:
 
 ```json
 "dependencies": {
