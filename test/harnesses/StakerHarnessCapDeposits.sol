@@ -12,20 +12,6 @@ import {IERC20Delegates} from "../../src/interfaces/IERC20Delegates.sol";
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
 
 contract StakerHarnessCapDeposits is StakerHarness, StakerCapDepositsUpgradeable {
-  // constructor(
-  //   IERC20 _rewardsToken,
-  //   IERC20Staking _stakeToken,
-  //   IEarningPowerCalculator _earningPowerCalculator,
-  //   uint256 _maxBumpTip,
-  //   address _admin,
-  //   string memory _name,
-  //   uint256 _initialStakeCap
-  // )
-  //   StakerHarness(_rewardsToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin,
-  // _name)
-  //   StakerCapDeposits(_initialStakeCap)
-  // {}
-
   function initialize(
     IERC20 _rewardToken,
     IERC20 _stakeToken,

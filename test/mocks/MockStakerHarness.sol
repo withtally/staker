@@ -23,18 +23,6 @@ contract MockStakerHarness is
   constructor() {
     _disableInitializers();
   }
-  //     IERC20 _rewardsToken,
-  //     IERC20Staking _stakerStakeToken,
-  //     IERC20Staking _permitAndStakeStakeToken,
-  //     IERC20Staking _delegateSurrogateVotesStakeToken,
-  //     IEarningPowerCalculator _earningPowerCalculator,
-  //     uint256 _maxBumpTip,
-  //     address _admin
-  //
-  //     Staker(_rewardsToken, _stakerStakeToken, _earningPowerCalculator, _maxBumpTip, _admin)
-  //     StakerPermitAndStake(_permitAndStakeStakeToken)
-  //    StakerDelegateSurrogateVotes(_delegateSurrogateVotesStakeToken)
-  //  {
 
   function initialize(
     IERC20 _rewardsToken,
@@ -50,8 +38,6 @@ contract MockStakerHarness is
     );
     __StakerPermitAndStakeUpgradeable_init(_permitAndStakeStakeToken);
     __StakerDelegateSurrogateVotesUpgradeable_init(_delegateSurrogateVotesStakeToken);
-    // __EIP712_init("Staker", "1");
-    // __Nonces_init();
     _setMaxClaimFee(1e18);
     _setClaimFeeParameters(ClaimFeeParameters({feeAmount: 0, feeCollector: address(0)}));
   }
