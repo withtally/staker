@@ -15,7 +15,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -28,7 +28,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -48,7 +48,7 @@ jobs:
     env:
       FOUNDRY_PROFILE: coverage
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -97,7 +97,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -126,7 +126,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
