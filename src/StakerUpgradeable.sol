@@ -300,47 +300,6 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     _setEarningPowerCalculator(address(_earningPowerCalculator));
   }
 
-  /// @notice Set the admin address.
-  /// @param _newAdmin Address of the new admin.
-  /// @dev Caller must be the current admin.
-  function setAdmin(address _newAdmin) external virtual {
-    _revertIfNotAdmin();
-    _setAdmin(_newAdmin);
-  }
-
-  /// @notice Set the earning power calculator address.
-  function setEarningPowerCalculator(address _newEarningPowerCalculator) external virtual {
-    _revertIfNotAdmin();
-    _setEarningPowerCalculator(_newEarningPowerCalculator);
-  }
-
-  /// @notice Set the max bump tip.
-  /// @param _newMaxBumpTip Value of the new max bump tip.
-  /// @dev Caller must be the current admin.
-  function setMaxBumpTip(uint256 _newMaxBumpTip) external virtual {
-    _revertIfNotAdmin();
-    _setMaxBumpTip(_newMaxBumpTip);
-  }
-
-  /// @notice Enables or disables a reward notifier address.
-  /// @param _rewardNotifier Address of the reward notifier.
-  /// @param _isEnabled `true` to enable the `_rewardNotifier`, or `false` to disable.
-  /// @dev Caller must be the current admin.
-  function setRewardNotifier(address _rewardNotifier, bool _isEnabled) external virtual {
-    _revertIfNotAdmin();
-    StakerStorage storage $ = _getStakerStorage();
-    $._isRewardNotifier[_rewardNotifier] = _isEnabled;
-    emit RewardNotifierSet(_rewardNotifier, _isEnabled);
-  }
-
-  /// @notice Updates the parameters related to the claim fee.
-  /// @param _params The new fee parameters.
-  /// @dev Caller must be current admin.
-  function setClaimFeeParameters(ClaimFeeParameters memory _params) external virtual {
-    _revertIfNotAdmin();
-    _setClaimFeeParameters(_params);
-  }
-
   /// @notice A method to get the delegation surrogate contract for a given delegate.
   /// @param _delegatee The address to which the delegation surrogate is delegating voting power.
   /// @return The delegation surrogate.
@@ -384,8 +343,7 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
   /// @param _depositId Identifier of the deposit in question.
   /// @return Live value of the unclaimed rewards earned by a given deposit.
   function unclaimedReward(DepositIdentifier _depositId) external view virtual returns (uint256) {
-    StakerStorage storage $ = _getStakerStorage();
-    return _scaledUnclaimedReward($._deposits[_depositId]) / SCALE_FACTOR;
+    return _scaledUnclaimedReward(_getDeposit(_depositId)) / SCALE_FACTOR;
   }
 
   /// @notice ERC20 token in which rewards are denominated and distributed.
@@ -496,6 +454,48 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     return $._nextDepositId;
   }
 
+
+  /// @notice Set the admin address.
+  /// @param _newAdmin Address of the new admin.
+  /// @dev Caller must be the current admin.
+  function setAdmin(address _newAdmin) external virtual {
+    _revertIfNotAdmin();
+    _setAdmin(_newAdmin);
+  }
+
+  /// @notice Set the earning power calculator address.
+  function setEarningPowerCalculator(address _newEarningPowerCalculator) external virtual {
+    _revertIfNotAdmin();
+    _setEarningPowerCalculator(_newEarningPowerCalculator);
+  }
+
+  /// @notice Set the max bump tip.
+  /// @param _newMaxBumpTip Value of the new max bump tip.
+  /// @dev Caller must be the current admin.
+  function setMaxBumpTip(uint256 _newMaxBumpTip) external virtual {
+    _revertIfNotAdmin();
+    _setMaxBumpTip(_newMaxBumpTip);
+  }
+
+  /// @notice Enables or disables a reward notifier address.
+  /// @param _rewardNotifier Address of the reward notifier.
+  /// @param _isEnabled `true` to enable the `_rewardNotifier`, or `false` to disable.
+  /// @dev Caller must be the current admin.
+  function setRewardNotifier(address _rewardNotifier, bool _isEnabled) external virtual {
+    _revertIfNotAdmin();
+    StakerStorage storage $ = _getStakerStorage();
+    $._isRewardNotifier[_rewardNotifier] = _isEnabled;
+    emit RewardNotifierSet(_rewardNotifier, _isEnabled);
+  }
+
+  /// @notice Updates the parameters related to the claim fee.
+  /// @param _params The new fee parameters.
+  /// @dev Caller must be current admin.
+  function setClaimFeeParameters(ClaimFeeParameters memory _params) external virtual {
+    _revertIfNotAdmin();
+    _setClaimFeeParameters(_params);
+  }
+
   /// @notice Internal helper to get a deposit in storage.
   /// @param _depositId The identifier of the deposit.
   /// @return The deposit in storage.
@@ -547,8 +547,7 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
   /// @param _amount Quantity of stake to be added.
   /// @dev The message sender must be the owner of the deposit.
   function stakeMore(DepositIdentifier _depositId, uint256 _amount) external virtual {
-    StakerStorage storage $ = _getStakerStorage();
-    Deposit storage deposit = $._deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, msg.sender);
     _stakeMore(deposit, _depositId, _amount);
   }
@@ -560,8 +559,7 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
   /// @dev The new delegatee may not be the zero address. The message sender must be the owner of
   /// the deposit.
   function alterDelegatee(DepositIdentifier _depositId, address _newDelegatee) external virtual {
-    StakerStorage storage $ = _getStakerStorage();
-    Deposit storage deposit = $._deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, msg.sender);
     _alterDelegatee(deposit, _depositId, _newDelegatee);
   }
@@ -573,8 +571,7 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
   /// @dev The new claimer may not be the zero address. The message sender must be the owner of
   /// the deposit.
   function alterClaimer(DepositIdentifier _depositId, address _newClaimer) external virtual {
-    StakerStorage storage $ = _getStakerStorage();
-    Deposit storage deposit = $._deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, msg.sender);
     _alterClaimer(deposit, _depositId, _newClaimer);
   }
@@ -585,8 +582,7 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
   /// @dev The message sender must be the owner of the deposit. Stake is withdrawn to the message
   /// sender's account.
   function withdraw(DepositIdentifier _depositId, uint256 _amount) external virtual {
-    StakerStorage storage $ = _getStakerStorage();
-    Deposit storage deposit = $._deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, msg.sender);
     _withdraw(deposit, _depositId, _amount);
   }
@@ -596,8 +592,7 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
   /// @param _depositId Identifier of the deposit from which accrued rewards will be claimed.
   /// @return Amount of reward tokens claimed, after the fee has been assessed.
   function claimReward(DepositIdentifier _depositId) external virtual returns (uint256) {
-    StakerStorage storage $ = _getStakerStorage();
-    Deposit storage deposit = $._deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     if (deposit.claimer != msg.sender && deposit.owner != msg.sender) {
       revert Staker__Unauthorized("not claimer or owner", msg.sender);
     }
@@ -668,7 +663,7 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     StakerStorage storage $ = _getStakerStorage();
     if (_requestedTip > $._maxBumpTip) revert Staker__InvalidTip();
 
-    Deposit storage deposit = $._deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
 
     _checkpointGlobalReward();
     _checkpointReward(deposit);
