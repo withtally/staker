@@ -195,8 +195,6 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     /// @notice Delegable governance token which users stake to earn rewards.
     IERC20 _stakeToken;
     /// @notice The maximum value to which the claim fee can be set.
-    /// @dev For anything other than a zero value, this immutable parameter should be set in the
-    /// constructor of a concrete implementation inheriting from Staker.
     uint256 _maxClaimFee;
     /// @dev Unique identifier that will be used for the next deposit.
     DepositIdentifier _nextDepositId;
@@ -211,8 +209,7 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     uint256 _totalEarningPower;
     /// @notice Contract that determines a deposit's earning power based on their delegatee.
     /// @dev An earning power calculator should take into account that a deposit's earning power is
-    /// a
-    /// uint96. There may be overflow issues within governance staker if this is not taken into
+    /// a uint96. There may be overflow issues within governance staker if this is not taken into
     /// account. Also, there should be some mechanism to prevent the deposit from frequently being
     /// bumpable: if earning power changes frequently, this will eat into a users unclaimed rewards.
     IEarningPowerCalculator _earningPowerCalculator;
@@ -236,9 +233,8 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     /// @notice Current configuration parameters for the fee assessed on claiming.
     ClaimFeeParameters _claimFeeParameters;
   }
-  // keccak256(abi.encode(uint256(keccak256("storage.scopelift.Staker")) - 1))
-  // &~bytes32(uint256(0xff))
 
+  // keccak256(abi.encode(uint256(keccak256("storage.scopelift.Staker")) - 1)) &~bytes32(uint256(0xff))
   bytes32 private constant STAKER_STORAGE_LOCATION =
     0x3ddb462ea09b2a712726a8a8a271a0d79e7f965b28139434d52ac706825d5200;
 
@@ -249,13 +245,14 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
   /// truncation during division.
   uint256 public constant SCALE_FACTOR = 1e36;
 
+  /// @notice Internal function to get the Staker contracts storage.
   function _getStakerStorage() private pure returns (StakerStorage storage $) {
     assembly {
       $.slot := STAKER_STORAGE_LOCATION
     }
   }
 
-  /// @notice Initializes the the contract.
+  /// @notice Initializes the `StakerUpgradeable` contract.
   /// @param _rewardToken ERC20 token in which rewards will be denominated.
   /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
   /// @param _maxClaimFee The maximum value to which the claim fee can be set.
@@ -277,7 +274,7 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     );
   }
 
-  /// @notice Initializes the the contract
+  /// @notice Initializes the `StakerUpgradeable` contract
   /// @param _rewardToken ERC20 token in which rewards will be denominated.
   /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
   /// @param _maxClaimFee The maximum value to which the claim fee can be set.
