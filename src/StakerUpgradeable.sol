@@ -234,7 +234,8 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     ClaimFeeParameters _claimFeeParameters;
   }
 
-  // keccak256(abi.encode(uint256(keccak256("storage.scopelift.Staker")) - 1)) &~bytes32(uint256(0xff))
+  // keccak256(abi.encode(uint256(keccak256("storage.scopelift.Staker")) - 1))
+  // &~bytes32(uint256(0xff))
   bytes32 private constant STAKER_STORAGE_LOCATION =
     0x3ddb462ea09b2a712726a8a8a271a0d79e7f965b28139434d52ac706825d5200;
 
@@ -453,7 +454,6 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     StakerStorage storage $ = _getStakerStorage();
     return $._nextDepositId;
   }
-
 
   /// @notice Set the admin address.
   /// @param _newAdmin Address of the new admin.

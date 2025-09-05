@@ -38,7 +38,7 @@ abstract contract StakerDelegateSurrogateVotesUpgradeable is StakerUpgradeable {
     }
   }
 
-  /// @notice Initializes the the contract.
+  /// @notice Initializes the `StakerDelegateSurrogateVotesUpgradeable` contract.
   /// @param _votingToken The token that is used for voting, which must be the same as the parent
   /// Staker's STAKE_TOKEN.
   function __StakerDelegateSurrogateVotesUpgradeable_init(IERC20Delegates _votingToken)
@@ -48,7 +48,7 @@ abstract contract StakerDelegateSurrogateVotesUpgradeable is StakerUpgradeable {
     __StakerDelegateSurrogateVotesUpgradeable_init_unchained(_votingToken);
   }
 
-  /// @notice Initializes the the contract.
+  /// @notice Initializes the `StakerDelegateSurrogateVotesUpgradeable` contract.
   /// @param _votingToken The token that is used for voting, which must be the same as the parent
   /// Staker's STAKE_TOKEN.
   function __StakerDelegateSurrogateVotesUpgradeable_init_unchained(IERC20Delegates _votingToken)

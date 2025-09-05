@@ -37,7 +37,7 @@ abstract contract StakerCapDepositsUpgradeable is StakerUpgradeable {
     }
   }
 
-  /// @notice Initializes the the contract.
+  /// @notice Initializes the `StakerCapDepositsUpgradeable` contract.
   /// @param _initialTotalStakeCap The initial maximum total stake allowed.
   function __StakerCapDepositsUpgradeable_init(uint256 _initialTotalStakeCap)
     internal
@@ -46,7 +46,7 @@ abstract contract StakerCapDepositsUpgradeable is StakerUpgradeable {
     __StakerCapDepositsUpgradeable_init_unchained(_initialTotalStakeCap);
   }
 
-  /// @notice Initializes the the contract.
+  /// @notice Initializes the `StakerCapDepositsUpgradeable` contract.
   /// @param _initialTotalStakeCap The initial maximum total stake allowed.
   function __StakerCapDepositsUpgradeable_init_unchained(uint256 _initialTotalStakeCap)
     internal
@@ -55,18 +55,18 @@ abstract contract StakerCapDepositsUpgradeable is StakerUpgradeable {
     _setTotalStakeCap(_initialTotalStakeCap);
   }
 
+  /// @notice The maximum total amount of tokens that can be staked across all deposits.
+  function totalStakeCap() public view returns (uint256) {
+    StakerCapDepositsStorage storage $ = _getStakerCapDepositsStorage();
+    return $._totalStakeCap;
+  }
+
   /// @notice Sets a new maximum total stake cap.
   /// @param _newTotalStakeCap The new maximum total stake allowed.
   /// @dev Caller must be the current admin.
   function setTotalStakeCap(uint256 _newTotalStakeCap) external {
     _revertIfNotAdmin();
     _setTotalStakeCap(_newTotalStakeCap);
-  }
-
-  /// @notice The maximum total amount of tokens that can be staked across all deposits.
-  function totalStakeCap() public view returns (uint256) {
-    StakerCapDepositsStorage storage $ = _getStakerCapDepositsStorage();
-    return $._totalStakeCap;
   }
 
   /// @notice Internal helper method which sets a new total stake cap.

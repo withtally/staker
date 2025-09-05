@@ -15,7 +15,9 @@ abstract contract StakerPermitAndStakeUpgradeable is StakerUpgradeable {
   /// @notice Thrown if an inheritor misconfigures the staking token on deployment.
   error StakerPermitAndStakeUpgradeable__UnauthorizedToken();
 
+  /// @notice Initializes the `StakerPermitAndStakeUpgradeable` contract.
   /// @param _permitToken The token that is used for staking, which must support EIP-2612. It also
+  /// must be the same as the parent Staker's STAKE_TOKEN.
   function __StakerPermitAndStakeUpgradeable_init(IERC20Permit _permitToken)
     internal
     onlyInitializing
@@ -23,6 +25,9 @@ abstract contract StakerPermitAndStakeUpgradeable is StakerUpgradeable {
     __StakerPermitAndStakeUpgradeable_init_unchained(_permitToken);
   }
 
+  /// @notice Initializes the `StakerPermitAndStakeUpgradeable` contract.
+  /// @param _permitToken The token that is used for staking, which must support EIP-2612. It also
+  /// must be the same as the parent Staker's STAKE_TOKEN.
   function __StakerPermitAndStakeUpgradeable_init_unchained(IERC20Permit _permitToken)
     internal
     onlyInitializing
