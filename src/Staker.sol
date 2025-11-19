@@ -554,33 +554,33 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     _checkpointReward(deposit);
 
     uint256 _unclaimedRewards = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
+    uint256 _oldEarningPower = deposit.earningPower;
 
     (uint256 _newEarningPower, bool _isQualifiedForBump) = earningPowerCalculator.getNewEarningPower(
-      deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower
+      deposit.balance, deposit.owner, deposit.delegatee, _oldEarningPower
     );
     if (!_isQualifiedForBump || _newEarningPower == deposit.earningPower) {
       revert Staker__Unqualified(_newEarningPower);
     }
 
-    if (_newEarningPower > deposit.earningPower && _unclaimedRewards < _requestedTip) {
+    if (_newEarningPower > _oldEarningPower && _unclaimedRewards < _requestedTip) {
       revert Staker__InsufficientUnclaimedRewards();
     }
 
     // Note: underflow causes a revert if the requested  tip is more than unclaimed rewards
-    if (_newEarningPower < deposit.earningPower && (_unclaimedRewards - _requestedTip) < maxBumpTip)
-    {
+    if (_newEarningPower < _oldEarningPower && (_unclaimedRewards - _requestedTip) < maxBumpTip) {
       revert Staker__InsufficientUnclaimedRewards();
     }
 
     emit EarningPowerBumped(
-      _depositId, deposit.earningPower, _newEarningPower, msg.sender, _tipReceiver, _requestedTip
+      _depositId, _oldEarningPower, _newEarningPower, msg.sender, _tipReceiver, _requestedTip
     );
 
     // Update global earning power & deposit earning power based on this bump
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
     deposit.earningPower = _newEarningPower.toUint96();
 
@@ -588,6 +588,9 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _requestedTip);
     deposit.scaledUnclaimedRewardCheckpoint =
       deposit.scaledUnclaimedRewardCheckpoint - (_requestedTip * SCALE_FACTOR);
+    if (_newEarningPower < _oldEarningPower) {
+      _enforceAprCeilingOnStreamingRewards();
+    }
   }
 
   /// @notice Live value of the unclaimed rewards earned by a given deposit with the
@@ -679,20 +682,24 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     DelegationSurrogate _surrogate = surrogates(deposit.delegatee);
 
     uint256 _newBalance = deposit.balance + _amount;
+    uint256 _oldEarningPower = deposit.earningPower;
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
 
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     totalStaked += _amount;
     depositorTotalStaked[deposit.owner] += _amount;
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
     deposit.earningPower = _newEarningPower.toUint96();
     deposit.balance = _newBalance.toUint96();
     _stakeTokenSafeTransferFrom(deposit.owner, address(_surrogate), _amount);
     emit StakeDeposited(deposit.owner, _depositId, _amount, _newBalance, _newEarningPower);
+    if (_newEarningPower < _oldEarningPower) {
+      _enforceAprCeilingOnStreamingRewards();
+    }
   }
 
   /// @notice Internal convenience method which alters the delegatee of an existing deposit.
@@ -708,13 +715,14 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     _checkpointReward(deposit);
 
     DelegationSurrogate _oldSurrogate = surrogates(deposit.delegatee);
+    uint256 _oldEarningPower = deposit.earningPower;
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee);
 
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
 
     emit DelegateeAltered(_depositId, deposit.delegatee, _newDelegatee, _newEarningPower);
@@ -722,6 +730,9 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.earningPower = _newEarningPower.toUint96();
     DelegationSurrogate _newSurrogate = _fetchOrDeploySurrogate(_newDelegatee);
     _stakeTokenSafeTransferFrom(address(_oldSurrogate), address(_newSurrogate), deposit.balance);
+    if (_newEarningPower < _oldEarningPower) {
+      _enforceAprCeilingOnStreamingRewards();
+    }
   }
 
   /// @notice Internal convenience method which alters the claimer of an existing deposit.
@@ -737,18 +748,22 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
     // Updating the earning power here is not strictly necessary, but if the user is touching their
     // deposit anyway, it seems reasonable to make sure their earning power is up to date.
+    uint256 _oldEarningPower = deposit.earningPower;
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
 
     deposit.earningPower = _newEarningPower.toUint96();
 
     emit ClaimerAltered(_depositId, deposit.claimer, _newClaimer, _newEarningPower);
     deposit.claimer = _newClaimer;
+    if (_newEarningPower < _oldEarningPower) {
+      _enforceAprCeilingOnStreamingRewards();
+    }
   }
 
   /// @notice Internal convenience method which withdraws the stake from an existing deposit.
@@ -763,21 +778,25 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
     // overflow prevents withdrawing more than balance
     uint256 _newBalance = deposit.balance - _amount;
+    uint256 _oldEarningPower = deposit.earningPower;
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
 
     totalStaked -= _amount;
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     depositorTotalStaked[deposit.owner] -= _amount;
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
 
     deposit.balance = _newBalance.toUint96();
     deposit.earningPower = _newEarningPower.toUint96();
     _stakeTokenSafeTransferFrom(address(surrogates(deposit.delegatee)), deposit.owner, _amount);
     emit StakeWithdrawn(deposit.owner, _depositId, _amount, _newBalance, _newEarningPower);
+    if (_newEarningPower < _oldEarningPower) {
+      _enforceAprCeilingOnStreamingRewards();
+    }
   }
 
   /// @notice Internal convenience method which claims earned rewards.
@@ -801,15 +820,16 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.scaledUnclaimedRewardCheckpoint =
       deposit.scaledUnclaimedRewardCheckpoint - (_reward * SCALE_FACTOR);
 
+    uint256 _oldEarningPower = deposit.earningPower;
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
 
     emit RewardClaimed(_depositId, _claimer, _payout, _newEarningPower);
 
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
     deposit.earningPower = _newEarningPower.toUint96();
 
@@ -818,6 +838,9 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
       SafeERC20.safeTransfer(
         REWARD_TOKEN, claimFeeParameters.feeCollector, claimFeeParameters.feeAmount
       );
+    }
+    if (_newEarningPower < _oldEarningPower) {
+      _enforceAprCeilingOnStreamingRewards();
     }
     return _payout;
   }
@@ -902,6 +925,33 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
     // APR = (rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (totalEarningPower * REWARD_DURATION)
     return (_rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (totalEarningPower * REWARD_DURATION);
+  }
+
+  /// @notice Ensures the current reward stream continues to respect the APR ceiling after
+  /// earning power drops by extending the reward duration and lowering the rate if necessary.
+  function _enforceAprCeilingOnStreamingRewards() internal virtual {
+    if (aprCeiling == 0 || totalEarningPower == 0 || scaledRewardRate == 0) return;
+
+    uint256 _lastCheckpoint = lastCheckpointTime;
+    if (rewardEndTime <= _lastCheckpoint) return;
+
+    uint256 _allowedScaledRate =
+      (aprCeiling * totalEarningPower * SCALE_FACTOR) / (BASIS_POINTS * SECONDS_PER_YEAR);
+    if (_allowedScaledRate == 0) return;
+    if (scaledRewardRate <= _allowedScaledRate) return;
+
+    uint256 _remainingDuration = rewardEndTime - _lastCheckpoint;
+    uint256 _remainingScaledReward = scaledRewardRate * _remainingDuration;
+
+    uint256 _newDuration = _remainingScaledReward / _allowedScaledRate;
+    if (_remainingScaledReward % _allowedScaledRate != 0) {
+      _newDuration += 1;
+    }
+
+    uint256 _newScaledRewardRate = _remainingScaledReward / _newDuration;
+
+    rewardEndTime = _lastCheckpoint + _newDuration;
+    scaledRewardRate = _newScaledRewardRate;
   }
 
   /// @notice Internal helper method which sets the claim fee parameters.
