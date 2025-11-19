@@ -105,6 +105,12 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Emitted when a reward notifier address is enabled or disabled.
   event RewardNotifierSet(address indexed account, bool isEnabled);
 
+  /// @notice Emitted when the APR ceiling is updated.
+  event AprCeilingSet(uint256 oldAprCeiling, uint256 newAprCeiling);
+
+  /// @notice Emitted when rewards are capped due to APR ceiling.
+  event RewardsCapped(uint256 originalAmount, uint256 cappedAmount, uint256 effectiveApr);
+
   /// @notice Emitted when a deposit's earning power is changed via bumping.
   event EarningPowerBumped(
     DepositIdentifier indexed depositId,
@@ -131,6 +137,9 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Thrown if the unclaimed rewards are insufficient to cover a bumper's requested tip,
   /// or in the case of an earning power decrease the tip of a subsequent earning power increase.
   error Staker__InsufficientUnclaimedRewards();
+
+  /// @notice Thrown when an invalid APR ceiling value is provided.
+  error Staker__InvalidAprCeiling();
 
   /// @notice Thrown if a caller attempts to specify address zero for certain designated addresses.
   error Staker__InvalidAddress();
@@ -201,6 +210,12 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// truncation during division.
   uint256 public constant SCALE_FACTOR = 1e36;
 
+  /// @notice Basis points divisor for percentage calculations.
+  uint256 public constant BASIS_POINTS = 10_000;
+
+  /// @notice Number of seconds in a year for APR calculations.
+  uint256 public constant SECONDS_PER_YEAR = 365 days;
+
   /// @notice The maximum value to which the claim fee can be set.
   /// @dev For anything other than a zero value, this immutable parameter should be set in the
   /// constructor of a concrete implementation inheriting from Staker.
@@ -215,6 +230,10 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
   /// @notice Maximum tip a bumper can request.
   uint256 public maxBumpTip;
+
+  /// @notice Maximum allowed APR in basis points (e.g., 2000 = 20% APR).
+  /// @dev Set to 0 to disable APR ceiling enforcement.
+  uint256 public aprCeiling;
 
   /// @notice Global amount currently staked across all deposits.
   uint256 public totalStaked;
@@ -297,6 +316,14 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   function setMaxBumpTip(uint256 _newMaxBumpTip) external virtual {
     _revertIfNotAdmin();
     _setMaxBumpTip(_newMaxBumpTip);
+  }
+
+  /// @notice Set the APR ceiling.
+  /// @param _newAprCeiling Maximum allowed APR in basis points (0 to disable).
+  /// @dev Caller must be the current admin.
+  function setAprCeiling(uint256 _newAprCeiling) external virtual {
+    _revertIfNotAdmin();
+    _setAprCeiling(_newAprCeiling);
   }
 
   /// @notice Enables or disables a reward notifier address.
@@ -468,15 +495,25 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   function notifyRewardAmount(uint256 _amount) external virtual {
     if (!isRewardNotifier[msg.sender]) revert Staker__Unauthorized("not notifier", msg.sender);
 
+    // Apply APR ceiling if configured
+    uint256 cappedAmount = _amount;
+    if (aprCeiling > 0 && totalEarningPower > 0) {
+      cappedAmount = _calculateCappedReward(_amount);
+      if (cappedAmount < _amount) {
+        uint256 effectiveApr = _calculateApr(cappedAmount);
+        emit RewardsCapped(_amount, cappedAmount, effectiveApr);
+      }
+    }
+
     // We checkpoint the accumulator without updating the timestamp at which it was updated,
     // because that second operation will be done after updating the reward rate.
     rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
 
     if (block.timestamp >= rewardEndTime) {
-      scaledRewardRate = (_amount * SCALE_FACTOR) / REWARD_DURATION;
+      scaledRewardRate = (cappedAmount * SCALE_FACTOR) / REWARD_DURATION;
     } else {
       uint256 _remainingReward = scaledRewardRate * (rewardEndTime - block.timestamp);
-      scaledRewardRate = (_remainingReward + _amount * SCALE_FACTOR) / REWARD_DURATION;
+      scaledRewardRate = (_remainingReward + cappedAmount * SCALE_FACTOR) / REWARD_DURATION;
     }
 
     rewardEndTime = block.timestamp + REWARD_DURATION;
@@ -493,7 +530,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
       (scaledRewardRate * REWARD_DURATION) > (REWARD_TOKEN.balanceOf(address(this)) * SCALE_FACTOR)
     ) revert Staker__InsufficientRewardBalance();
 
-    emit RewardNotified(_amount, msg.sender);
+    emit RewardNotified(cappedAmount, msg.sender);
   }
 
   /// @notice A function that a bumper can call to update a deposit's earning power when a
@@ -835,6 +872,36 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   function _setMaxBumpTip(uint256 _newMaxTip) internal virtual {
     emit MaxBumpTipSet(maxBumpTip, _newMaxTip);
     maxBumpTip = _newMaxTip;
+  }
+
+  /// @notice Internal helper method which sets the APR ceiling.
+  /// @param _newAprCeiling Maximum allowed APR in basis points.
+  function _setAprCeiling(uint256 _newAprCeiling) internal virtual {
+    if (_newAprCeiling > BASIS_POINTS) revert Staker__InvalidAprCeiling();
+    emit AprCeilingSet(aprCeiling, _newAprCeiling);
+    aprCeiling = _newAprCeiling;
+  }
+
+  /// @notice Calculates the reward amount capped to respect the APR ceiling.
+  /// @param _requestedAmount The originally requested reward amount.
+  /// @return The capped reward amount.
+  function _calculateCappedReward(uint256 _requestedAmount) internal view returns (uint256) {
+    // Calculate max reward amount that would result in the APR ceiling
+    // maxReward = (aprCeiling * totalEarningPower * REWARD_DURATION) / (BASIS_POINTS * SECONDS_PER_YEAR)
+    uint256 maxRewardAmount = (aprCeiling * totalEarningPower * REWARD_DURATION) / (BASIS_POINTS * SECONDS_PER_YEAR);
+
+    // Return the minimum of the requested amount and the calculated max
+    return _requestedAmount < maxRewardAmount ? _requestedAmount : maxRewardAmount;
+  }
+
+  /// @notice Calculates the APR for a given reward amount.
+  /// @param _rewardAmount The reward amount to calculate APR for.
+  /// @return The APR in basis points.
+  function _calculateApr(uint256 _rewardAmount) internal view returns (uint256) {
+    if (totalEarningPower == 0) return 0;
+
+    // APR = (rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (totalEarningPower * REWARD_DURATION)
+    return (_rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (totalEarningPower * REWARD_DURATION);
   }
 
   /// @notice Internal helper method which sets the claim fee parameters.
