@@ -717,9 +717,8 @@ contract PermitAndStake is StakerTest {
     _depositAmount = _boundMintAmount(_depositAmount);
     _mintGovToken(_depositor, _depositAmount);
 
-    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor).checked_write(
-      _currentNonce
-    );
+    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor)
+      .checked_write(_currentNonce);
 
     bytes32 _message = keccak256(
       abi.encode(
@@ -763,9 +762,8 @@ contract PermitAndStake is StakerTest {
     _depositAmount = _boundMintAmount(_depositAmount);
     _mintGovToken(_depositor, _depositAmount);
 
-    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor).checked_write(
-      _currentNonce
-    );
+    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor)
+      .checked_write(_currentNonce);
 
     bytes32 _message = keccak256(
       abi.encode(
@@ -896,9 +894,8 @@ contract PermitAndStake is StakerTest {
     earningPowerCalculator.__setMultiplierBips(_multiplierBips);
 
     _mintGovToken(_depositor, _depositAmount);
-    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor).checked_write(
-      _currentNonce
-    );
+    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor)
+      .checked_write(_currentNonce);
 
     bytes32 _message = keccak256(
       abi.encode(
@@ -946,9 +943,8 @@ contract PermitAndStake is StakerTest {
     earningPowerCalculator.__setFixedReturn(_fixedEarningPower);
 
     _mintGovToken(_depositor, _depositAmount);
-    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor).checked_write(
-      _currentNonce
-    );
+    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor)
+      .checked_write(_currentNonce);
 
     bytes32 _message = keccak256(
       abi.encode(
@@ -1269,9 +1265,8 @@ contract PermitAndStakeMore is StakerTest {
     _stakeMoreAmount = _boundToRealisticStake(_stakeMoreAmount);
     _mintGovToken(_depositor, _stakeMoreAmount);
 
-    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor).checked_write(
-      _currentNonce
-    );
+    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor)
+      .checked_write(_currentNonce);
 
     // Separate scope to avoid stack to deep errors
     {
@@ -1324,9 +1319,8 @@ contract PermitAndStakeMore is StakerTest {
     _stakeMoreAmount = _boundToRealisticStake(_stakeMoreAmount);
     _mintGovToken(_depositor, _stakeMoreAmount);
 
-    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor).checked_write(
-      _currentNonce
-    );
+    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor)
+      .checked_write(_currentNonce);
 
     // Separate scope to avoid stack to deep errors
     {
@@ -1565,9 +1559,8 @@ contract PermitAndStakeMore is StakerTest {
 
     uint256 _deadline = block.timestamp + 1 days;
     uint256 _currentNonce = 0;
-    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor).checked_write(
-      _currentNonce
-    );
+    stdstore.target(address(govToken)).sig("nonces(address)").with_key(_depositor)
+      .checked_write(_currentNonce);
 
     bytes32 _message = keccak256(
       abi.encode(
@@ -2306,7 +2299,9 @@ contract Withdraw is StakerTest {
 }
 
 contract SetRewardNotifier is StakerTest {
-  function testFuzz_AllowsAdminToSetRewardNotifier(address _rewardNotifier, bool _isEnabled) public {
+  function testFuzz_AllowsAdminToSetRewardNotifier(address _rewardNotifier, bool _isEnabled)
+    public
+  {
     vm.prank(admin);
     govStaker.setRewardNotifier(_rewardNotifier, _isEnabled);
 
@@ -2443,7 +2438,9 @@ contract SetMaxBumpTip is StakerTest {
     govStaker.setMaxBumpTip(_newMaxBumpTip);
   }
 
-  function testFuzz_RevertIf_TheCallerIsNotTheAdmin(address _caller, uint256 _newMaxBumpTip) public {
+  function testFuzz_RevertIf_TheCallerIsNotTheAdmin(address _caller, uint256 _newMaxBumpTip)
+    public
+  {
     vm.assume(_caller != admin);
 
     vm.prank(_caller);
@@ -2855,6 +2852,27 @@ contract NotifyRewardAmount is StakerRewardsTest {
     govStaker.notifyRewardAmount(_amount);
     vm.stopPrank();
   }
+
+  function testFuzz_AprCeilingCannotBeSurpassed(
+    uint256 _aprCeiling,
+    uint256 _notifyAmount,
+    address _depositor,
+    address _delegatee
+  ) public {
+    _notifyAmount = _boundToRealisticReward(_notifyAmount);
+    uint256 aprCeilingBps = _boundAndSetAprCeiling(_aprCeiling);
+
+    // Ensure there is earning power so APR calculations are meaningful.
+    _mintGovToken(_depositor, 1e21);
+    _stake(_depositor, 1e21, _delegatee);
+    govStaker.totalEarningPower();
+
+    _mintTransferAndNotifyReward(_notifyAmount);
+
+    uint256 allowedScaledRate = _allowedScaledRewardRate(aprCeilingBps);
+
+    assertLe(govStaker.scaledRewardRate(), allowedScaledRate);
+  }
 }
 
 contract BumpEarningPower is StakerRewardsTest {
@@ -2965,6 +2983,40 @@ contract BumpEarningPower is StakerRewardsTest {
     govStaker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
 
     assertEq(govStaker.depositorTotalEarningPower(_depositor), _stakeAmount + _earningPowerIncrease);
+  }
+
+  function testFuzz_AprCeilingMaintainedWhenEarningPowerDrops(
+    address _depositor,
+    address _delegatee,
+    uint256 _stakeAmount,
+    uint256 _rewardAmount,
+    uint256 _aprCeiling,
+    uint256 _reducedPower
+  ) public {
+    _stakeAmount = _boundToRealisticStake(_stakeAmount);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    uint256 aprCeilingBps = _boundAndSetAprCeiling(_aprCeiling);
+
+    (uint256 _stake, Staker.DepositIdentifier _depositId) =
+      _boundMintAndStake(_depositor, _stakeAmount, _delegatee);
+
+    _mintTransferAndNotifyReward(_rewardAmount);
+
+    _reducedPower = bound(_reducedPower, 1, _stake - 1);
+    earningPowerCalculator.__setEarningPowerForDelegatee(_delegatee, _reducedPower);
+
+    uint256 initialRewardEnd = govStaker.rewardEndTime();
+
+    vm.prank(admin);
+    govStaker.setMaxBumpTip(0);
+
+    vm.prank(address(this));
+    govStaker.bumpEarningPower(_depositId, address(this), 0);
+
+    uint256 allowedScaledRate = _allowedScaledRewardRate(aprCeilingBps);
+
+    assertLe(govStaker.scaledRewardRate(), allowedScaledRate);
+    assertGe(govStaker.rewardEndTime(), initialRewardEnd);
   }
 
   function testFuzz_TransfersTipTokensToTheTipReceiverWhenEarningPowerIsBumpedUp(
@@ -3975,9 +4027,9 @@ contract RewardPerTokenAccumulated is StakerRewardsTest {
       _percentOf(_scaledDiv(_rewardAmount, _stakeAmount1), _durationPercent1);
     // The rewards after the second notification are the remaining rewards plus the new rewards.
     // We scale them up here to avoid losing precision in our expectation estimates.
-    uint256 _scaledRewardsAfterDuration1 = (
-      SCALE_FACTOR * _rewardAmount - _percentOf(SCALE_FACTOR * _rewardAmount, _durationPercent1)
-    ) + SCALE_FACTOR * _rewardAmount;
+    uint256 _scaledRewardsAfterDuration1 =
+      (SCALE_FACTOR * _rewardAmount - _percentOf(SCALE_FACTOR * _rewardAmount, _durationPercent1))
+      + SCALE_FACTOR * _rewardAmount;
     // During the second time period, the expected value is the new reward amount over the staked
     // amount, proportional to the time elapsed
     uint256 _expectedDuration2 =
@@ -4465,7 +4517,8 @@ contract UnclaimedReward is StakerRewardsTest {
     // period, which we chose to be another third of the duration, the depositor continued to earn
     // all of the rewards being dripped, which now comprised of the remaining third of the first
     // reward plus the second reward.
-    uint256 _depositorExpectedEarnings = _percentOf(_rewardAmount1, 66)
+    uint256 _depositorExpectedEarnings =
+      _percentOf(_rewardAmount1, 66)
       + _percentOf(_percentOf(_rewardAmount1, 34) + _rewardAmount2, 34);
     assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId), _depositorExpectedEarnings);
   }
@@ -4503,11 +4556,12 @@ contract UnclaimedReward is StakerRewardsTest {
 
     // The second depositor earns:
     // * Half the rewards distributed (split with depositor 1) over 1/4 of the duration, where the
-    //   rewards being earned are all from the first reward notification
+    // rewards being earned are all from the first reward notification
     // * Half the rewards (split with depositor 1) over 1/5 of the duration, where the rewards
-    //   being earned are the remaining 10% of the first reward notification, plus the second
-    //   reward notification
-    uint256 _depositor2ExpectedEarnings = _percentOf(_percentOf(_rewardAmount1, 25), 50)
+    // being earned are the remaining 10% of the first reward notification, plus the second
+    // reward notification
+    uint256 _depositor2ExpectedEarnings =
+      _percentOf(_percentOf(_rewardAmount1, 25), 50)
       + _percentOf(_percentOf(_percentOf(_rewardAmount1, 10) + _rewardAmount2, 20), 50);
 
     // The first depositor earns the same amount as the second depositor, since they had the same
@@ -4558,7 +4612,8 @@ contract UnclaimedReward is StakerRewardsTest {
     // These are the total rewards distributed by the contract after the second depositor adds
     // their stake. It is the first reward for a quarter of the duration, plus the remaining 10% of
     // the first reward, plus the second reward, for a fifth of the duration.
-    uint256 _combinedPhaseExpectedTotalRewards = _percentOf(_rewardAmount1, 25)
+    uint256 _combinedPhaseExpectedTotalRewards =
+      _percentOf(_rewardAmount1, 25)
       + _percentOf(_percentOf(_rewardAmount1, 10) + _rewardAmount2, 20);
 
     // The second depositor should earn a share of the combined phase reward scaled by their
@@ -4569,8 +4624,9 @@ contract UnclaimedReward is StakerRewardsTest {
     // The first depositor earned all of the rewards for 40% of the duration, where the rewards
     // were from the first reward notification. The first depositor also earns a share of the
     // combined phase rewards proportional to his share of the stake.
-    uint256 _depositor1ExpectedEarnings = _percentOf(_rewardAmount1, 40)
-      + (_stakeAmount1 * _combinedPhaseExpectedTotalRewards) / _combinedStake;
+    uint256 _depositor1ExpectedEarnings =
+      _percentOf(_rewardAmount1, 40) + (_stakeAmount1 * _combinedPhaseExpectedTotalRewards)
+      / _combinedStake;
 
     assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId1), _depositor1ExpectedEarnings);
     assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId2), _depositor2ExpectedEarnings);
@@ -4611,7 +4667,8 @@ contract UnclaimedReward is StakerRewardsTest {
     // reward plus the second reward. For the next period, which we chose to be another 30% of the
     // duration, the depositor continued to earn the rewards of the previous period, which now
     // comprised of the remaining 70% of second period reward plus 30% of the third reward.
-    uint256 _depositorExpectedEarnings = _percentOf(_rewardAmount1, 40)
+    uint256 _depositorExpectedEarnings =
+      _percentOf(_rewardAmount1, 40)
       + _percentOf(_percentOf(_rewardAmount1, 60) + _rewardAmount2, 30)
       + _percentOf(
         _percentOf(_percentOf(_rewardAmount1, 60) + _rewardAmount2, 70) + _rewardAmount3, 30
@@ -4658,14 +4715,15 @@ contract UnclaimedReward is StakerRewardsTest {
 
     // The second depositor earns:
     // * Half the rewards distributed (split with depositor 1) over 1/5 of the duration, where the
-    //   rewards being earned are all from the first reward notification
+    // rewards being earned are all from the first reward notification
     // * Half the rewards (split with depositor 1) over 1/5 of the duration, where the rewards
-    //   being earned are the remaining 35% of the first reward notification, plus 20% the second
-    //   reward notification
+    // being earned are the remaining 35% of the first reward notification, plus 20% the second
+    // reward notification
     // * Half the rewards (split with depositor 1) over 1/5 the duration where the rewards being
     // earned
-    //   are 20% of the previous reward and the third reward
-    uint256 _depositor2ExpectedEarnings = _percentOf(_percentOf(_rewardAmount1, 20), 50)
+    // are 20% of the previous reward and the third reward
+    uint256 _depositor2ExpectedEarnings =
+      _percentOf(_percentOf(_rewardAmount1, 20), 50)
       + _percentOf(_percentOf(_percentOf(_rewardAmount1, 35) + _rewardAmount2, 20), 50)
       + _percentOf(
         _percentOf(
@@ -4729,7 +4787,8 @@ contract UnclaimedReward is StakerRewardsTest {
     // their stake. It is the first reward for a fifth of the duration, plus the remaining 35% of
     // the first reward, plus 20% the second reward, for a fifth of the duration, plus the 80% of
     // the previous amount plus the third reward for 20% of the duration.
-    uint256 _combinedPhaseExpectedTotalRewards = _percentOf(_rewardAmount1, 20)
+    uint256 _combinedPhaseExpectedTotalRewards =
+      _percentOf(_rewardAmount1, 20)
       + _percentOf(_percentOf(_rewardAmount1, 35) + _rewardAmount2, 20)
       + _percentOf(
         _percentOf(_percentOf(_rewardAmount1, 35) + _rewardAmount2, 80) + _rewardAmount3, 20
@@ -4743,8 +4802,9 @@ contract UnclaimedReward is StakerRewardsTest {
     // The first depositor earned all of the rewards for 20% of the duration, where the rewards
     // were from the first reward notification. The first depositor also earns a share of the
     // combined phase rewards proportional to his share of the stake.
-    uint256 _depositor1ExpectedEarnings = _percentOf(_rewardAmount1, 20)
-      + (_stakeAmount1 * _combinedPhaseExpectedTotalRewards) / _combinedStake;
+    uint256 _depositor1ExpectedEarnings =
+      _percentOf(_rewardAmount1, 20) + (_stakeAmount1 * _combinedPhaseExpectedTotalRewards)
+      / _combinedStake;
 
     assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId1), _depositor1ExpectedEarnings);
     assertLteWithinOnePercent(govStaker.unclaimedReward(_depositId2), _depositor2ExpectedEarnings);
@@ -5335,8 +5395,9 @@ contract Multicall is StakerRewardsTest {
     pure
     returns (bytes memory)
   {
-    return
-      abi.encodeWithSelector(bytes4(keccak256("stake(uint256,address)")), _stakeAmount, _delegatee);
+    return abi.encodeWithSelector(
+      bytes4(keccak256("stake(uint256,address)")), _stakeAmount, _delegatee
+    );
   }
 
   function _encodeStake(address _delegatee, uint256 _stakeAmount, address _claimer)

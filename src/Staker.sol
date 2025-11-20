@@ -567,7 +567,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
       revert Staker__InsufficientUnclaimedRewards();
     }
 
-    // Note: underflow causes a revert if the requested  tip is more than unclaimed rewards
+    // Note: underflow causes a revert if the requested tip is more than unclaimed rewards
     if (_newEarningPower < _oldEarningPower && (_unclaimedRewards - _requestedTip) < maxBumpTip) {
       revert Staker__InsufficientUnclaimedRewards();
     }
@@ -588,9 +588,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _requestedTip);
     deposit.scaledUnclaimedRewardCheckpoint =
       deposit.scaledUnclaimedRewardCheckpoint - (_requestedTip * SCALE_FACTOR);
-    if (_newEarningPower < _oldEarningPower) {
-      _enforceAprCeilingOnStreamingRewards();
-    }
+    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
   }
 
   /// @notice Live value of the unclaimed rewards earned by a given deposit with the
@@ -620,7 +618,10 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @param _from Source account from which stake token is to be transferred.
   /// @param _to Destination account of the stake token which is to be transferred.
   /// @param _value Quantity of stake token which is to be transferred.
-  function _stakeTokenSafeTransferFrom(address _from, address _to, uint256 _value) internal virtual {
+  function _stakeTokenSafeTransferFrom(address _from, address _to, uint256 _value)
+    internal
+    virtual
+  {
     SafeERC20.safeTransferFrom(STAKE_TOKEN, _from, _to, _value);
   }
 
@@ -697,9 +698,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.balance = _newBalance.toUint96();
     _stakeTokenSafeTransferFrom(deposit.owner, address(_surrogate), _amount);
     emit StakeDeposited(deposit.owner, _depositId, _amount, _newBalance, _newEarningPower);
-    if (_newEarningPower < _oldEarningPower) {
-      _enforceAprCeilingOnStreamingRewards();
-    }
+    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
   }
 
   /// @notice Internal convenience method which alters the delegatee of an existing deposit.
@@ -730,18 +729,17 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.earningPower = _newEarningPower.toUint96();
     DelegationSurrogate _newSurrogate = _fetchOrDeploySurrogate(_newDelegatee);
     _stakeTokenSafeTransferFrom(address(_oldSurrogate), address(_newSurrogate), deposit.balance);
-    if (_newEarningPower < _oldEarningPower) {
-      _enforceAprCeilingOnStreamingRewards();
-    }
+    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
   }
 
   /// @notice Internal convenience method which alters the claimer of an existing deposit.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public alterClaimer methods for additional documentation.
-  function _alterClaimer(Deposit storage deposit, DepositIdentifier _depositId, address _newClaimer)
-    internal
-    virtual
-  {
+  function _alterClaimer(
+    Deposit storage deposit,
+    DepositIdentifier _depositId,
+    address _newClaimer
+  ) internal virtual {
     _revertIfAddressZero(_newClaimer);
     _checkpointGlobalReward();
     _checkpointReward(deposit);
@@ -761,9 +759,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
     emit ClaimerAltered(_depositId, deposit.claimer, _newClaimer, _newEarningPower);
     deposit.claimer = _newClaimer;
-    if (_newEarningPower < _oldEarningPower) {
-      _enforceAprCeilingOnStreamingRewards();
-    }
+    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
   }
 
   /// @notice Internal convenience method which withdraws the stake from an existing deposit.
@@ -794,9 +790,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.earningPower = _newEarningPower.toUint96();
     _stakeTokenSafeTransferFrom(address(surrogates(deposit.delegatee)), deposit.owner, _amount);
     emit StakeWithdrawn(deposit.owner, _depositId, _amount, _newBalance, _newEarningPower);
-    if (_newEarningPower < _oldEarningPower) {
-      _enforceAprCeilingOnStreamingRewards();
-    }
+    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
   }
 
   /// @notice Internal convenience method which claims earned rewards.
@@ -839,9 +833,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
         REWARD_TOKEN, claimFeeParameters.feeCollector, claimFeeParameters.feeAmount
       );
     }
-    if (_newEarningPower < _oldEarningPower) {
-      _enforceAprCeilingOnStreamingRewards();
-    }
+    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
     return _payout;
   }
 
@@ -910,8 +902,10 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @return The capped reward amount.
   function _calculateCappedReward(uint256 _requestedAmount) internal view returns (uint256) {
     // Calculate max reward amount that would result in the APR ceiling
-    // maxReward = (aprCeiling * totalEarningPower * REWARD_DURATION) / (BASIS_POINTS * SECONDS_PER_YEAR)
-    uint256 maxRewardAmount = (aprCeiling * totalEarningPower * REWARD_DURATION) / (BASIS_POINTS * SECONDS_PER_YEAR);
+    // maxReward = (aprCeiling * totalEarningPower * REWARD_DURATION) / (BASIS_POINTS *
+    // SECONDS_PER_YEAR)
+    uint256 maxRewardAmount =
+      (aprCeiling * totalEarningPower * REWARD_DURATION) / (BASIS_POINTS * SECONDS_PER_YEAR);
 
     // Return the minimum of the requested amount and the calculated max
     return _requestedAmount < maxRewardAmount ? _requestedAmount : maxRewardAmount;
@@ -923,7 +917,8 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   function _calculateApr(uint256 _rewardAmount) internal view returns (uint256) {
     if (totalEarningPower == 0) return 0;
 
-    // APR = (rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (totalEarningPower * REWARD_DURATION)
+    // APR = (rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (totalEarningPower *
+    // REWARD_DURATION)
     return (_rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (totalEarningPower * REWARD_DURATION);
   }
 
@@ -944,9 +939,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     uint256 _remainingScaledReward = scaledRewardRate * _remainingDuration;
 
     uint256 _newDuration = _remainingScaledReward / _allowedScaledRate;
-    if (_remainingScaledReward % _allowedScaledRate != 0) {
-      _newDuration += 1;
-    }
+    if (_remainingScaledReward % _allowedScaledRate != 0) _newDuration += 1;
 
     uint256 _newScaledRewardRate = _remainingScaledReward / _newDuration;
 
