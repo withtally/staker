@@ -113,8 +113,15 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     view
     returns (uint256 _allowedRate)
   {
+    uint256 _effectiveEarningPower = baseStaker.totalEarningPower();
+    uint256 _maxBasedOnStake = (
+      baseStaker.totalStaked() * baseStaker.maxEarningPowerToTokensMultiplier()
+    ) / baseStaker.EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE();
+    if (_maxBasedOnStake > _effectiveEarningPower) {
+      _effectiveEarningPower = _maxBasedOnStake;
+    }
     return (
-      _aprCeilingBps * baseStaker.totalEarningPower() * SCALE_FACTOR
+      _aprCeilingBps * _effectiveEarningPower * SCALE_FACTOR
     ) / (baseStaker.BASIS_POINTS() * baseStaker.SECONDS_PER_YEAR());
   }
 

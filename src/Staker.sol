@@ -8,6 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @title Staker
 /// @author [ScopeLift](https://scopelift.co)
@@ -108,6 +109,9 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Emitted when the APR ceiling is updated.
   event AprCeilingSet(uint256 oldAprCeiling, uint256 newAprCeiling);
 
+  /// @notice Emitted when the earning power to tokens multiplier is updated.
+  event MaxEarningPowerToTokensMultiplierSet(uint256 oldMultiplier, uint256 newMultiplier);
+
   /// @notice Emitted when rewards are capped due to APR ceiling.
   event RewardsCapped(uint256 originalAmount, uint256 cappedAmount, uint256 effectiveApr);
 
@@ -140,6 +144,8 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
   /// @notice Thrown when an invalid APR ceiling value is provided.
   error Staker__InvalidAprCeiling();
+  /// @notice Thrown when an invalid earning power multiplier is provided.
+  error Staker__InvalidMaxEarningPowerMultiplier();
 
   /// @notice Thrown if a caller attempts to specify address zero for certain designated addresses.
   error Staker__InvalidAddress();
@@ -216,6 +222,9 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Number of seconds in a year for APR calculations.
   uint256 public constant SECONDS_PER_YEAR = 365 days;
 
+  /// @notice Scale used for the earning power to tokens multiplier.
+  uint256 public constant EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE = 1e18;
+
   /// @notice The maximum value to which the claim fee can be set.
   /// @dev For anything other than a zero value, this immutable parameter should be set in the
   /// constructor of a concrete implementation inheriting from Staker.
@@ -234,6 +243,10 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Maximum allowed APR in basis points (e.g., 2000 = 20% APR).
   /// @dev Set to 0 to disable APR ceiling enforcement.
   uint256 public aprCeiling;
+
+  /// @notice Multiplier (scaled by EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE) used to convert
+  /// staked tokens into the maximum possible earning power when enforcing APR ceilings.
+  uint256 public maxEarningPowerToTokensMultiplier;
 
   /// @notice Global amount currently staked across all deposits.
   uint256 public totalStaked;
@@ -293,6 +306,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     STAKE_TOKEN = _stakeToken;
     _setAdmin(_admin);
     _setMaxBumpTip(_maxBumpTip);
+    _setMaxEarningPowerToTokensMultiplier(EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE);
     _setEarningPowerCalculator(address(_earningPowerCalculator));
   }
 
@@ -316,6 +330,13 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   function setMaxBumpTip(uint256 _newMaxBumpTip) external virtual {
     _revertIfNotAdmin();
     _setMaxBumpTip(_newMaxBumpTip);
+  }
+
+  /// @notice Set the multiplier used to convert tokens to maximum possible earning power.
+  /// @param _newMultiplier New multiplier scaled by `EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE`.
+  function setMaxEarningPowerToTokensMultiplier(uint256 _newMultiplier) external virtual {
+    _revertIfNotAdmin();
+    _setMaxEarningPowerToTokensMultiplier(_newMultiplier);
   }
 
   /// @notice Set the APR ceiling.
@@ -497,8 +518,9 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
     // Apply APR ceiling if configured
     uint256 cappedAmount = _amount;
-    if (aprCeiling > 0 && totalEarningPower > 0) {
-      cappedAmount = _calculateCappedReward(_amount);
+    uint256 _aprEarningPower = _aprReferenceEarningPower();
+    if (aprCeiling > 0 && _aprEarningPower > 0) {
+      cappedAmount = _calculateCappedReward(_amount, _aprEarningPower);
       if (cappedAmount < _amount) {
         uint256 effectiveApr = _calculateApr(cappedAmount);
         emit RewardsCapped(_amount, cappedAmount, effectiveApr);
@@ -889,6 +911,15 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     maxBumpTip = _newMaxTip;
   }
 
+  /// @notice Internal helper method which sets the max earning power to tokens multiplier.
+  /// @param _newMultiplier Value of the new multiplier scaled by
+  /// `EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE`.
+  function _setMaxEarningPowerToTokensMultiplier(uint256 _newMultiplier) internal virtual {
+    if (_newMultiplier == 0) revert Staker__InvalidMaxEarningPowerMultiplier();
+    emit MaxEarningPowerToTokensMultiplierSet(maxEarningPowerToTokensMultiplier, _newMultiplier);
+    maxEarningPowerToTokensMultiplier = _newMultiplier;
+  }
+
   /// @notice Internal helper method which sets the APR ceiling.
   /// @param _newAprCeiling Maximum allowed APR in basis points.
   function _setAprCeiling(uint256 _newAprCeiling) internal virtual {
@@ -899,13 +930,19 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
   /// @notice Calculates the reward amount capped to respect the APR ceiling.
   /// @param _requestedAmount The originally requested reward amount.
+  /// @param _aprEarningPower The reference earning power for APR calculations.
   /// @return The capped reward amount.
-  function _calculateCappedReward(uint256 _requestedAmount) internal view returns (uint256) {
-    // Calculate max reward amount that would result in the APR ceiling
-    // maxReward = (aprCeiling * totalEarningPower * REWARD_DURATION) / (BASIS_POINTS *
+  function _calculateCappedReward(uint256 _requestedAmount, uint256 _aprEarningPower)
+    internal
+    view
+    returns (uint256)
+  {
+    if (_aprEarningPower == 0) return 0;
+
+    // maxReward = (aprCeiling * _aprEarningPower * REWARD_DURATION) / (BASIS_POINTS *
     // SECONDS_PER_YEAR)
     uint256 maxRewardAmount =
-      (aprCeiling * totalEarningPower * REWARD_DURATION) / (BASIS_POINTS * SECONDS_PER_YEAR);
+      (aprCeiling * _aprEarningPower * REWARD_DURATION) / (BASIS_POINTS * SECONDS_PER_YEAR);
 
     // Return the minimum of the requested amount and the calculated max
     return _requestedAmount < maxRewardAmount ? _requestedAmount : maxRewardAmount;
@@ -915,23 +952,27 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @param _rewardAmount The reward amount to calculate APR for.
   /// @return The APR in basis points.
   function _calculateApr(uint256 _rewardAmount) internal view returns (uint256) {
-    if (totalEarningPower == 0) return 0;
+    uint256 _aprEarningPower = _aprReferenceEarningPower();
+    if (_aprEarningPower == 0) return 0;
 
-    // APR = (rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (totalEarningPower *
+    // APR = (rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (_aprEarningPower *
     // REWARD_DURATION)
-    return (_rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (totalEarningPower * REWARD_DURATION);
+    return (_rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (_aprEarningPower * REWARD_DURATION);
   }
 
   /// @notice Ensures the current reward stream continues to respect the APR ceiling after
   /// earning power drops by extending the reward duration and lowering the rate if necessary.
   function _enforceAprCeilingOnStreamingRewards() internal virtual {
-    if (aprCeiling == 0 || totalEarningPower == 0 || scaledRewardRate == 0) return;
+    if (aprCeiling == 0 || scaledRewardRate == 0) return;
+
+    uint256 _aprEarningPower = _aprReferenceEarningPower();
+    if (_aprEarningPower == 0) return;
 
     uint256 _lastCheckpoint = lastCheckpointTime;
     if (rewardEndTime <= _lastCheckpoint) return;
 
     uint256 _allowedScaledRate =
-      (aprCeiling * totalEarningPower * SCALE_FACTOR) / (BASIS_POINTS * SECONDS_PER_YEAR);
+      (aprCeiling * _aprEarningPower * SCALE_FACTOR) / (BASIS_POINTS * SECONDS_PER_YEAR);
     if (_allowedScaledRate == 0) return;
     if (scaledRewardRate <= _allowedScaledRate) return;
 
@@ -955,6 +996,18 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     if (_newEarningPower < _oldEarningPower) {
       _enforceAprCeilingOnStreamingRewards();
     }
+  }
+
+  /// @notice Returns the earning power reference used for APR enforcement.
+  function _aprReferenceEarningPower() internal view returns (uint256) {
+    uint256 _effectiveEarningPower = totalEarningPower;
+    uint256 _maxBasedOnStake = Math.mulDiv(
+      totalStaked, maxEarningPowerToTokensMultiplier, EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE
+    );
+    if (_maxBasedOnStake > _effectiveEarningPower) {
+      _effectiveEarningPower = _maxBasedOnStake;
+    }
+    return _effectiveEarningPower;
   }
 
   /// @notice Internal helper method which sets the claim fee parameters.
