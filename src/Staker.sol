@@ -588,7 +588,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _requestedTip);
     deposit.scaledUnclaimedRewardCheckpoint =
       deposit.scaledUnclaimedRewardCheckpoint - (_requestedTip * SCALE_FACTOR);
-    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
   }
 
   /// @notice Live value of the unclaimed rewards earned by a given deposit with the
@@ -698,7 +698,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.balance = _newBalance.toUint96();
     _stakeTokenSafeTransferFrom(deposit.owner, address(_surrogate), _amount);
     emit StakeDeposited(deposit.owner, _depositId, _amount, _newBalance, _newEarningPower);
-    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
   }
 
   /// @notice Internal convenience method which alters the delegatee of an existing deposit.
@@ -729,7 +729,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.earningPower = _newEarningPower.toUint96();
     DelegationSurrogate _newSurrogate = _fetchOrDeploySurrogate(_newDelegatee);
     _stakeTokenSafeTransferFrom(address(_oldSurrogate), address(_newSurrogate), deposit.balance);
-    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
   }
 
   /// @notice Internal convenience method which alters the claimer of an existing deposit.
@@ -759,7 +759,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
     emit ClaimerAltered(_depositId, deposit.claimer, _newClaimer, _newEarningPower);
     deposit.claimer = _newClaimer;
-    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
   }
 
   /// @notice Internal convenience method which withdraws the stake from an existing deposit.
@@ -790,7 +790,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.earningPower = _newEarningPower.toUint96();
     _stakeTokenSafeTransferFrom(address(surrogates(deposit.delegatee)), deposit.owner, _amount);
     emit StakeWithdrawn(deposit.owner, _depositId, _amount, _newBalance, _newEarningPower);
-    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
   }
 
   /// @notice Internal convenience method which claims earned rewards.
@@ -833,7 +833,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
         REWARD_TOKEN, claimFeeParameters.feeCollector, claimFeeParameters.feeAmount
       );
     }
-    if (_newEarningPower < _oldEarningPower) _enforceAprCeilingOnStreamingRewards();
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
     return _payout;
   }
 
@@ -945,6 +945,16 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
     rewardEndTime = _lastCheckpoint + _newDuration;
     scaledRewardRate = _newScaledRewardRate;
+  }
+
+  /// @notice Helper to enforce the APR ceiling when a deposit's earning power decreases.
+  function _enforceAprCeilingIfEarningPowerDecreased(
+    uint256 _oldEarningPower,
+    uint256 _newEarningPower
+  ) internal virtual {
+    if (_newEarningPower < _oldEarningPower) {
+      _enforceAprCeilingOnStreamingRewards();
+    }
   }
 
   /// @notice Internal helper method which sets the claim fee parameters.
