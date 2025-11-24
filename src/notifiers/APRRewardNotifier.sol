@@ -127,10 +127,11 @@ contract APRRewardNotifier is Ownable {
     }
 
     // Transfer tokens if amount > 0
-    if (amountToNotify > 0) {
+    if (amountToNotify == 0) {
       // TODO: Should this be transfer or a mint?
-      TOKEN.safeTransfer(address(RECEIVER), amountToNotify);
+	  return;
     }
+      TOKEN.safeTransfer(address(RECEIVER), amountToNotify);
 
     // Notify the receiver
     RECEIVER.notifyRewardAmount(amountToNotify);
