@@ -105,14 +105,14 @@ contract APRRewardNotifier is Ownable {
     uint256 currentAPR = _calculateCurrentScaledAPR();
     uint256 amountToNotify = 0;
 
-	if (currentAPR <= targetAPR && block.timestamp < nextRewardTime) {
+    if (currentAPR <= targetAPR && block.timestamp < nextRewardTime) {
       revert APRRewardNotifier__RewardIntervalNotElapsed();
-	}
+    }
 
     // If APR is above target, we can notify immediately with 0 or minimal amount
     if (currentAPR > targetAPR) {
       // Notify with 0 to extend the reward duration without adding more rewards
-      amountToNotify =  _calculateRewardAmountForAPRTarget();
+      amountToNotify = _calculateRewardAmountForAPRTarget();
     }
 
     // If the fixed interval has elapsed
@@ -129,9 +129,9 @@ contract APRRewardNotifier is Ownable {
     // Transfer tokens if amount > 0
     if (amountToNotify == 0) {
       // TODO: Should this be transfer or a mint?
-	  return;
+      return;
     }
-      TOKEN.safeTransfer(address(RECEIVER), amountToNotify);
+    TOKEN.safeTransfer(address(RECEIVER), amountToNotify);
 
     // Notify the receiver
     RECEIVER.notifyRewardAmount(amountToNotify);
