@@ -127,7 +127,7 @@ contract APRRewardNotifier is Ownable {
     }
 
     // Transfer tokens if amount > 0
-    if (amountToNotify == 0) {
+    if (amountToNotify == 0 && (RECEIVER.scaledRewardRate() / RECEIVER.SCALE_FACTOR()) == 0) {
       // TODO: Should this be transfer or a mint?
       return;
     }
@@ -235,6 +235,8 @@ contract APRRewardNotifier is Ownable {
       RECEIVER.scaledRewardRate() * (RECEIVER.rewardEndTime() - block.timestamp);
     uint256 _targetScaledRewardRate =
       _totalEarningPower * (targetAPR / (maxEarningPowerTokenMultiplier * SECONDS_PER_YEAR));
+	// The case where the target over the duration is less than what is remaining
+	if (_targetScaledRewardRate * RECEIVER.REWARD_DURATION() < _remainingReward) return 0;
     uint256 _amount = (_targetScaledRewardRate * RECEIVER.REWARD_DURATION() - _remainingReward)
       / RECEIVER.SCALE_FACTOR();
     return _amount;

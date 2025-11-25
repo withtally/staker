@@ -96,6 +96,18 @@ contract APRRewardNotifierTest is Test, TestHelpers {
     assertEq(currentAPR, _expectedCurrentAPR());
     return currentAPR;
   }
+
+  function _startExternalRewardStream(uint256 _amount) internal {
+    vm.prank(admin);
+    receiver.setRewardNotifier(address(this), true);
+
+    rewardToken.mint(address(this), _amount);
+    rewardToken.transfer(address(receiver), _amount);
+    receiver.notifyRewardAmount(_amount);
+
+    vm.prank(admin);
+    receiver.setRewardNotifier(address(this), false);
+  }
 }
 
 contract Constructor is APRRewardNotifierTest {
@@ -408,63 +420,28 @@ contract Notify is APRRewardNotifierTest {
     assertEq(notifier.nextRewardTime(), block.timestamp + initialRewardInterval);
   }
 
-  function testFuzz_NotifyWhenAPRAboveTarget(
-    uint256 _stakeAmount,
-    uint256 _largeRewardAmount,
-    uint16 _lowTargetAPR
-  ) public {
-    _stakeAmount = bound(_stakeAmount, 1e18, 10_000e18);
-    _largeRewardAmount = bound(_largeRewardAmount, 10e18, 1000e18);
-    _lowTargetAPR = uint16(bound(_lowTargetAPR, 10, 100)); // 0.1% to 1%
+  function testFuzz_NotifyWhenAPRAboveTarget(uint256 _externalReward, uint16 _lowTargetAPR) public {
+    _externalReward = bound(_externalReward, 1e20, 1e24);
+    _lowTargetAPR = uint16(bound(_lowTargetAPR, 10, 200)); // 0.1% to 2%
 
-    _mintAndStake(alice, _stakeAmount);
-    rewardToken.mint(address(notifier), _largeRewardAmount);
+    _mintAndStake(alice, 1_000e18);
+    _startExternalRewardStream(_externalReward);
 
     vm.prank(owner);
     notifier.setTargetAPR(_lowTargetAPR);
-
-    notifier.notify();
-
-    uint256 aprBefore = _assertCurrentAPRMatchesExpectation();
-
-    if (aprBefore > _lowTargetAPR) {
-      notifier.notify();
-      uint256 aprAfter = _assertCurrentAPRMatchesExpectation();
-      assertLe(aprAfter, aprBefore);
-    }
-  }
-
-  function testFuzz_NotifyWithZeroAmountWhenAPRAboveTarget(
-    uint256 _stakeAmount,
-    uint256 _initialHighReward
-  ) public {
-    _stakeAmount = bound(_stakeAmount, 100e18, 10_000e18);
-    _initialHighReward = bound(_initialHighReward, 1e17, 10e18);
-
-    _mintAndStake(alice, _stakeAmount);
-    rewardToken.mint(address(notifier), _initialHighReward * 10);
-
-    // Set reward amount and target APR to create high APR scenario
-    vm.startPrank(owner);
-    notifier.setRewardAmount(_initialHighReward);
-    notifier.setTargetAPR(100); // 1% target
-    vm.stopPrank();
+    rewardToken.mint(address(notifier), initialRewardAmount);
 
     vm.warp(block.timestamp + initialRewardInterval);
+
+    uint256 aprBefore = _assertCurrentAPRMatchesExpectation();
+    assertGt(aprBefore, _lowTargetAPR);
+
     notifier.notify();
 
-    uint256 aprAfterFirstNotify = _assertCurrentAPRMatchesExpectation();
-
-    if (aprAfterFirstNotify > initialTargetAPR) {
-      uint256 balanceBefore = rewardToken.balanceOf(address(receiver));
-      notifier.notify();
-      uint256 balanceAfter = rewardToken.balanceOf(address(receiver));
-      assertGe(balanceAfter, balanceBefore);
-
-      uint256 aprAfterSecondNotify = _assertCurrentAPRMatchesExpectation();
-      assertLe(aprAfterSecondNotify, aprAfterFirstNotify);
-    }
+    uint256 aprAfter = _assertCurrentAPRMatchesExpectation();
+    assertLt(aprAfter, aprBefore);
   }
+
 
   function testFuzz_MultipleNotificationsOverTime(
     uint256 _stakeAmount,
@@ -538,35 +515,38 @@ contract Approve is APRRewardNotifierTest {
 
 contract CalculateRewardAmountForAPRTarget is APRRewardNotifierTest {
   function testFuzz_CalculatesCorrectAmountToReachTarget(
-    uint256 _stakeAmount,
-    uint256 _currentReward,
-    uint16 _targetAPR
+    uint256 _externalReward,
+    uint256 _rewardAmount,
+    uint16 _targetAPR,
+	uint16 _warpAhead
   ) public {
-    _stakeAmount = bound(_stakeAmount, 1e18, 100_000e18);
-    _currentReward = bound(_currentReward, 1e15, 100e18);
-    _targetAPR = uint16(bound(_targetAPR, 100, 5000)); // 1% to 50%
+    _externalReward = bound(_externalReward, 1e20, 1e24);
+    _rewardAmount = bound(_rewardAmount, 1e15, initialRewardAmount);
+    _targetAPR = uint16(bound(_targetAPR, 50, 500)); // 0.5% to 5%
+    _warpAhead = uint16(bound(_warpAhead, 1, type(uint16).max)); // 0.5% to 5%
 
-    _mintAndStake(alice, _stakeAmount);
-    rewardToken.mint(address(notifier), _currentReward * 10);
+    _mintAndStake(alice, 2_000e18);
+    _startExternalRewardStream(_externalReward);
 
-    vm.prank(owner);
+    vm.startPrank(owner);
     notifier.setTargetAPR(_targetAPR);
+    notifier.setRewardAmount(_rewardAmount);
+    vm.stopPrank();
 
+    rewardToken.mint(address(notifier), initialRewardAmount * 2);
+
+    uint256 balanceBefore = rewardToken.balanceOf(address(receiver));
+    uint256 aprBefore = _assertCurrentAPRMatchesExpectation();
+    assertGt(aprBefore, _targetAPR);
+
+	vm.warp(block.timestamp + _warpAhead);
     notifier.notify();
 
-    uint256 aprBefore = _assertCurrentAPRMatchesExpectation();
+    uint256 balanceAfter = rewardToken.balanceOf(address(receiver));
+    uint256 aprAfter = _assertCurrentAPRMatchesExpectation();
 
-    if (aprBefore > _targetAPR) {
-      uint256 balanceBefore = rewardToken.balanceOf(address(receiver));
-      notifier.notify();
-      uint256 balanceAfter = rewardToken.balanceOf(address(receiver));
-
-      uint256 aprAfter = _assertCurrentAPRMatchesExpectation();
-
-      if (balanceAfter > balanceBefore) {
-        assertLe(aprAfter, aprBefore);
-      }
-    }
+    assertGe(balanceAfter, balanceBefore);
+    assertLt(aprAfter, aprBefore);
   }
 }
 
@@ -595,17 +575,16 @@ contract APRCalculationAccuracy is APRRewardNotifierTest {
     vm.warp(block.timestamp + initialRewardInterval);
     notifier.notify();
 
-    uint256 resultingAPR = notifier.getCurrentAPR();
+    uint256 resultingAPR = _assertCurrentAPRMatchesExpectation();
 
     uint256 scaledRewardRate = receiver.scaledRewardRate();
     uint256 totalEarningPower = receiver.totalEarningPower();
+    assertGt(totalEarningPower, 0);
 
-    if (totalEarningPower > 0) {
-      uint256 calculatedAPR = (scaledRewardRate * uint256(_multiplier) * SECONDS_PER_YEAR)
-        / (totalEarningPower * BIPS_DENOMINATOR);
+    uint256 calculatedAPR = (scaledRewardRate * uint256(_multiplier) * SECONDS_PER_YEAR)
+      / (totalEarningPower * BIPS_DENOMINATOR);
 
-      assertEq(resultingAPR, calculatedAPR);
-    }
+    assertEq(resultingAPR, calculatedAPR);
   }
 }
 
