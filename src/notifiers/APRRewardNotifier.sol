@@ -193,25 +193,14 @@ contract APRRewardNotifier is Ownable {
     uint256 totalEarningPower = RECEIVER.totalEarningPower();
     if (totalEarningPower == 0) return rewardAmount;
 
-    // Calculate the max rate that would result in the target APR
-    // maxRate = (targetAPR * totalEarningPower * BIPS_DENOMINATOR) /
-    // (maxEarningPowerTokenMultiplier * SECONDS_PER_YEAR)
-    uint256 maxScaledRate = (uint256(targetAPR) * totalEarningPower * BIPS_DENOMINATOR)
-      / (uint256(maxEarningPowerTokenMultiplier) * SECONDS_PER_YEAR);
+    uint256 targetScaledRate = _targetScaledRewardRate(totalEarningPower);
+    uint256 maxAmount =
+      (targetScaledRate * RECEIVER.REWARD_DURATION()) / RECEIVER.SCALE_FACTOR();
 
-    // Calculate the max amount based on the max rate and reward duration
-    uint256 maxAmount = (maxScaledRate * RECEIVER.REWARD_DURATION()) / RECEIVER.SCALE_FACTOR();
-
-    // Account for remaining rewards if we're in an active reward period
-    uint256 rewardEndTime = RECEIVER.rewardEndTime();
-    if (block.timestamp < rewardEndTime) {
-      uint256 remainingRewards =
-        (RECEIVER.scaledRewardRate() * (rewardEndTime - block.timestamp)) / RECEIVER.SCALE_FACTOR();
-      if (maxAmount > remainingRewards) maxAmount = maxAmount - remainingRewards;
-      else maxAmount = 0;
-    }
-
-    return maxAmount;
+    uint256 remainingRewards =
+      _remainingScaledReward() / RECEIVER.SCALE_FACTOR();
+    if (maxAmount > remainingRewards) return maxAmount - remainingRewards;
+    return 0;
   }
 
   /// @notice How to calculate the current APR. The APR is scaled by the RECEIVER scale factor.
@@ -230,15 +219,13 @@ contract APRRewardNotifier is Ownable {
     uint256 _totalEarningPower = RECEIVER.totalEarningPower();
     if (_totalEarningPower == 0) return 0;
 
-    uint256 _remainingReward =
-      RECEIVER.scaledRewardRate() * (RECEIVER.rewardEndTime() - block.timestamp);
-    uint256 _targetScaledRewardRate =
-      _totalEarningPower * (targetAPR / (maxEarningPowerTokenMultiplier * SECONDS_PER_YEAR));
-	// The case where the target over the duration is less than what is remaining
-	if (_targetScaledRewardRate * RECEIVER.REWARD_DURATION() < _remainingReward) return 0;
-    uint256 _amount = (_targetScaledRewardRate * RECEIVER.REWARD_DURATION() - _remainingReward)
-      / RECEIVER.SCALE_FACTOR();
-    return _amount;
+    uint256 targetScaledRewardRate = _targetScaledRewardRate(_totalEarningPower);
+    uint256 targetScaledReward =
+      targetScaledRewardRate * RECEIVER.REWARD_DURATION();
+    uint256 remainingReward = _remainingScaledReward();
+    if (targetScaledReward <= remainingReward) return 0;
+
+    return (targetScaledReward - remainingReward) / RECEIVER.SCALE_FACTOR();
   }
 
   /// @notice Internal helper method which sets the target APR.
@@ -273,5 +260,16 @@ contract APRRewardNotifier is Ownable {
     if (_multiple == 0) revert APRRewardNotifier__InvalidParameter();
     emit MaxEarningPowerTokenMultiplierSet(maxEarningPowerTokenMultiplier, _multiple);
     maxEarningPowerTokenMultiplier = _multiple;
+  }
+
+  function _targetScaledRewardRate(uint256 _totalEarningPower) internal view returns (uint256) {
+    return (uint256(targetAPR) * _totalEarningPower * BIPS_DENOMINATOR)
+      / (uint256(maxEarningPowerTokenMultiplier) * SECONDS_PER_YEAR);
+  }
+
+  function _remainingScaledReward() internal view returns (uint256) {
+    uint256 rewardEndTime = RECEIVER.rewardEndTime();
+    if (block.timestamp >= rewardEndTime) return 0;
+    return RECEIVER.scaledRewardRate() * (rewardEndTime - block.timestamp);
   }
 }
