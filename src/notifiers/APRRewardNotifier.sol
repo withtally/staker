@@ -126,9 +126,8 @@ contract APRRewardNotifier is Ownable {
       revert APRRewardNotifier__InsufficientBalance();
     }
 
-    // Transfer tokens if amount > 0
+	// Avoids revert in underlying staker if scaled reward rate is 0
     if (amountToNotify == 0 && (RECEIVER.scaledRewardRate() / RECEIVER.SCALE_FACTOR()) == 0) {
-      // TODO: Should this be transfer or a mint?
       return;
     }
     TOKEN.safeTransfer(address(RECEIVER), amountToNotify);
