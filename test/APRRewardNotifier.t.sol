@@ -342,30 +342,11 @@ contract GetCurrentAPR is APRRewardNotifierTest {
     uint256 expectedAPR = (receiver.scaledRewardRate() * uint256(_multiplier) * SECONDS_PER_YEAR)
       / (_stakeAmount * BIPS_DENOMINATOR);
 
-    assertApproxEqRel(currentAPR, expectedAPR, 0.001e18); // 0.1% tolerance
+    assertEq(currentAPR, expectedAPR);  
   }
 }
 
 contract Notify is APRRewardNotifierTest {
-  function test_RevertIf_IntervalNotElapsedAndAPRBelowTarget() public {
-    _mintAndStake(alice, 1000e18);
-
-    // Use smaller reward amount to ensure APR stays below target
-    uint256 smallReward = 1e16; // 0.01 ether
-    rewardToken.mint(address(notifier), smallReward * 100);
-
-    vm.prank(owner);
-    notifier.setRewardAmount(smallReward);
-
-    // First notify needs to happen after interval
-    vm.warp(block.timestamp + initialRewardInterval);
-    notifier.notify();
-
-    // Try to notify again immediately - should revert because APR is below target
-    vm.expectRevert(APRRewardNotifier.APRRewardNotifier__RewardIntervalNotElapsed.selector);
-    notifier.notify();
-  }
-
   function test_NotifySucceedsAfterIntervalElapsed() public {
     _mintAndStake(alice, 1000e18);
 
@@ -486,6 +467,27 @@ contract Notify is APRRewardNotifierTest {
       assertTrue(currentAPR >= 0);
     }
   }
+
+  function test_RevertIf_IntervalNotElapsedAndAPRBelowTarget() public {
+    _mintAndStake(alice, 1000e18);
+
+    // Use smaller reward amount to ensure APR stays below target
+    uint256 smallReward = 1e16; // 0.01 ether
+    rewardToken.mint(address(notifier), smallReward * 100);
+
+    vm.prank(owner);
+    notifier.setRewardAmount(smallReward);
+
+    // First notify needs to happen after interval
+    vm.warp(block.timestamp + initialRewardInterval);
+    notifier.notify();
+
+    // Try to notify again immediately - should revert because APR is below target
+    vm.expectRevert(APRRewardNotifier.APRRewardNotifier__RewardIntervalNotElapsed.selector);
+    notifier.notify();
+  }
+
+
 }
 
 contract Approve is APRRewardNotifierTest {
