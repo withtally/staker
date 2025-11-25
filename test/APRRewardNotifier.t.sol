@@ -81,6 +81,21 @@ contract APRRewardNotifierTest is Test, TestHelpers {
   function _assumeSafeOwner(address _owner) public pure {
     vm.assume(_owner != address(0));
   }
+
+  function _expectedCurrentAPR() internal view returns (uint256) {
+    uint256 totalEarningPower = receiver.totalEarningPower();
+    if (totalEarningPower == 0) return 0;
+
+    return (receiver.scaledRewardRate()
+      * uint256(notifier.maxEarningPowerTokenMultiplier())
+      * SECONDS_PER_YEAR) / (totalEarningPower * BIPS_DENOMINATOR);
+  }
+
+  function _assertCurrentAPRMatchesExpectation() internal view returns (uint256) {
+    uint256 currentAPR = notifier.getCurrentAPR();
+    assertEq(currentAPR, _expectedCurrentAPR());
+    return currentAPR;
+  }
 }
 
 contract Constructor is APRRewardNotifierTest {
@@ -365,8 +380,9 @@ contract Notify is APRRewardNotifierTest {
     vm.warp(block.timestamp + initialRewardInterval);
     notifier.notify();
 
-    // Should succeed without reverting
-    assertTrue(notifier.getCurrentAPR() <= initialTargetAPR);
+    // Should succeed without reverting and stay within target APR
+    uint256 currentAPR = _assertCurrentAPRMatchesExpectation();
+    assertLe(currentAPR, initialTargetAPR);
   }
 
   function testFuzz_NotifyWhenIntervalElapsed(
@@ -387,7 +403,8 @@ contract Notify is APRRewardNotifierTest {
     notifier.notify();
     uint256 balanceAfter = rewardToken.balanceOf(address(receiver));
 
-    assertTrue(balanceAfter > balanceBefore || balanceAfter == balanceBefore);
+    assertGe(balanceAfter, balanceBefore);
+    _assertCurrentAPRMatchesExpectation();
     assertEq(notifier.nextRewardTime(), block.timestamp + initialRewardInterval);
   }
 
@@ -408,9 +425,13 @@ contract Notify is APRRewardNotifierTest {
 
     notifier.notify();
 
-    uint256 aprBefore = notifier.getCurrentAPR();
+    uint256 aprBefore = _assertCurrentAPRMatchesExpectation();
 
-    if (aprBefore > _lowTargetAPR) notifier.notify();
+    if (aprBefore > _lowTargetAPR) {
+      notifier.notify();
+      uint256 aprAfter = _assertCurrentAPRMatchesExpectation();
+      assertLe(aprAfter, aprBefore);
+    }
   }
 
   function testFuzz_NotifyWithZeroAmountWhenAPRAboveTarget(
@@ -432,14 +453,16 @@ contract Notify is APRRewardNotifierTest {
     vm.warp(block.timestamp + initialRewardInterval);
     notifier.notify();
 
-    uint256 aprAfterFirstNotify = notifier.getCurrentAPR();
+    uint256 aprAfterFirstNotify = _assertCurrentAPRMatchesExpectation();
 
     if (aprAfterFirstNotify > initialTargetAPR) {
       uint256 balanceBefore = rewardToken.balanceOf(address(receiver));
       notifier.notify();
       uint256 balanceAfter = rewardToken.balanceOf(address(receiver));
+      assertGe(balanceAfter, balanceBefore);
 
-      assertTrue(balanceAfter >= balanceBefore);
+      uint256 aprAfterSecondNotify = _assertCurrentAPRMatchesExpectation();
+      assertLe(aprAfterSecondNotify, aprAfterFirstNotify);
     }
   }
 
@@ -463,8 +486,7 @@ contract Notify is APRRewardNotifierTest {
       vm.warp(block.timestamp + initialRewardInterval);
       notifier.notify();
 
-      uint256 currentAPR = notifier.getCurrentAPR();
-      assertTrue(currentAPR >= 0);
+      _assertCurrentAPRMatchesExpectation();
     }
   }
 
@@ -532,16 +554,18 @@ contract CalculateRewardAmountForAPRTarget is APRRewardNotifierTest {
 
     notifier.notify();
 
-    uint256 aprBefore = notifier.getCurrentAPR();
+    uint256 aprBefore = _assertCurrentAPRMatchesExpectation();
 
     if (aprBefore > _targetAPR) {
       uint256 balanceBefore = rewardToken.balanceOf(address(receiver));
       notifier.notify();
       uint256 balanceAfter = rewardToken.balanceOf(address(receiver));
 
-      uint256 aprAfter = notifier.getCurrentAPR();
+      uint256 aprAfter = _assertCurrentAPRMatchesExpectation();
 
-      if (balanceAfter > balanceBefore) assertTrue(aprAfter <= aprBefore);
+      if (balanceAfter > balanceBefore) {
+        assertLe(aprAfter, aprBefore);
+      }
     }
   }
 }
@@ -606,7 +630,7 @@ contract EdgeCases is APRRewardNotifierTest {
 
     notifier.notify();
 
-    assertTrue(notifier.getCurrentAPR() >= 0);
+    _assertCurrentAPRMatchesExpectation();
   }
 
   function test_HandlesStakingAndUnstakingDuringRewardPeriod() public {
@@ -626,12 +650,13 @@ contract EdgeCases is APRRewardNotifierTest {
     vm.warp(block.timestamp + initialRewardInterval);
     notifier.notify();
 
-    uint256 aprBefore = notifier.getCurrentAPR();
+    uint256 aprBefore = _assertCurrentAPRMatchesExpectation();
 
     // Bob stakes more, should decrease APR
     _mintAndStake(bob, stakeAmount);
 
-    uint256 aprAfterStake = notifier.getCurrentAPR();
+    uint256 aprAfterStake = _assertCurrentAPRMatchesExpectation();
+    assertLe(aprAfterStake, aprBefore);
 
     // Get Alice's deposit ID for withdrawal
     stakeToken.mint(alice, stakeAmount);
@@ -644,7 +669,7 @@ contract EdgeCases is APRRewardNotifierTest {
     vm.prank(alice);
     receiver.withdraw(newDepositId, stakeAmount / 2);
 
-    uint256 aprAfterWithdraw = notifier.getCurrentAPR();
+    uint256 aprAfterWithdraw = _assertCurrentAPRMatchesExpectation();
     assertGe(aprAfterWithdraw, aprAfterStake);
   }
 }
