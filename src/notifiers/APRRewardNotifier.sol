@@ -203,8 +203,8 @@ contract APRRewardNotifier is Ownable {
     return 0;
   }
 
-  /// @notice How to calculate the current APR. The APR is scaled by the RECEIVER scale factor.
-  /// @dev The APR = (scaledRewardRate / totalEarningPower) * maxEarningPowerToTokensMultiplier *
+  /// @notice How to calculate the current APR in basis points.
+  /// @dev The APR = (scaledRewardRate / totalEarningPower / SCALE_FACTOR) * maxEarningPowerToTokensMultiplier *
   /// SECONDS_PER_YEAR / BIPS_DENOMINATOR
   function _calculateCurrentScaledAPR() internal view returns (uint256) {
     uint256 _totalEarningPower = RECEIVER.totalEarningPower();
@@ -212,7 +212,7 @@ contract APRRewardNotifier is Ownable {
 
     return ((RECEIVER.scaledRewardRate()
           * uint256(maxEarningPowerTokenMultiplier)
-          * SECONDS_PER_YEAR) / (_totalEarningPower * BIPS_DENOMINATOR));
+          * SECONDS_PER_YEAR) / (_totalEarningPower * BIPS_DENOMINATOR * RECEIVER.SCALE_FACTOR()));
   }
 
   function _calculateRewardAmountForAPRTarget() internal view returns (uint256) {

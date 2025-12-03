@@ -88,7 +88,7 @@ contract APRRewardNotifierTest is Test, TestHelpers {
 
     return (receiver.scaledRewardRate()
       * uint256(notifier.maxEarningPowerTokenMultiplier())
-      * SECONDS_PER_YEAR) / (totalEarningPower * BIPS_DENOMINATOR);
+      * SECONDS_PER_YEAR) / (totalEarningPower * BIPS_DENOMINATOR * receiver.SCALE_FACTOR());
   }
 
   function _assertCurrentAPRMatchesExpectation() internal view returns (uint256) {
@@ -367,7 +367,7 @@ contract GetCurrentAPR is APRRewardNotifierTest {
     uint256 currentAPR = notifier.getCurrentAPR();
 
     uint256 expectedAPR = (receiver.scaledRewardRate() * uint256(_multiplier) * SECONDS_PER_YEAR)
-      / (_stakeAmount * BIPS_DENOMINATOR);
+      / (_stakeAmount * BIPS_DENOMINATOR * receiver.SCALE_FACTOR());
 
     assertEq(currentAPR, expectedAPR);  
   }
