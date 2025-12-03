@@ -263,7 +263,7 @@ contract APRRewardNotifier is Ownable {
   }
 
   function _targetScaledRewardRate(uint256 _totalEarningPower) internal view returns (uint256) {
-    return (uint256(targetAPR) * _totalEarningPower * BIPS_DENOMINATOR)
+    return (uint256(targetAPR) * _totalEarningPower * BIPS_DENOMINATOR * RECEIVER.SCALE_FACTOR())
       / (uint256(maxEarningPowerTokenMultiplier) * SECONDS_PER_YEAR);
   }
 
