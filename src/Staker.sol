@@ -222,8 +222,8 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Number of seconds in a year for APR calculations.
   uint256 public constant SECONDS_PER_YEAR = 365 days;
 
-  /// @notice Scale used for the earning power to tokens multiplier.
-  uint256 public constant EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE = 1e18;
+  /// @notice Scale used for the earning power to tokens multiplier (in basis points).
+  uint256 public constant EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE = 10_000;
 
   /// @notice The maximum value to which the claim fee can be set.
   /// @dev For anything other than a zero value, this immutable parameter should be set in the
@@ -244,7 +244,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @dev Set to 0 to disable APR ceiling enforcement.
   uint256 public aprCeiling;
 
-  /// @notice Multiplier (scaled by EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE) used to convert
+  /// @notice Multiplier (in basis points, scaled by EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE) used to convert
   /// staked tokens into the maximum possible earning power when enforcing APR ceilings.
   uint256 public maxEarningPowerToTokensMultiplier;
 
@@ -306,7 +306,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     STAKE_TOKEN = _stakeToken;
     _setAdmin(_admin);
     _setMaxBumpTip(_maxBumpTip);
-    _setMaxEarningPowerToTokensMultiplier(EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE);
+    _setMaxEarningPowerToTokensMultiplier(BASIS_POINTS); // Initialize to 100% (10,000 basis points)
     _setEarningPowerCalculator(address(_earningPowerCalculator));
   }
 
@@ -333,7 +333,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   }
 
   /// @notice Set the multiplier used to convert tokens to maximum possible earning power.
-  /// @param _newMultiplier New multiplier scaled by `EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE`.
+  /// @param _newMultiplier New multiplier in basis points (10,000 = 100%).
   function setMaxEarningPowerToTokensMultiplier(uint256 _newMultiplier) external virtual {
     _revertIfNotAdmin();
     _setMaxEarningPowerToTokensMultiplier(_newMultiplier);
@@ -912,8 +912,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   }
 
   /// @notice Internal helper method which sets the max earning power to tokens multiplier.
-  /// @param _newMultiplier Value of the new multiplier scaled by
-  /// `EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE`.
+  /// @param _newMultiplier Value of the new multiplier in basis points (10,000 = 100%).
   function _setMaxEarningPowerToTokensMultiplier(uint256 _newMultiplier) internal virtual {
     if (_newMultiplier == 0) revert Staker__InvalidMaxEarningPowerMultiplier();
     emit MaxEarningPowerToTokensMultiplierSet(maxEarningPowerToTokensMultiplier, _newMultiplier);
