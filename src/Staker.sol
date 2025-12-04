@@ -8,6 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @title Staker
 /// @author [ScopeLift](https://scopelift.co)
@@ -105,6 +106,15 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Emitted when a reward notifier address is enabled or disabled.
   event RewardNotifierSet(address indexed account, bool isEnabled);
 
+  /// @notice Emitted when the APR ceiling is updated.
+  event AprCeilingSet(uint256 oldAprCeiling, uint256 newAprCeiling);
+
+  /// @notice Emitted when the earning power to tokens multiplier is updated.
+  event MaxEarningPowerToTokensMultiplierSet(uint256 oldMultiplier, uint256 newMultiplier);
+
+  /// @notice Emitted when rewards are capped due to APR ceiling.
+  event RewardsCapped(uint256 originalAmount, uint256 cappedAmount, uint256 effectiveApr);
+
   /// @notice Emitted when a deposit's earning power is changed via bumping.
   event EarningPowerBumped(
     DepositIdentifier indexed depositId,
@@ -131,6 +141,11 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Thrown if the unclaimed rewards are insufficient to cover a bumper's requested tip,
   /// or in the case of an earning power decrease the tip of a subsequent earning power increase.
   error Staker__InsufficientUnclaimedRewards();
+
+  /// @notice Thrown when an invalid APR ceiling value is provided.
+  error Staker__InvalidAprCeiling();
+  /// @notice Thrown when an invalid earning power multiplier is provided.
+  error Staker__InvalidMaxEarningPowerMultiplier();
 
   /// @notice Thrown if a caller attempts to specify address zero for certain designated addresses.
   error Staker__InvalidAddress();
@@ -201,6 +216,15 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// truncation during division.
   uint256 public constant SCALE_FACTOR = 1e36;
 
+  /// @notice Basis points divisor for percentage calculations.
+  uint256 public constant BASIS_POINTS = 10_000;
+
+  /// @notice Number of seconds in a year for APR calculations.
+  uint256 public constant SECONDS_PER_YEAR = 365 days;
+
+  /// @notice Scale used for the earning power to tokens multiplier (in basis points).
+  uint256 public constant EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE = 10_000;
+
   /// @notice The maximum value to which the claim fee can be set.
   /// @dev For anything other than a zero value, this immutable parameter should be set in the
   /// constructor of a concrete implementation inheriting from Staker.
@@ -215,6 +239,14 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
   /// @notice Maximum tip a bumper can request.
   uint256 public maxBumpTip;
+
+  /// @notice Maximum allowed APR in basis points (e.g., 2000 = 20% APR).
+  /// @dev Set to 0 to disable APR ceiling enforcement.
+  uint256 public aprCeiling;
+
+  /// @notice Multiplier (in basis points, scaled by EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE) used to convert
+  /// staked tokens into the maximum possible earning power when enforcing APR ceilings.
+  uint256 public maxEarningPowerToTokensMultiplier;
 
   /// @notice Global amount currently staked across all deposits.
   uint256 public totalStaked;
@@ -274,6 +306,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     STAKE_TOKEN = _stakeToken;
     _setAdmin(_admin);
     _setMaxBumpTip(_maxBumpTip);
+    _setMaxEarningPowerToTokensMultiplier(BASIS_POINTS); // Initialize to 100% (10,000 basis points)
     _setEarningPowerCalculator(address(_earningPowerCalculator));
   }
 
@@ -297,6 +330,21 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   function setMaxBumpTip(uint256 _newMaxBumpTip) external virtual {
     _revertIfNotAdmin();
     _setMaxBumpTip(_newMaxBumpTip);
+  }
+
+  /// @notice Set the multiplier used to convert tokens to maximum possible earning power.
+  /// @param _newMultiplier New multiplier in basis points (10,000 = 100%).
+  function setMaxEarningPowerToTokensMultiplier(uint256 _newMultiplier) external virtual {
+    _revertIfNotAdmin();
+    _setMaxEarningPowerToTokensMultiplier(_newMultiplier);
+  }
+
+  /// @notice Set the APR ceiling.
+  /// @param _newAprCeiling Maximum allowed APR in basis points (0 to disable).
+  /// @dev Caller must be the current admin.
+  function setAprCeiling(uint256 _newAprCeiling) external virtual {
+    _revertIfNotAdmin();
+    _setAprCeiling(_newAprCeiling);
   }
 
   /// @notice Enables or disables a reward notifier address.
@@ -472,14 +520,19 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     // because that second operation will be done after updating the reward rate.
     rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
 
+    uint256 newRewardAmount;
     if (block.timestamp >= rewardEndTime) {
-      scaledRewardRate = (_amount * SCALE_FACTOR) / REWARD_DURATION;
+      newRewardAmount = _amount * SCALE_FACTOR;
     } else {
       uint256 _remainingReward = scaledRewardRate * (rewardEndTime - block.timestamp);
-      scaledRewardRate = (_remainingReward + _amount * SCALE_FACTOR) / REWARD_DURATION;
+      newRewardAmount = _remainingReward + _amount * SCALE_FACTOR;
     }
 
-    rewardEndTime = block.timestamp + REWARD_DURATION;
+    // Calculate the duration needed to respect APR ceiling if configured
+    uint256 duration = _calculateDurationForReward(newRewardAmount, _amount);
+
+    scaledRewardRate = newRewardAmount / duration;
+    rewardEndTime = block.timestamp + duration;
     lastCheckpointTime = block.timestamp;
 
     if ((scaledRewardRate / SCALE_FACTOR) == 0) revert Staker__InvalidRewardRate();
@@ -517,33 +570,33 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     _checkpointReward(deposit);
 
     uint256 _unclaimedRewards = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
+    uint256 _oldEarningPower = deposit.earningPower;
 
     (uint256 _newEarningPower, bool _isQualifiedForBump) = earningPowerCalculator.getNewEarningPower(
-      deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower
+      deposit.balance, deposit.owner, deposit.delegatee, _oldEarningPower
     );
     if (!_isQualifiedForBump || _newEarningPower == deposit.earningPower) {
       revert Staker__Unqualified(_newEarningPower);
     }
 
-    if (_newEarningPower > deposit.earningPower && _unclaimedRewards < _requestedTip) {
+    if (_newEarningPower > _oldEarningPower && _unclaimedRewards < _requestedTip) {
       revert Staker__InsufficientUnclaimedRewards();
     }
 
-    // Note: underflow causes a revert if the requested  tip is more than unclaimed rewards
-    if (_newEarningPower < deposit.earningPower && (_unclaimedRewards - _requestedTip) < maxBumpTip)
-    {
+    // Note: underflow causes a revert if the requested tip is more than unclaimed rewards
+    if (_newEarningPower < _oldEarningPower && (_unclaimedRewards - _requestedTip) < maxBumpTip) {
       revert Staker__InsufficientUnclaimedRewards();
     }
 
     emit EarningPowerBumped(
-      _depositId, deposit.earningPower, _newEarningPower, msg.sender, _tipReceiver, _requestedTip
+      _depositId, _oldEarningPower, _newEarningPower, msg.sender, _tipReceiver, _requestedTip
     );
 
     // Update global earning power & deposit earning power based on this bump
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
     deposit.earningPower = _newEarningPower.toUint96();
 
@@ -551,6 +604,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _requestedTip);
     deposit.scaledUnclaimedRewardCheckpoint =
       deposit.scaledUnclaimedRewardCheckpoint - (_requestedTip * SCALE_FACTOR);
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
   }
 
   /// @notice Live value of the unclaimed rewards earned by a given deposit with the
@@ -580,7 +634,10 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @param _from Source account from which stake token is to be transferred.
   /// @param _to Destination account of the stake token which is to be transferred.
   /// @param _value Quantity of stake token which is to be transferred.
-  function _stakeTokenSafeTransferFrom(address _from, address _to, uint256 _value) internal virtual {
+  function _stakeTokenSafeTransferFrom(address _from, address _to, uint256 _value)
+    internal
+    virtual
+  {
     SafeERC20.safeTransferFrom(STAKE_TOKEN, _from, _to, _value);
   }
 
@@ -642,20 +699,22 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     DelegationSurrogate _surrogate = surrogates(deposit.delegatee);
 
     uint256 _newBalance = deposit.balance + _amount;
+    uint256 _oldEarningPower = deposit.earningPower;
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
 
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     totalStaked += _amount;
     depositorTotalStaked[deposit.owner] += _amount;
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
     deposit.earningPower = _newEarningPower.toUint96();
     deposit.balance = _newBalance.toUint96();
     _stakeTokenSafeTransferFrom(deposit.owner, address(_surrogate), _amount);
     emit StakeDeposited(deposit.owner, _depositId, _amount, _newBalance, _newEarningPower);
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
   }
 
   /// @notice Internal convenience method which alters the delegatee of an existing deposit.
@@ -671,13 +730,14 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     _checkpointReward(deposit);
 
     DelegationSurrogate _oldSurrogate = surrogates(deposit.delegatee);
+    uint256 _oldEarningPower = deposit.earningPower;
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee);
 
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
 
     emit DelegateeAltered(_depositId, deposit.delegatee, _newDelegatee, _newEarningPower);
@@ -685,33 +745,37 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.earningPower = _newEarningPower.toUint96();
     DelegationSurrogate _newSurrogate = _fetchOrDeploySurrogate(_newDelegatee);
     _stakeTokenSafeTransferFrom(address(_oldSurrogate), address(_newSurrogate), deposit.balance);
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
   }
 
   /// @notice Internal convenience method which alters the claimer of an existing deposit.
   /// @dev This method must only be called after proper authorization has been completed.
   /// @dev See public alterClaimer methods for additional documentation.
-  function _alterClaimer(Deposit storage deposit, DepositIdentifier _depositId, address _newClaimer)
-    internal
-    virtual
-  {
+  function _alterClaimer(
+    Deposit storage deposit,
+    DepositIdentifier _depositId,
+    address _newClaimer
+  ) internal virtual {
     _revertIfAddressZero(_newClaimer);
     _checkpointGlobalReward();
     _checkpointReward(deposit);
 
     // Updating the earning power here is not strictly necessary, but if the user is touching their
     // deposit anyway, it seems reasonable to make sure their earning power is up to date.
+    uint256 _oldEarningPower = deposit.earningPower;
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
 
     deposit.earningPower = _newEarningPower.toUint96();
 
     emit ClaimerAltered(_depositId, deposit.claimer, _newClaimer, _newEarningPower);
     deposit.claimer = _newClaimer;
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
   }
 
   /// @notice Internal convenience method which withdraws the stake from an existing deposit.
@@ -726,21 +790,23 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
     // overflow prevents withdrawing more than balance
     uint256 _newBalance = deposit.balance - _amount;
+    uint256 _oldEarningPower = deposit.earningPower;
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
 
     totalStaked -= _amount;
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     depositorTotalStaked[deposit.owner] -= _amount;
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
 
     deposit.balance = _newBalance.toUint96();
     deposit.earningPower = _newEarningPower.toUint96();
     _stakeTokenSafeTransferFrom(address(surrogates(deposit.delegatee)), deposit.owner, _amount);
     emit StakeWithdrawn(deposit.owner, _depositId, _amount, _newBalance, _newEarningPower);
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
   }
 
   /// @notice Internal convenience method which claims earned rewards.
@@ -764,15 +830,16 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     deposit.scaledUnclaimedRewardCheckpoint =
       deposit.scaledUnclaimedRewardCheckpoint - (_reward * SCALE_FACTOR);
 
+    uint256 _oldEarningPower = deposit.earningPower;
     uint256 _newEarningPower =
       earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
 
     emit RewardClaimed(_depositId, _claimer, _payout, _newEarningPower);
 
     totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
+      _calculateTotalEarningPower(_oldEarningPower, _newEarningPower, totalEarningPower);
     depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      _oldEarningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
     );
     deposit.earningPower = _newEarningPower.toUint96();
 
@@ -782,6 +849,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
         REWARD_TOKEN, claimFeeParameters.feeCollector, claimFeeParameters.feeAmount
       );
     }
+    _enforceAprCeilingIfEarningPowerDecreased(_oldEarningPower, _newEarningPower);
     return _payout;
   }
 
@@ -835,6 +903,110 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   function _setMaxBumpTip(uint256 _newMaxTip) internal virtual {
     emit MaxBumpTipSet(maxBumpTip, _newMaxTip);
     maxBumpTip = _newMaxTip;
+  }
+
+  /// @notice Internal helper method which sets the max earning power to tokens multiplier.
+  /// @param _newMultiplier Value of the new multiplier in basis points (10,000 = 100%).
+  function _setMaxEarningPowerToTokensMultiplier(uint256 _newMultiplier) internal virtual {
+    if (_newMultiplier == 0) revert Staker__InvalidMaxEarningPowerMultiplier();
+    emit MaxEarningPowerToTokensMultiplierSet(maxEarningPowerToTokensMultiplier, _newMultiplier);
+    maxEarningPowerToTokensMultiplier = _newMultiplier;
+  }
+
+  /// @notice Internal helper method which sets the APR ceiling.
+  /// @param _newAprCeiling Maximum allowed APR in basis points.
+  function _setAprCeiling(uint256 _newAprCeiling) internal virtual {
+    if (_newAprCeiling > BASIS_POINTS) revert Staker__InvalidAprCeiling();
+    emit AprCeilingSet(aprCeiling, _newAprCeiling);
+    aprCeiling = _newAprCeiling;
+  }
+
+
+
+
+  /// @notice Calculates the maximum allowed scaled reward rate based on APR ceiling.
+  /// @return The maximum allowed scaled reward rate, or 0 if no ceiling or no earning power.
+  function _maxAllowedScaledRate() internal view returns (uint256) {
+    if (aprCeiling == 0) return type(uint256).max;
+    uint256 _aprEarningPower = _aprReferenceEarningPower();
+    if (_aprEarningPower == 0) return 0;
+    return (aprCeiling * _aprEarningPower * SCALE_FACTOR) / (BASIS_POINTS * SECONDS_PER_YEAR);
+  }
+
+  /// @notice Calculates minimum duration needed for a scaled reward amount to respect APR ceiling.
+  /// @param _scaledRewardAmount The scaled reward amount to distribute.
+  /// @return The minimum duration needed, or REWARD_DURATION if no ceiling enforced.
+  function _calculateMinDurationForScaledReward(uint256 _scaledRewardAmount) internal view returns (uint256) {
+    uint256 maxScaledRate = _maxAllowedScaledRate();
+    if (maxScaledRate == type(uint256).max || maxScaledRate == 0) return REWARD_DURATION;
+
+    uint256 minDuration = _scaledRewardAmount / maxScaledRate;
+    if (_scaledRewardAmount % maxScaledRate != 0) minDuration += 1;
+    return minDuration > REWARD_DURATION ? minDuration : REWARD_DURATION;
+  }
+
+  /// @notice Calculates the duration needed for new rewards respecting APR ceiling.
+  /// @param _newScaledRewardAmount The total scaled reward amount (existing + new).
+  /// @param _notificationAmount The original notification amount for event emission.
+  /// @return The duration to use for reward distribution.
+  function _calculateDurationForReward(uint256 _newScaledRewardAmount, uint256 _notificationAmount)
+    internal returns (uint256)
+  {
+    uint256 duration = _calculateMinDurationForScaledReward(_newScaledRewardAmount);
+
+    if (duration > REWARD_DURATION) {
+      uint256 _aprEarningPower = _aprReferenceEarningPower();
+      if (_aprEarningPower > 0) {
+        uint256 effectiveApr = (_newScaledRewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) /
+          (_aprEarningPower * duration * SCALE_FACTOR);
+        emit RewardsCapped(_notificationAmount, _notificationAmount, effectiveApr);
+      }
+    }
+
+    return duration;
+  }
+
+  /// @notice Ensures the current reward stream respects the APR ceiling after
+  /// earning power drops by extending the reward duration if necessary.
+  function _enforceAprCeilingOnStreamingRewards() internal virtual {
+    if (scaledRewardRate == 0) return;
+
+    uint256 _lastCheckpoint = lastCheckpointTime;
+    if (rewardEndTime <= _lastCheckpoint) return;
+
+    uint256 _allowedScaledRate = _maxAllowedScaledRate();
+    if (_allowedScaledRate == 0 || _allowedScaledRate == type(uint256).max) return;
+    if (scaledRewardRate <= _allowedScaledRate) return;
+
+    // Calculate remaining rewards and new duration
+    uint256 _remainingScaledReward = scaledRewardRate * (rewardEndTime - _lastCheckpoint);
+    uint256 _newDuration = _calculateMinDurationForScaledReward(_remainingScaledReward);
+
+    // Extend the reward end time and adjust rate
+    rewardEndTime = _lastCheckpoint + _newDuration;
+    scaledRewardRate = _remainingScaledReward / _newDuration;
+  }
+
+  /// @notice Helper to enforce the APR ceiling when a deposit's earning power decreases.
+  function _enforceAprCeilingIfEarningPowerDecreased(
+    uint256 _oldEarningPower,
+    uint256 _newEarningPower
+  ) internal virtual {
+    if (_newEarningPower < _oldEarningPower) {
+      _enforceAprCeilingOnStreamingRewards();
+    }
+  }
+
+  /// @notice Returns the earning power reference used for APR enforcement.
+  function _aprReferenceEarningPower() internal view returns (uint256) {
+    uint256 _effectiveEarningPower = totalEarningPower;
+    uint256 _maxBasedOnStake = Math.mulDiv(
+      totalStaked, maxEarningPowerToTokensMultiplier, EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE
+    );
+    if (_maxBasedOnStake > _effectiveEarningPower) {
+      _effectiveEarningPower = _maxBasedOnStake;
+    }
+    return _effectiveEarningPower;
   }
 
   /// @notice Internal helper method which sets the claim fee parameters.

@@ -108,6 +108,23 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     baseStaker.setClaimFeeParameters(_params);
   }
 
+  function _allowedScaledRewardRate(uint256 _aprCeilingBps)
+    internal
+    view
+    returns (uint256 _allowedRate)
+  {
+    uint256 _effectiveEarningPower = baseStaker.totalEarningPower();
+    uint256 _maxBasedOnStake = (
+      baseStaker.totalStaked() * baseStaker.maxEarningPowerToTokensMultiplier()
+    ) / baseStaker.EARNING_POWER_TO_TOKENS_MULTIPLIER_SCALE();
+    if (_maxBasedOnStake > _effectiveEarningPower) {
+      _effectiveEarningPower = _maxBasedOnStake;
+    }
+    return (
+      _aprCeilingBps * _effectiveEarningPower * SCALE_FACTOR
+    ) / (baseStaker.BASIS_POINTS() * baseStaker.SECONDS_PER_YEAR());
+  }
+
   function _stake(address _depositor, uint256 _amount, address _delegatee)
     internal
     returns (Staker.DepositIdentifier _depositId)
@@ -181,6 +198,13 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     _boundedAmount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _boundedAmount);
     _depositId = _stake(_depositor, _boundedAmount, _delegatee, _claimer);
+  }
+
+  function _boundAndSetAprCeiling(uint256 _aprCeiling) internal returns (uint256) {
+    _aprCeiling = bound(_aprCeiling, 1, baseStaker.BASIS_POINTS());
+    vm.prank(admin);
+    baseStaker.setAprCeiling(_aprCeiling);
+	return _aprCeiling;
   }
 
   // Scales first param and divides it by second
