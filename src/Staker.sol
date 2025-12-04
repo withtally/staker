@@ -531,9 +531,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
     // Note: underflow causes a revert if the requested  tip is more than unclaimed rewards
     if (_newEarningPower < deposit.earningPower && (_unclaimedRewards - _requestedTip) < maxBumpTip)
-    {
-      revert Staker__InsufficientUnclaimedRewards();
-    }
+    revert Staker__InsufficientUnclaimedRewards();
 
     emit EarningPowerBumped(
       _depositId, deposit.earningPower, _newEarningPower, msg.sender, _tipReceiver, _requestedTip
@@ -580,7 +578,10 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @param _from Source account from which stake token is to be transferred.
   /// @param _to Destination account of the stake token which is to be transferred.
   /// @param _value Quantity of stake token which is to be transferred.
-  function _stakeTokenSafeTransferFrom(address _from, address _to, uint256 _value) internal virtual {
+  function _stakeTokenSafeTransferFrom(address _from, address _to, uint256 _value)
+    internal
+    virtual
+  {
     SafeERC20.safeTransferFrom(STAKE_TOKEN, _from, _to, _value);
   }
 
