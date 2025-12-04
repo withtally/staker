@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
+import {Vm, Test, stdStorage, StdStorage, console2, console, stdError} from "forge-std/Test.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -122,6 +123,8 @@ contract APRRewardNotifier is Ownable {
       amountToNotify = rewardAmount > maxAllowableAmount ? maxAllowableAmount : rewardAmount;
       nextRewardTime = block.timestamp + rewardInterval;
     }
+	console2.logUint(amountToNotify);
+	console2.logUint(TOKEN.balanceOf(address(this)));
     if (TOKEN.balanceOf(address(this)) < amountToNotify) {
       revert APRRewardNotifier__InsufficientBalance();
     }
@@ -263,8 +266,8 @@ contract APRRewardNotifier is Ownable {
   }
 
   function _targetScaledRewardRate(uint256 _totalEarningPower) internal view returns (uint256) {
-    return (uint256(targetAPR) * _totalEarningPower * BIPS_DENOMINATOR * RECEIVER.SCALE_FACTOR())
-      / (uint256(maxEarningPowerTokenMultiplier) * SECONDS_PER_YEAR);
+    return (uint256(targetAPR) * _totalEarningPower * uint256(maxEarningPowerTokenMultiplier)  * RECEIVER.SCALE_FACTOR())
+      / (BIPS_DENOMINATOR * SECONDS_PER_YEAR);
   }
 
   function _remainingScaledReward() internal view returns (uint256) {
