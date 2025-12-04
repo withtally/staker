@@ -516,29 +516,33 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   function notifyRewardAmount(uint256 _amount) external virtual {
     if (!isRewardNotifier[msg.sender]) revert Staker__Unauthorized("not notifier", msg.sender);
 
-    // Apply APR ceiling if configured
-    uint256 cappedAmount = _amount;
-    uint256 _aprEarningPower = _aprReferenceEarningPower();
-    if (aprCeiling > 0 && _aprEarningPower > 0) {
-      cappedAmount = _calculateCappedReward(_amount, _aprEarningPower);
-      if (cappedAmount < _amount) {
-        uint256 effectiveApr = _calculateApr(cappedAmount);
-        emit RewardsCapped(_amount, cappedAmount, effectiveApr);
-      }
-    }
-
     // We checkpoint the accumulator without updating the timestamp at which it was updated,
     // because that second operation will be done after updating the reward rate.
     rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
 
+    uint256 newRewardAmount;
     if (block.timestamp >= rewardEndTime) {
-      scaledRewardRate = (cappedAmount * SCALE_FACTOR) / REWARD_DURATION;
+      newRewardAmount = _amount * SCALE_FACTOR;
     } else {
       uint256 _remainingReward = scaledRewardRate * (rewardEndTime - block.timestamp);
-      scaledRewardRate = (_remainingReward + cappedAmount * SCALE_FACTOR) / REWARD_DURATION;
+      newRewardAmount = _remainingReward + _amount * SCALE_FACTOR;
     }
 
-    rewardEndTime = block.timestamp + REWARD_DURATION;
+    // Calculate the duration needed to respect APR ceiling if configured
+    uint256 duration = REWARD_DURATION;
+    uint256 _aprEarningPower = _aprReferenceEarningPower();
+    if (aprCeiling > 0 && _aprEarningPower > 0) {
+      uint256 maxScaledRate = (aprCeiling * _aprEarningPower * SCALE_FACTOR) / (BASIS_POINTS * SECONDS_PER_YEAR);
+      uint256 minDuration = newRewardAmount / maxScaledRate;
+      if (newRewardAmount % maxScaledRate != 0) minDuration += 1;
+      if (minDuration > duration) {
+        duration = minDuration;
+        emit RewardsCapped(_amount, _amount, (newRewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (_aprEarningPower * duration * SCALE_FACTOR));
+      }
+    }
+
+    scaledRewardRate = newRewardAmount / duration;
+    rewardEndTime = block.timestamp + duration;
     lastCheckpointTime = block.timestamp;
 
     if ((scaledRewardRate / SCALE_FACTOR) == 0) revert Staker__InvalidRewardRate();
@@ -552,7 +556,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
       (scaledRewardRate * REWARD_DURATION) > (REWARD_TOKEN.balanceOf(address(this)) * SCALE_FACTOR)
     ) revert Staker__InsufficientRewardBalance();
 
-    emit RewardNotified(cappedAmount, msg.sender);
+    emit RewardNotified(_amount, msg.sender);
   }
 
   /// @notice A function that a bumper can call to update a deposit's earning power when a
@@ -927,40 +931,11 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     aprCeiling = _newAprCeiling;
   }
 
-  /// @notice Calculates the reward amount capped to respect the APR ceiling.
-  /// @param _requestedAmount The originally requested reward amount.
-  /// @param _aprEarningPower The reference earning power for APR calculations.
-  /// @return The capped reward amount.
-  function _calculateCappedReward(uint256 _requestedAmount, uint256 _aprEarningPower)
-    internal
-    view
-    returns (uint256)
-  {
-    if (_aprEarningPower == 0) return 0;
 
-    // maxReward = (aprCeiling * _aprEarningPower * REWARD_DURATION) / (BASIS_POINTS *
-    // SECONDS_PER_YEAR)
-    uint256 maxRewardAmount =
-      (aprCeiling * _aprEarningPower * REWARD_DURATION) / (BASIS_POINTS * SECONDS_PER_YEAR);
 
-    // Return the minimum of the requested amount and the calculated max
-    return _requestedAmount < maxRewardAmount ? _requestedAmount : maxRewardAmount;
-  }
 
-  /// @notice Calculates the APR for a given reward amount.
-  /// @param _rewardAmount The reward amount to calculate APR for.
-  /// @return The APR in basis points.
-  function _calculateApr(uint256 _rewardAmount) internal view returns (uint256) {
-    uint256 _aprEarningPower = _aprReferenceEarningPower();
-    if (_aprEarningPower == 0) return 0;
-
-    // APR = (rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (_aprEarningPower *
-    // REWARD_DURATION)
-    return (_rewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (_aprEarningPower * REWARD_DURATION);
-  }
-
-  /// @notice Ensures the current reward stream continues to respect the APR ceiling after
-  /// earning power drops by extending the reward duration and lowering the rate if necessary.
+  /// @notice Ensures the current reward stream respects the APR ceiling after
+  /// earning power drops by extending the reward duration if necessary.
   function _enforceAprCeilingOnStreamingRewards() internal virtual {
     if (aprCeiling == 0 || scaledRewardRate == 0) return;
 
@@ -975,16 +950,19 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     if (_allowedScaledRate == 0) return;
     if (scaledRewardRate <= _allowedScaledRate) return;
 
+    // Calculate remaining rewards
     uint256 _remainingDuration = rewardEndTime - _lastCheckpoint;
     uint256 _remainingScaledReward = scaledRewardRate * _remainingDuration;
 
+    // Calculate new duration needed to respect APR ceiling
     uint256 _newDuration = _remainingScaledReward / _allowedScaledRate;
     if (_remainingScaledReward % _allowedScaledRate != 0) _newDuration += 1;
 
-    uint256 _newScaledRewardRate = _remainingScaledReward / _newDuration;
-
+    // Extend the reward end time (keep same rate but extend duration)
     rewardEndTime = _lastCheckpoint + _newDuration;
-    scaledRewardRate = _newScaledRewardRate;
+
+    // Optionally reduce rate to exactly match allowed rate
+    scaledRewardRate = _remainingScaledReward / _newDuration;
   }
 
   /// @notice Helper to enforce the APR ceiling when a deposit's earning power decreases.

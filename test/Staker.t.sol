@@ -2985,7 +2985,7 @@ contract BumpEarningPower is StakerRewardsTest {
     assertEq(govStaker.depositorTotalEarningPower(_depositor), _stakeAmount + _earningPowerIncrease);
   }
 
-  function testFuzz_AprCeilingMaintainedWhenEarningPowerDrops(
+  function testFuzz_AprCeilingEnforcedByExtendingDurationWhenEarningPowerDrops(
     address _depositor,
     address _delegatee,
     uint256 _stakeAmount,
@@ -3015,7 +3015,9 @@ contract BumpEarningPower is StakerRewardsTest {
 
     uint256 allowedScaledRate = _allowedScaledRewardRate(aprCeilingBps);
 
+    // APR ceiling is enforced by extending duration if needed
     assertLe(govStaker.scaledRewardRate(), allowedScaledRate);
+    // Duration is extended when APR would exceed ceiling
     assertGe(govStaker.rewardEndTime(), initialRewardEnd);
   }
 
