@@ -529,17 +529,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     }
 
     // Calculate the duration needed to respect APR ceiling if configured
-    uint256 duration = REWARD_DURATION;
-    uint256 _aprEarningPower = _aprReferenceEarningPower();
-    if (aprCeiling > 0 && _aprEarningPower > 0) {
-      uint256 maxScaledRate = (aprCeiling * _aprEarningPower * SCALE_FACTOR) / (BASIS_POINTS * SECONDS_PER_YEAR);
-      uint256 minDuration = newRewardAmount / maxScaledRate;
-      if (newRewardAmount % maxScaledRate != 0) minDuration += 1;
-      if (minDuration > duration) {
-        duration = minDuration;
-        emit RewardsCapped(_amount, _amount, (newRewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) / (_aprEarningPower * duration * SCALE_FACTOR));
-      }
-    }
+    uint256 duration = _calculateDurationForReward(newRewardAmount, _amount);
 
     scaledRewardRate = newRewardAmount / duration;
     rewardEndTime = block.timestamp + duration;
@@ -934,34 +924,66 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
 
 
+  /// @notice Calculates the maximum allowed scaled reward rate based on APR ceiling.
+  /// @return The maximum allowed scaled reward rate, or 0 if no ceiling or no earning power.
+  function _maxAllowedScaledRate() internal view returns (uint256) {
+    if (aprCeiling == 0) return type(uint256).max;
+    uint256 _aprEarningPower = _aprReferenceEarningPower();
+    if (_aprEarningPower == 0) return 0;
+    return (aprCeiling * _aprEarningPower * SCALE_FACTOR) / (BASIS_POINTS * SECONDS_PER_YEAR);
+  }
+
+  /// @notice Calculates minimum duration needed for a scaled reward amount to respect APR ceiling.
+  /// @param _scaledRewardAmount The scaled reward amount to distribute.
+  /// @return The minimum duration needed, or REWARD_DURATION if no ceiling enforced.
+  function _calculateMinDurationForScaledReward(uint256 _scaledRewardAmount) internal view returns (uint256) {
+    uint256 maxScaledRate = _maxAllowedScaledRate();
+    if (maxScaledRate == type(uint256).max || maxScaledRate == 0) return REWARD_DURATION;
+
+    uint256 minDuration = _scaledRewardAmount / maxScaledRate;
+    if (_scaledRewardAmount % maxScaledRate != 0) minDuration += 1;
+    return minDuration > REWARD_DURATION ? minDuration : REWARD_DURATION;
+  }
+
+  /// @notice Calculates the duration needed for new rewards respecting APR ceiling.
+  /// @param _newScaledRewardAmount The total scaled reward amount (existing + new).
+  /// @param _notificationAmount The original notification amount for event emission.
+  /// @return The duration to use for reward distribution.
+  function _calculateDurationForReward(uint256 _newScaledRewardAmount, uint256 _notificationAmount)
+    internal returns (uint256)
+  {
+    uint256 duration = _calculateMinDurationForScaledReward(_newScaledRewardAmount);
+
+    if (duration > REWARD_DURATION) {
+      uint256 _aprEarningPower = _aprReferenceEarningPower();
+      if (_aprEarningPower > 0) {
+        uint256 effectiveApr = (_newScaledRewardAmount * SECONDS_PER_YEAR * BASIS_POINTS) /
+          (_aprEarningPower * duration * SCALE_FACTOR);
+        emit RewardsCapped(_notificationAmount, _notificationAmount, effectiveApr);
+      }
+    }
+
+    return duration;
+  }
+
   /// @notice Ensures the current reward stream respects the APR ceiling after
   /// earning power drops by extending the reward duration if necessary.
   function _enforceAprCeilingOnStreamingRewards() internal virtual {
-    if (aprCeiling == 0 || scaledRewardRate == 0) return;
-
-    uint256 _aprEarningPower = _aprReferenceEarningPower();
-    if (_aprEarningPower == 0) return;
+    if (scaledRewardRate == 0) return;
 
     uint256 _lastCheckpoint = lastCheckpointTime;
     if (rewardEndTime <= _lastCheckpoint) return;
 
-    uint256 _allowedScaledRate =
-      (aprCeiling * _aprEarningPower * SCALE_FACTOR) / (BASIS_POINTS * SECONDS_PER_YEAR);
-    if (_allowedScaledRate == 0) return;
+    uint256 _allowedScaledRate = _maxAllowedScaledRate();
+    if (_allowedScaledRate == 0 || _allowedScaledRate == type(uint256).max) return;
     if (scaledRewardRate <= _allowedScaledRate) return;
 
-    // Calculate remaining rewards
-    uint256 _remainingDuration = rewardEndTime - _lastCheckpoint;
-    uint256 _remainingScaledReward = scaledRewardRate * _remainingDuration;
+    // Calculate remaining rewards and new duration
+    uint256 _remainingScaledReward = scaledRewardRate * (rewardEndTime - _lastCheckpoint);
+    uint256 _newDuration = _calculateMinDurationForScaledReward(_remainingScaledReward);
 
-    // Calculate new duration needed to respect APR ceiling
-    uint256 _newDuration = _remainingScaledReward / _allowedScaledRate;
-    if (_remainingScaledReward % _allowedScaledRate != 0) _newDuration += 1;
-
-    // Extend the reward end time (keep same rate but extend duration)
+    // Extend the reward end time and adjust rate
     rewardEndTime = _lastCheckpoint + _newDuration;
-
-    // Optionally reduce rate to exactly match allowed rate
     scaledRewardRate = _remainingScaledReward / _newDuration;
   }
 
