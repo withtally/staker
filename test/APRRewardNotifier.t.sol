@@ -133,7 +133,7 @@ contract Constructor is APRRewardNotifierTest {
     _targetAPR = uint16(bound(_targetAPR, 1, type(uint16).max));
     _maxMultiplier = uint16(bound(_maxMultiplier, 1, type(uint16).max));
     // Ensure reward results in valid scaledRewardRate
-    _rewardAmount = bound(_rewardAmount, 1e15, 100e18); // 0.001 to 100 ether
+    _rewardAmount = bound(_rewardAmount, 1e15, initialRewardAmount); // Bound by notifier's configured amount
     _rewardInterval = bound(_rewardInterval, MIN_REWARD_INTERVAL, MAX_REWARD_INTERVAL);
 
     APRRewardNotifier _notifier = new APRRewardNotifier(
@@ -169,7 +169,7 @@ contract Constructor is APRRewardNotifierTest {
     _targetAPR = uint16(bound(_targetAPR, 1, type(uint16).max));
     _maxMultiplier = uint16(bound(_maxMultiplier, 1, type(uint16).max));
     // Ensure reward results in valid scaledRewardRate
-    _rewardAmount = bound(_rewardAmount, 1e15, 100e18); // 0.001 to 100 ether
+    _rewardAmount = bound(_rewardAmount, 1e15, initialRewardAmount); // Bound by notifier's configured amount
     _rewardInterval = bound(_rewardInterval, MIN_REWARD_INTERVAL, MAX_REWARD_INTERVAL);
 
     vm.expectEmit();
@@ -348,7 +348,7 @@ contract GetCurrentAPR is APRRewardNotifierTest {
     uint16 _multiplier
   ) public {
     _stakeAmount = bound(_stakeAmount, 1e18, 100_000e18);
-    _rewardAmount = bound(_rewardAmount, 1e15, 100e18);
+    _rewardAmount = bound(_rewardAmount, 1e15, initialRewardAmount);
     _multiplier = uint16(bound(_multiplier, 1000, 10_000)); // 10% to 100%
 
     _mintAndStake(alice, _stakeAmount);
@@ -448,7 +448,7 @@ contract Notify is APRRewardNotifierTest {
     uint8 _numNotifications
   ) public {
     _stakeAmount = bound(_stakeAmount, 100e18, 10_000e18);
-    _rewardAmount = bound(_rewardAmount, 1e16, 10e18);
+    _rewardAmount = bound(_rewardAmount, 1e16, initialRewardAmount);
     _numNotifications = uint8(bound(_numNotifications, 2, 5));
 
     _mintAndStake(alice, _stakeAmount);
@@ -559,7 +559,7 @@ contract APRCalculationAccuracy is APRRewardNotifierTest {
     uint16 _targetAPR
   ) public {
     _stakeAmount = bound(_stakeAmount, 1e18, 100_000e18);
-    _rewardAmount = bound(_rewardAmount, 100e18, 100_000e18);
+    _rewardAmount = bound(_rewardAmount, 100e18, initialRewardAmount);
     _multiplier = uint16(bound(_multiplier, 1000, 10_000)); // 10% to 100%
     _targetAPR = uint16(bound(_targetAPR, 100, 2000)); // 1% to 20%
 
@@ -583,7 +583,7 @@ contract APRCalculationAccuracy is APRRewardNotifierTest {
     assertGt(totalEarningPower, 0);
 
     uint256 calculatedAPR = (scaledRewardRate * uint256(_multiplier) * SECONDS_PER_YEAR)
-      / (totalEarningPower * BIPS_DENOMINATOR);
+      / (totalEarningPower * BIPS_DENOMINATOR * receiver.SCALE_FACTOR());
 
     assertEq(resultingAPR, calculatedAPR);
   }
@@ -601,9 +601,14 @@ contract EdgeCases is APRRewardNotifierTest {
 
   function testFuzz_HandlesLargeValues(uint256 _largeStake, uint256 _largeReward) public {
     _largeStake = bound(_largeStake, 10_000e18, 1_000_000e18);
-    _largeReward = bound(_largeReward, 1e17, 1000e18);
+    _largeReward = bound(_largeReward, 1e17, initialRewardAmount);
 
     _mintAndStake(alice, _largeStake);
+
+    // Set the reward amount to ensure it's valid
+    vm.prank(owner);
+    notifier.setRewardAmount(_largeReward);
+
     rewardToken.mint(address(notifier), _largeReward);
 
     vm.warp(block.timestamp + initialRewardInterval);
