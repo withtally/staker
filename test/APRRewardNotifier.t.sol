@@ -5,9 +5,10 @@ import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/Access
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Staking} from "../src/interfaces/IERC20Staking.sol";
 
+import {Staker} from "src/Staker.sol";
 import {IdentityEarningPowerCalculator} from "src/calculators/IdentityEarningPowerCalculator.sol";
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console2} from "forge-std/Test.sol";
 import {ERC20VotesMock} from "staker-test/mocks/MockERC20Votes.sol";
 import {StakerHarness} from "staker-test/harnesses/StakerHarness.sol";
 import {
@@ -55,6 +56,35 @@ contract APRRewardNotifierTest is Test {
     vm.warp(block.timestamp + 10);
   }
 
+  function _boundMintAmount(uint256 _amount) internal pure returns (uint256) {
+    return bound(_amount, 10e12, 10e18);
+  }
+
+  function _mintAndStake(address _staker, uint256 _amount)
+    internal
+    returns (Staker.DepositIdentifier)
+  {
+    stakeToken.mint(_staker, _amount);
+    vm.startPrank(_staker);
+    stakeToken.approve(address(receiver), _amount);
+    Staker.DepositIdentifier _depositId = receiver.stake(_amount, _staker);
+    vm.stopPrank();
+
+    return _depositId;
+  }
+
+  function _startExternalRewardStream(uint256 _amount) internal {
+    vm.prank(admin);
+    receiver.setRewardNotifier(address(this), true);
+
+    rewardToken.mint(address(this), _amount);
+    rewardToken.transfer(address(receiver), _amount);
+    receiver.notifyRewardAmount(_amount);
+
+    vm.prank(admin);
+    receiver.setRewardNotifier(address(this), false);
+  }
+
   function _minRewardAmountForAPR(uint256 _targetAPR) internal view returns (uint256) {
     uint256 totalEarningPower = receiver.totalEarningPower();
     if (totalEarningPower == 0) return 0;
@@ -81,69 +111,108 @@ contract APRRewardNotifierTest is Test {
     assertEq(currentAPR, _expectedCurrentAPR());
     return currentAPR;
   }
-
-  function _mintAndStake(address _staker, uint256 _amount) internal {
-    stakeToken.mint(_staker, _amount);
-    vm.startPrank(_staker);
-    stakeToken.approve(address(receiver), _amount);
-    receiver.stake(_amount, _staker);
-    vm.stopPrank();
-  }
-
-  function _startExternalRewardStream(uint256 _amount) internal {
-    vm.prank(admin);
-    receiver.setRewardNotifier(address(this), true);
-
-    rewardToken.mint(address(this), _amount);
-    rewardToken.transfer(address(receiver), _amount);
-    receiver.notifyRewardAmount(_amount);
-
-    vm.prank(admin);
-    receiver.setRewardNotifier(address(this), false);
-  }
 }
 
 contract NotifyDecrease is APRRewardNotifierTest {
-  function testFuzz_NotifyStakerToDecraseAPR(uint16 _lowTargetAPR, uint256 _newTimestamp) public {
+  function testFuzz_NotifyStakerToDecraseAPR(
+    uint256 _amount,
+    uint16 _lowTargetAPR,
+    uint256 _newTimestamp
+  ) public {
+    _amount = _boundMintAmount(_amount);
     _newTimestamp =
-      bound(_newTimestamp, block.timestamp, block.timestamp + receiver.REWARD_DURATION());
+      bound(_newTimestamp, block.timestamp + 1, block.timestamp + receiver.REWARD_DURATION());
     _lowTargetAPR = uint16(bound(_lowTargetAPR, 1, initialTargetAPR - 2));
 
-    _mintAndStake(alice, 10e18);
-    uint256 _externalReward = _minRewardAmountForAPR(initialTargetAPR);
-    _startExternalRewardStream(_externalReward);
+    // Alice mint and stake to prop total earning power above 0
+    _mintAndStake(alice, _amount);
+
+    // Create external reward stream to artificially prop up APR
+    _startExternalRewardStream(_targetRewardAmount());
+
+    // Mint sufficient token for the notifier
     rewardToken.mint(address(notifier), _targetRewardAmount());
 
+    // Artificially lower target APR
     vm.prank(owner);
     notifier.setTargetAPR(_lowTargetAPR);
     uint256 _aprBefore = _assertCurrentAPRMatchesExpectation();
+    uint256 _rewardEndTimeBefore = receiver.rewardEndTime();
 
+    // Skip arbitrary amount of time to extend reward duration
     vm.warp(_newTimestamp);
 
+    // Notifier owner calls notify decrease
+    vm.prank(owner);
+    notifier.notifyDecrease();
+    uint256 _aprAfter = _assertCurrentAPRMatchesExpectation();
+    uint256 _rewardEndTimeAfter = receiver.rewardEndTime();
+
+    assertEq(_lowTargetAPR, notifier.targetAPR());
+    assertGt(_aprBefore, _lowTargetAPR);
+    assertGe(_aprBefore, _aprAfter);
+    assertLt(_rewardEndTimeBefore, _rewardEndTimeAfter);
+  }
+
+  function testFuzz_NotifyDecreaseRecudesInflatedAPRDueToUnstaking(
+    uint256 _aliceDeposit,
+    uint256 _bobDeposit,
+    uint256 _newTimestamp
+  ) public {
+    // Two token holder stakes
+    _aliceDeposit = _boundMintAmount(_aliceDeposit);
+    _bobDeposit = bound(_bobDeposit, _aliceDeposit / 100, 10e18);
+    _newTimestamp =
+      bound(_newTimestamp, block.timestamp + 1, block.timestamp + receiver.REWARD_DURATION());
+
+    _mintAndStake(alice, _aliceDeposit);
+    Staker.DepositIdentifier _depositId = _mintAndStake(bob, _bobDeposit);
+
+    // Notify reward such that APR is at initialTargetAPR
+    rewardToken.mint(address(notifier), _targetRewardAmount() * 2);
+    vm.prank(owner);
+    notifier.notifyIncrease();
+
+    // Bob unstakes, total earning power decreases, current APR increases
+    vm.prank(bob);
+    receiver.withdraw(_depositId, _bobDeposit);
+    uint256 _aprBefore = _assertCurrentAPRMatchesExpectation();
+
+    // Skip arbitrary amount of time to extend reward duration
+    vm.warp(_newTimestamp);
     vm.prank(owner);
     notifier.notifyDecrease();
     uint256 _aprAfter = _assertCurrentAPRMatchesExpectation();
 
-    assertGt(_aprBefore, notifier.targetAPR());
+    assertGt(_aprBefore, initialTargetAPR);
     assertLe(_aprAfter, _aprBefore);
   }
 
-  function testFuzz_EmitsNotified(uint16 _lowTargetAPR) public {
-    _mintAndStake(alice, 10e18);
-    uint256 _externalReward = _minRewardAmountForAPR(initialTargetAPR);
-    _startExternalRewardStream(_externalReward);
-
+  function testFuzz_EmitsNotified(uint256 _amount, uint16 _lowTargetAPR, uint256 _newTimestamp)
+    public
+  {
+    _amount = _boundMintAmount(_amount);
     _lowTargetAPR = uint16(bound(_lowTargetAPR, 1, initialTargetAPR - 2));
+    _newTimestamp =
+      bound(_newTimestamp, block.timestamp + 1, block.timestamp + receiver.REWARD_DURATION());
+
+    // Alice stakes and set external reward stream to reach initial target APR
+    _mintAndStake(alice, _amount);
+    _startExternalRewardStream(_targetRewardAmount());
+
+    // Artificially lower target APR
     vm.prank(owner);
     notifier.setTargetAPR(_lowTargetAPR);
 
-    uint256 _targetRewardAmount = _targetRewardAmount();
-    uint256 _remainingRewards = notifier.exposed_remainingScaledReward();
+    // Skip arbitrary amount of time to extend reward duration
+    vm.warp(_newTimestamp);
 
+    uint256 _targetRewardAmount = _targetRewardAmount();
+    uint256 _remainingRewards = notifier.exposed_remainingScaledReward() / receiver.SCALE_FACTOR();
     uint256 _amountToNotify =
       (_targetRewardAmount > _remainingRewards) ? _targetRewardAmount - _remainingRewards : 0;
-
     uint256 _currentAPR = notifier.exposed_currentScaledAPR();
+    rewardToken.mint(address(notifier), _amountToNotify);
 
     vm.expectEmit();
     emit APRRewardNotifier.Notified(_amountToNotify, _currentAPR);
@@ -151,8 +220,42 @@ contract NotifyDecrease is APRRewardNotifierTest {
     notifier.notifyDecrease();
   }
 
-  function testFuzz_RevertIf_AlreadyBelowTarget(uint16 _highTargetAPR) public {
-    _mintAndStake(alice, 10e18);
+  function testFuzz_RevertIf_UnstakeIsTooSmallToMoveBipsAPR(
+    uint256 _aliceDeposit,
+    uint256 _bobDeposit,
+    uint256 _newTimestamp
+  ) public {
+    // Two token holder stakes, but Bob's stake is so small that unstaking doesn't change APR
+    _aliceDeposit = _boundMintAmount(_aliceDeposit);
+    _bobDeposit = bound(_bobDeposit, 1, _aliceDeposit / 1000);
+    _newTimestamp =
+      bound(_newTimestamp, block.timestamp + 1, block.timestamp + receiver.REWARD_DURATION());
+
+    _mintAndStake(alice, _aliceDeposit);
+    Staker.DepositIdentifier _depositId = _mintAndStake(bob, _bobDeposit);
+
+    // Notify reward such that APR is at initialTargetAPR
+    rewardToken.mint(address(notifier), _targetRewardAmount() * 2);
+    vm.prank(owner);
+    notifier.notifyIncrease();
+
+    // Bob unstakes, total earning power decreases, current APR remains the same
+    vm.prank(bob);
+    receiver.withdraw(_depositId, _bobDeposit);
+
+    // Skip arbitrary amount of time to extend reward duration
+    vm.warp(_newTimestamp);
+
+    vm.expectRevert(
+      abi.encodeWithSelector(APRRewardNotifier.APRRewardNotifier__APROffTarget.selector)
+    );
+    vm.prank(owner);
+    notifier.notifyDecrease();
+  }
+
+  function testFuzz_RevertIf_AlreadyBelowTarget(uint256 _amount, uint16 _highTargetAPR) public {
+    _amount = _boundMintAmount(_amount);
+    _mintAndStake(alice, _amount);
     uint256 _externalReward = _minRewardAmountForAPR(initialTargetAPR);
     _startExternalRewardStream(_externalReward);
 
@@ -181,31 +284,60 @@ contract NotifyDecrease is APRRewardNotifierTest {
 }
 
 contract NotifyIncrease is APRRewardNotifierTest {
-  function testFuzz_NotifyStakerToIncraseAPR(uint16 _lowTargetAPR, uint256 _newTimestamp) public {
-    _lowTargetAPR = uint16(bound(_lowTargetAPR, 1, initialTargetAPR - 2));
+  function testFuzz_NotifyStakerToIncraseAPR(uint256 _amount, uint256 _newTimestamp) public {
+    _amount = _boundMintAmount(_amount);
     _newTimestamp =
-      bound(_newTimestamp, block.timestamp, block.timestamp + receiver.REWARD_DURATION());
+      bound(_newTimestamp, block.timestamp + 1, block.timestamp + receiver.REWARD_DURATION());
 
     _mintAndStake(alice, 10e18);
     rewardToken.mint(address(notifier), _targetRewardAmount());
-    uint256 _externalReward = _minRewardAmountForAPR(_lowTargetAPR);
-    _startExternalRewardStream(_externalReward);
-
+    _startExternalRewardStream(_targetRewardAmount());
     uint256 _aprBefore = _assertCurrentAPRMatchesExpectation();
 
+    // Skip arbitrary amount of time to reduce APR
     vm.warp(_newTimestamp);
+
     vm.prank(owner);
     notifier.notifyIncrease();
-
     uint256 _aprAfter = _assertCurrentAPRMatchesExpectation();
 
-    assertLt(_aprBefore, notifier.targetAPR());
+    assertApproxEqAbs(_aprBefore, notifier.targetAPR(), 1);
     assertLe(_aprAfter, notifier.targetAPR());
-    assertGe(_aprAfter, _aprBefore);
+    assertLe(_aprBefore, _aprAfter);
   }
 
-  function test_EmitsNotified() public {
-    _mintAndStake(alice, 10e18);
+  function testFuzz_NotifyIncreaseRaisesAPRDueToStaking(
+    uint256 _aliceDeposit,
+    uint256 _bobDeposit,
+    uint256 _newTimestamp
+  ) public {
+    // Two token holder stakes, but Bob's stake is so small that unstaking doesn't change APR
+    _aliceDeposit = _boundMintAmount(_aliceDeposit);
+    _bobDeposit = _boundMintAmount(_aliceDeposit);
+    _newTimestamp =
+      bound(_newTimestamp, block.timestamp + 1, block.timestamp + receiver.REWARD_DURATION());
+
+    _mintAndStake(alice, _aliceDeposit);
+    rewardToken.mint(address(notifier), _targetRewardAmount() * 2);
+    _startExternalRewardStream(_targetRewardAmount());
+    assertApproxEqAbs(notifier.exposed_currentScaledAPR(), initialTargetAPR, 1);
+
+    // Add new staker, APR is reduced
+    _mintAndStake(bob, _bobDeposit);
+    uint256 _aprBefore = _assertCurrentAPRMatchesExpectation();
+
+    // Call notify increase to raise APR back to target APR
+    vm.prank(owner);
+    notifier.notifyIncrease();
+    uint256 _aprAfter = _assertCurrentAPRMatchesExpectation();
+
+    assertLt(_aprBefore, initialTargetAPR);
+    assertLt(_aprBefore, _aprAfter);
+  }
+
+  function test_EmitsNotified(uint256 _amount) public {
+    _amount = _boundMintAmount(_amount);
+    _mintAndStake(alice, _amount);
 
     uint256 _targetRewardAmount = _targetRewardAmount();
     rewardToken.mint(address(notifier), _targetRewardAmount);
@@ -221,18 +353,13 @@ contract NotifyIncrease is APRRewardNotifierTest {
     notifier.notifyIncrease();
   }
 
-  function testFuzz_RevertIf_AlreadyAboveTarget(uint256 _externalReward, uint16 _lowTargetAPR)
-    public
-  {
-    _externalReward = bound(_externalReward, 1e20, 1e24);
+  function testFuzz_RevertIf_AlreadyAboveTarget(uint256 _amount, uint16 _lowTargetAPR) public {
+    _amount = _boundMintAmount(_amount);
 
-    _mintAndStake(alice, 10e18);
-    _startExternalRewardStream(_externalReward);
+    _mintAndStake(alice, _amount);
+    _startExternalRewardStream(_targetRewardAmount());
 
-    uint256 _currentAPR = notifier.exposed_currentScaledAPR();
-    vm.assume(_currentAPR > 0);
-
-    _lowTargetAPR = uint16(bound(_lowTargetAPR, 1, _currentAPR));
+    _lowTargetAPR = uint16(bound(_lowTargetAPR, 1, initialTargetAPR - 1));
 
     vm.prank(owner);
     notifier.setTargetAPR(_lowTargetAPR);
