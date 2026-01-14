@@ -240,7 +240,7 @@ abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgra
     0x3ddb462ea09b2a712726a8a8a271a0d79e7f965b28139434d52ac706825d5200;
 
   /// @notice Length of time over which rewards sent to this contract are distributed to stakers.
-  uint256 public constant REWARD_DURATION = 30 days;
+  uint256 public constant REWARD_DURATION = 7 days;
 
   /// @notice Scale factor used in reward calculation math to reduce rounding errors caused by
   /// truncation during division.
