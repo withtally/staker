@@ -3,8 +3,9 @@ pragma solidity ^0.8.23;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {IEarningPowerCalculator} from "../src/Staker.sol";
+import {IEarningPowerCalculator} from "../src/StakerUpgradeable.sol";
 import {StakerHandler} from "./helpers/Staker.handler.sol";
 import {StakerHarness} from "./harnesses/StakerHarness.sol";
 import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
@@ -34,9 +35,23 @@ contract StakerInvariants is Test {
     earningPowerCalculator = new MockFullEarningPowerCalculator();
     vm.label(address(earningPowerCalculator), "Full Earning Power Calculator");
 
-    govStaker = new StakerHarness(
-      rewardToken, govToken, earningPowerCalculator, maxBumpTip, rewardsNotifier, STAKER_NAME
+    StakerHarness implementation = new StakerHarness();
+    ERC1967Proxy proxy = new ERC1967Proxy(
+      address(implementation),
+      abi.encodeCall(
+        StakerHarness.initialize,
+        (
+          rewardToken,
+          govToken,
+          1e18,
+          rewardsNotifier,
+          maxBumpTip,
+          earningPowerCalculator,
+          STAKER_NAME
+        )
+      )
     );
+    govStaker = StakerHarness(address(proxy));
     handler = new StakerHandler(govStaker);
 
     bytes4[] memory selectors = new bytes4[](7);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {Staker} from "../Staker.sol";
+import {StakerUpgradeable} from "../StakerUpgradeable.sol";
 
 /// @title StakerCapDeposits
 /// @author [ScopeLift](https://scopelift.co)
@@ -11,7 +11,7 @@ import {Staker} from "../Staker.sol";
 /// The contract allows the admin to configure a total stake cap that applies across all deposits.
 /// Any attempt to stake tokens that would cause the total staked amount to exceed this cap will
 /// revert.
-abstract contract StakerCapDeposits is Staker {
+abstract contract StakerCapDepositsUpgradeable is StakerUpgradeable {
   /// @notice Emitted when the total stake cap is changed.
   /// @param oldTotalStakeCap The previous maximum total stake allowed.
   /// @param newTotalStakeCap The new maximum total stake allowed.
@@ -19,14 +19,46 @@ abstract contract StakerCapDeposits is Staker {
 
   /// @notice Thrown when a staking operation would cause the total staked amount to exceed the
   /// cap.
-  error StakerCapDeposits__CapExceeded();
+  error StakerCapDepositsUpgradeable__CapExceeded();
+
+  struct StakerCapDepositsStorage {
+    /// @notice The maximum total amount of tokens that can be staked across all deposits.
+    uint256 _totalStakeCap;
+  }
+
+  // keccak256(abi.encode(uint256(keccak256("storage.scopelift.StakerCapDeposits")) - 1))
+  // &~bytes32(uint256(0xff))
+  bytes32 private constant STAKER_CAP_DEPOSITS_STORAGE_LOCATION =
+    0x965a89691c17af92914eadf0e487b628b4de164741f52e43f2d8c224cfe56100;
+
+  function _getStakerCapDepositsStorage() private pure returns (StakerCapDepositsStorage storage $) {
+    assembly {
+      $.slot := STAKER_CAP_DEPOSITS_STORAGE_LOCATION
+    }
+  }
+
+  /// @notice Initializes the `StakerCapDepositsUpgradeable` contract.
+  /// @param _initialTotalStakeCap The initial maximum total stake allowed.
+  function __StakerCapDepositsUpgradeable_init(uint256 _initialTotalStakeCap)
+    internal
+    onlyInitializing
+  {
+    __StakerCapDepositsUpgradeable_init_unchained(_initialTotalStakeCap);
+  }
+
+  /// @notice Initializes the `StakerCapDepositsUpgradeable` contract.
+  /// @param _initialTotalStakeCap The initial maximum total stake allowed.
+  function __StakerCapDepositsUpgradeable_init_unchained(uint256 _initialTotalStakeCap)
+    internal
+    onlyInitializing
+  {
+    _setTotalStakeCap(_initialTotalStakeCap);
+  }
 
   /// @notice The maximum total amount of tokens that can be staked across all deposits.
-  uint256 public totalStakeCap;
-
-  /// @param _initialTotalStakeCap The initial maximum total stake allowed.
-  constructor(uint256 _initialTotalStakeCap) {
-    _setTotalStakeCap(_initialTotalStakeCap);
+  function totalStakeCap() public view returns (uint256) {
+    StakerCapDepositsStorage storage $ = _getStakerCapDepositsStorage();
+    return $._totalStakeCap;
   }
 
   /// @notice Sets a new maximum total stake cap.
@@ -40,31 +72,32 @@ abstract contract StakerCapDeposits is Staker {
   /// @notice Internal helper method which sets a new total stake cap.
   /// @param _newTotalStakeCap The new maximum total stake allowed.
   function _setTotalStakeCap(uint256 _newTotalStakeCap) internal {
-    emit TotalStakeCapSet(totalStakeCap, _newTotalStakeCap);
-    totalStakeCap = _newTotalStakeCap;
+    StakerCapDepositsStorage storage $ = _getStakerCapDepositsStorage();
+    emit TotalStakeCapSet($._totalStakeCap, _newTotalStakeCap);
+    $._totalStakeCap = _newTotalStakeCap;
   }
 
-  /// @inheritdoc Staker
+  /// @inheritdoc StakerUpgradeable
   /// @dev Checks if the stake would exceed the total stake cap before proceeding.
   function _stake(address _depositor, uint256 _amount, address _delegatee, address _claimer)
     internal
     virtual
-    override(Staker)
+    override(StakerUpgradeable)
     returns (DepositIdentifier _depositId)
   {
     _revertIfCapExceeded(_amount);
-    return Staker._stake(_depositor, _amount, _delegatee, _claimer);
+    return StakerUpgradeable._stake(_depositor, _amount, _delegatee, _claimer);
   }
 
-  /// @inheritdoc Staker
+  /// @inheritdoc StakerUpgradeable
   /// @dev Checks if the additional stake would exceed the total stake cap before proceeding.
   function _stakeMore(Deposit storage deposit, DepositIdentifier _depositId, uint256 _amount)
     internal
     virtual
-    override(Staker)
+    override(StakerUpgradeable)
   {
     _revertIfCapExceeded(_amount);
-    Staker._stakeMore(deposit, _depositId, _amount);
+    StakerUpgradeable._stakeMore(deposit, _depositId, _amount);
   }
 
   /// @notice Internal helper method which reverts if adding a given stake amount would exceed the
@@ -73,6 +106,9 @@ abstract contract StakerCapDeposits is Staker {
   /// @dev Reverts with StakerCapDeposits__CapExceeded if the amount would cause total stake to
   /// exceed the cap.
   function _revertIfCapExceeded(uint256 _amount) internal view virtual {
-    if ((totalStaked + _amount) > totalStakeCap) revert StakerCapDeposits__CapExceeded();
+    StakerCapDepositsStorage storage $ = _getStakerCapDepositsStorage();
+    if ((totalStaked() + _amount) > $._totalStakeCap) {
+      revert StakerCapDepositsUpgradeable__CapExceeded();
+    }
   }
 }

@@ -2,11 +2,12 @@
 pragma solidity ^0.8.23;
 
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
-import {StakerOnBehalf} from "../src/extensions/StakerOnBehalf.sol";
+import {StakerOnBehalfUpgradeable} from "../src/extensions/StakerOnBehalfUpgradeable.sol";
 import {StakerTest, StakerRewardsTest} from "./Staker.t.sol";
 import {StakerHarness} from "./harnesses/StakerHarness.sol";
-import {Staker, IERC20, IEarningPowerCalculator} from "../src/Staker.sol";
+import {StakerUpgradeable, IERC20, IEarningPowerCalculator} from "../src/StakerUpgradeable.sol";
 import {IERC20Staking} from "../src/interfaces/IERC20Staking.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract Domain_Separator is StakerTest {
   function _buildDomainSeparator(string memory _name, string memory _version, address _contract)
@@ -33,14 +34,23 @@ contract Domain_Separator is StakerTest {
     string memory _name
   ) public {
     vm.assume(_admin != address(0) && _earningPowerCalculator != address(0));
-    StakerHarness _govStaker = new StakerHarness(
-      IERC20(_rewardToken),
-      IERC20Staking(_stakeToken),
-      IEarningPowerCalculator(_earningPowerCalculator),
-      _maxBumpTip,
-      _admin,
-      _name
+    StakerHarness implementation = new StakerHarness();
+    ERC1967Proxy proxy = new ERC1967Proxy(
+      address(implementation),
+      abi.encodeCall(
+        StakerHarness.initialize,
+        (
+          IERC20(_rewardToken),
+          IERC20Staking(_stakeToken),
+          1e18,
+          _admin,
+          _maxBumpTip,
+          IEarningPowerCalculator(_earningPowerCalculator),
+          _name
+        )
+      )
     );
+    StakerHarness _govStaker = StakerHarness(address(proxy));
 
     bytes32 _separator = _govStaker.DOMAIN_SEPARATOR();
     bytes32 _expectedSeparator = _buildDomainSeparator(_name, "1", address(_govStaker));
@@ -135,11 +145,11 @@ contract StakeOnBehalf is StakerTest {
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
     vm.prank(_sender);
-    Staker.DepositIdentifier _depositId = govStaker.stakeOnBehalf(
+    StakerUpgradeable.DepositIdentifier _depositId = govStaker.stakeOnBehalf(
       _depositAmount, _delegatee, _claimer, _depositor, _deadline, _signature
     );
 
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     assertEq(_deposit.balance, _depositAmount);
     assertEq(_deposit.owner, _depositor);
@@ -188,7 +198,7 @@ contract StakeOnBehalf is StakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.stakeOnBehalf(_depositAmount, _delegatee, _claimer, _depositor, _deadline, _signature);
   }
@@ -232,7 +242,7 @@ contract StakeOnBehalf is StakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.stakeOnBehalf(_depositAmount, _delegatee, _claimer, _depositor, _deadline, _signature);
   }
@@ -292,7 +302,7 @@ contract StakeOnBehalf is StakerTest {
     if (_randomSeed % 6 == 5) _signature = _modifySignature(_signature, _randomSeed);
 
     vm.prank(_sender);
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     govStaker.stakeOnBehalf(_depositAmount, _delegatee, _claimer, _depositor, _deadline, _signature);
   }
 }
@@ -315,10 +325,10 @@ contract StakeMoreOnBehalf is StakerTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     _stakeMoreAmount = _boundToRealisticStake(_stakeMoreAmount);
     _mintGovToken(_depositor, _stakeMoreAmount);
@@ -379,7 +389,7 @@ contract StakeMoreOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
 
@@ -405,7 +415,7 @@ contract StakeMoreOnBehalf is StakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.stakeMoreOnBehalf(_depositId, _stakeMoreAmount, _depositor, _deadline, _signature);
   }
@@ -430,7 +440,7 @@ contract StakeMoreOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
 
@@ -456,7 +466,7 @@ contract StakeMoreOnBehalf is StakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.stakeMoreOnBehalf(_depositId, _stakeMoreAmount, _depositor, _deadline, _signature);
   }
@@ -483,13 +493,13 @@ contract StakeMoreOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
 
     vm.expectRevert(
       abi.encodeWithSelector(
-        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     vm.prank(_sender);
@@ -517,7 +527,7 @@ contract StakeMoreOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_initialDepositAmount, _depositId) =
       _boundMintAndStake(_depositor, _initialDepositAmount, _delegatee, _claimer);
 
@@ -554,7 +564,7 @@ contract StakeMoreOnBehalf is StakerTest {
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
     if (_randomSeed % 4 == 3) _signature = _modifySignature(_signature, _randomSeed);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.stakeMoreOnBehalf(_depositId, _stakeMoreAmount, _depositor, _deadline, _signature);
   }
@@ -581,9 +591,9 @@ contract AlterDelegateeOnBehalf is StakerTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     stdstore.target(address(govStaker)).sig("nonces(address)").with_key(_depositor).checked_write(
       _currentNonce
@@ -637,7 +647,7 @@ contract AlterDelegateeOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -650,7 +660,7 @@ contract AlterDelegateeOnBehalf is StakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.alterDelegateeOnBehalf(_depositId, _newDelegatee, _depositor, _deadline, _signature);
   }
@@ -678,7 +688,7 @@ contract AlterDelegateeOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -696,7 +706,7 @@ contract AlterDelegateeOnBehalf is StakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.alterDelegateeOnBehalf(_depositId, _newDelegatee, _depositor, _deadline, _signature);
   }
@@ -720,12 +730,12 @@ contract AlterDelegateeOnBehalf is StakerTest {
     _amount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _amount);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     vm.expectRevert(
       abi.encodeWithSelector(
-        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     vm.prank(_sender);
@@ -755,7 +765,7 @@ contract AlterDelegateeOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -784,7 +794,7 @@ contract AlterDelegateeOnBehalf is StakerTest {
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
     if (_randomSeed % 4 == 3) _signature = _modifySignature(_signature, _randomSeed);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.alterDelegateeOnBehalf(_depositId, _newDelegatee, _depositor, _deadline, _signature);
   }
@@ -811,9 +821,9 @@ contract AlterClaimerOnBehalf is StakerTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
 
     stdstore.target(address(govStaker)).sig("nonces(address)").with_key(_depositor).checked_write(
       _currentNonce
@@ -867,7 +877,7 @@ contract AlterClaimerOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -885,7 +895,7 @@ contract AlterClaimerOnBehalf is StakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.alterClaimerOnBehalf(_depositId, _newClaimer, _depositor, _deadline, _signature);
   }
@@ -913,7 +923,7 @@ contract AlterClaimerOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -931,7 +941,7 @@ contract AlterClaimerOnBehalf is StakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.alterClaimerOnBehalf(_depositId, _newClaimer, _depositor, _deadline, _signature);
   }
@@ -955,12 +965,12 @@ contract AlterClaimerOnBehalf is StakerTest {
     _amount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _amount);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     vm.expectRevert(
       abi.encodeWithSelector(
-        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     vm.prank(_sender);
@@ -988,7 +998,7 @@ contract AlterClaimerOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     bytes32 _message = keccak256(
@@ -1017,7 +1027,7 @@ contract AlterClaimerOnBehalf is StakerTest {
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
     if (_randomSeed % 4 == 3) _signature = _modifySignature(_signature, _randomSeed);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.alterClaimerOnBehalf(_depositId, _newClaimer, _depositor, _deadline, _signature);
   }
@@ -1041,10 +1051,10 @@ contract WithdrawOnBehalf is StakerTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
-    Staker.Deposit memory _deposit = _fetchDeposit(_depositId);
+    StakerUpgradeable.Deposit memory _deposit = _fetchDeposit(_depositId);
     _withdrawAmount = bound(_withdrawAmount, 0, _depositAmount);
 
     stdstore.target(address(govStaker)).sig("nonces(address)").with_key(_depositor).checked_write(
@@ -1096,7 +1106,7 @@ contract WithdrawOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1115,7 +1125,7 @@ contract WithdrawOnBehalf is StakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.withdrawOnBehalf(_depositId, _withdrawAmount, _depositor, _deadline, _signature);
   }
@@ -1140,7 +1150,7 @@ contract WithdrawOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1159,7 +1169,7 @@ contract WithdrawOnBehalf is StakerTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.withdrawOnBehalf(_depositId, _withdrawAmount, _depositor, _deadline, _signature);
   }
@@ -1183,12 +1193,12 @@ contract WithdrawOnBehalf is StakerTest {
     _amount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _amount);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_amount, _depositId) = _boundMintAndStake(_depositor, _amount, _delegatee, _claimer);
 
     vm.expectRevert(
       abi.encodeWithSelector(
-        Staker.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
+        StakerUpgradeable.Staker__Unauthorized.selector, bytes32("not owner"), _notDepositor
       )
     );
     vm.prank(_sender);
@@ -1216,7 +1226,7 @@ contract WithdrawOnBehalf is StakerTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1246,7 +1256,7 @@ contract WithdrawOnBehalf is StakerTest {
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
     if (_randomSeed % 4 == 3) _signature = _modifySignature(_signature, _randomSeed);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.withdrawOnBehalf(_depositId, _withdrawAmount, _depositor, _deadline, _signature);
   }
@@ -1269,7 +1279,7 @@ contract ClaimRewardOnBehalf is StakerRewardsTest {
     _claimerPrivateKey = bound(_claimerPrivateKey, 1, 100e18);
     address _claimer = vm.addr(_claimerPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1320,7 +1330,7 @@ contract ClaimRewardOnBehalf is StakerRewardsTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1372,7 +1382,7 @@ contract ClaimRewardOnBehalf is StakerRewardsTest {
     _claimerPrivateKey = bound(_claimerPrivateKey, 1, 100e18);
     address _claimer = vm.addr(_claimerPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1424,7 +1434,7 @@ contract ClaimRewardOnBehalf is StakerRewardsTest {
     _claimerPrivateKey = bound(_claimerPrivateKey, 1, 100e18);
     address _claimer = vm.addr(_claimerPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1448,7 +1458,7 @@ contract ClaimRewardOnBehalf is StakerRewardsTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_claimerPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
   }
@@ -1470,7 +1480,7 @@ contract ClaimRewardOnBehalf is StakerRewardsTest {
     _depositorPrivateKey = bound(_depositorPrivateKey, 1, 100e18);
     address _depositor = vm.addr(_depositorPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1495,7 +1505,7 @@ contract ClaimRewardOnBehalf is StakerRewardsTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_depositorPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
   }
@@ -1515,7 +1525,7 @@ contract ClaimRewardOnBehalf is StakerRewardsTest {
     _claimerPrivateKey = bound(_claimerPrivateKey, 1, 100e18);
     address _claimer = vm.addr(_claimerPrivateKey);
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _rewardAmount) = _boundToRealisticStakeAndReward(_depositAmount, _rewardAmount);
     _durationPercent = bound(_durationPercent, 0, 100);
 
@@ -1539,7 +1549,7 @@ contract ClaimRewardOnBehalf is StakerRewardsTest {
       keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, _message));
     bytes memory _signature = _sign(_claimerPrivateKey, _messageHash);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__ExpiredDeadline.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__ExpiredDeadline.selector);
     vm.prank(_sender);
     govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
   }
@@ -1564,7 +1574,7 @@ contract ClaimRewardOnBehalf is StakerRewardsTest {
       _currentNonce
     );
 
-    Staker.DepositIdentifier _depositId;
+    StakerUpgradeable.DepositIdentifier _depositId;
     (_depositAmount, _depositId) =
       _boundMintAndStake(_depositor, _depositAmount, _delegatee, _claimer);
 
@@ -1587,7 +1597,7 @@ contract ClaimRewardOnBehalf is StakerRewardsTest {
     bytes memory _signature = _sign(_claimerPrivateKey, _messageHash);
     if (_randomSeed % 4 == 3) _signature = _modifySignature(_signature, _randomSeed);
 
-    vm.expectRevert(StakerOnBehalf.StakerOnBehalf__InvalidSignature.selector);
+    vm.expectRevert(StakerOnBehalfUpgradeable.StakerOnBehalfUpgradeable__InvalidSignature.selector);
     vm.prank(_sender);
     govStaker.claimRewardOnBehalf(_depositId, _deadline, _signature);
   }

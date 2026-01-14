@@ -6,8 +6,9 @@ import {INotifiableRewardReceiver} from "./interfaces/INotifiableRewardReceiver.
 import {IEarningPowerCalculator} from "./interfaces/IEarningPowerCalculator.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {MulticallUpgradeable} from
+  "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 
 /// @title Staker
 /// @author [ScopeLift](https://scopelift.co)
@@ -34,7 +35,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 /// the Staker contract is a DAO, which is the expected common case, this means the DAO has
 /// the ability to define and iterate on its own definition of active, aligned participation,
 /// and to decide how to reward it.
-abstract contract Staker is INotifiableRewardReceiver, Multicall {
+abstract contract StakerUpgradeable is INotifiableRewardReceiver, MulticallUpgradeable {
   using SafeCast for uint256;
 
   /// @notice A unique identifier assigned to each deposit.
@@ -188,93 +189,270 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     address feeCollector;
   }
 
-  /// @notice ERC20 token in which rewards are denominated and distributed.
-  IERC20 public immutable REWARD_TOKEN;
+  struct StakerStorage {
+    /// @notice ERC20 token in which rewards are denominated and distributed.
+    IERC20 _rewardToken;
+    /// @notice Delegable governance token which users stake to earn rewards.
+    IERC20 _stakeToken;
+    /// @notice The maximum value to which the claim fee can be set.
+    uint256 _maxClaimFee;
+    /// @dev Unique identifier that will be used for the next deposit.
+    DepositIdentifier _nextDepositId;
+    /// @notice Permissioned actor that can enable/disable `rewardNotifier` addresses, set the max
+    /// bump tip, set the claim fee parameters, and update the earning power calculator.
+    address _admin;
+    /// @notice Maximum tip a bumper can request.
+    uint256 _maxBumpTip;
+    /// @notice Global amount currently staked across all deposits.
+    uint256 _totalStaked;
+    /// @notice Global amount of earning power for all deposits.
+    uint256 _totalEarningPower;
+    /// @notice Contract that determines a deposit's earning power based on their delegatee.
+    /// @dev An earning power calculator should take into account that a deposit's earning power is
+    /// a uint96. There may be overflow issues within governance staker if this is not taken into
+    /// account. Also, there should be some mechanism to prevent the deposit from frequently being
+    /// bumpable: if earning power changes frequently, this will eat into a users unclaimed rewards.
+    IEarningPowerCalculator _earningPowerCalculator;
+    /// @notice Tracks the total staked by a depositor across all unique deposits.
+    mapping(address depositor => uint256 amount) _depositorTotalStaked;
+    /// @notice Tracks the total earning power by a depositor across all unique deposits.
+    mapping(address depositor => uint256 earningPower) _depositorTotalEarningPower;
+    /// @notice Stores the metadata associated with a given deposit.
+    mapping(DepositIdentifier depositId => Deposit deposit) _deposits;
+    /// @notice Time at which rewards distribution will complete if there are no new rewards.
+    uint256 _rewardEndTime;
+    /// @notice Last time at which the global rewards accumulator was updated.
+    uint256 _lastCheckpointTime;
+    /// @notice Global rate at which rewards are currently being distributed to stakers,
+    /// denominated in scaled reward tokens per second, using the SCALE_FACTOR.
+    uint256 _scaledRewardRate;
+    /// @notice Checkpoint value of the global reward per token accumulator.
+    uint256 _rewardPerTokenAccumulatedCheckpoint;
+    /// @notice Maps addresses to whether they are authorized to call `notifyRewardAmount`.
+    mapping(address rewardNotifier => bool) _isRewardNotifier;
+    /// @notice Current configuration parameters for the fee assessed on claiming.
+    ClaimFeeParameters _claimFeeParameters;
+  }
 
-  /// @notice Delegable governance token which users stake to earn rewards.
-  IERC20 public immutable STAKE_TOKEN;
+  // keccak256(abi.encode(uint256(keccak256("storage.scopelift.Staker")) - 1))
+  // &~bytes32(uint256(0xff))
+  bytes32 private constant STAKER_STORAGE_LOCATION =
+    0x3ddb462ea09b2a712726a8a8a271a0d79e7f965b28139434d52ac706825d5200;
 
   /// @notice Length of time over which rewards sent to this contract are distributed to stakers.
-  uint256 public constant REWARD_DURATION = 30 days;
+  uint256 public constant REWARD_DURATION = 7 days;
 
   /// @notice Scale factor used in reward calculation math to reduce rounding errors caused by
   /// truncation during division.
   uint256 public constant SCALE_FACTOR = 1e36;
 
-  /// @notice The maximum value to which the claim fee can be set.
-  /// @dev For anything other than a zero value, this immutable parameter should be set in the
-  /// constructor of a concrete implementation inheriting from Staker.
-  uint256 public immutable MAX_CLAIM_FEE;
+  /// @notice Internal function to get the Staker contracts storage.
+  function _getStakerStorage() private pure returns (StakerStorage storage $) {
+    assembly {
+      $.slot := STAKER_STORAGE_LOCATION
+    }
+  }
 
-  /// @dev Unique identifier that will be used for the next deposit.
-  DepositIdentifier private nextDepositId;
-
-  /// @notice Permissioned actor that can enable/disable `rewardNotifier` addresses, set the max
-  /// bump tip, set the claim fee parameters, and update the earning power calculator.
-  address public admin;
-
-  /// @notice Maximum tip a bumper can request.
-  uint256 public maxBumpTip;
-
-  /// @notice Global amount currently staked across all deposits.
-  uint256 public totalStaked;
-
-  /// @notice Global amount of earning power for all deposits.
-  uint256 public totalEarningPower;
-
-  /// @notice Contract that determines a deposit's earning power based on their delegatee.
-  /// @dev An earning power calculator should take into account that a deposit's earning power is a
-  /// uint96. There may be overflow issues within governance staker if this is not taken into
-  /// account. Also, there should be some mechanism to prevent the deposit from frequently being
-  /// bumpable: if earning power changes frequently, this will eat into a users unclaimed rewards.
-  IEarningPowerCalculator public earningPowerCalculator;
-
-  /// @notice Tracks the total staked by a depositor across all unique deposits.
-  mapping(address depositor => uint256 amount) public depositorTotalStaked;
-
-  /// @notice Tracks the total earning power by a depositor across all unique deposits.
-  mapping(address depositor => uint256 earningPower) public depositorTotalEarningPower;
-
-  /// @notice Stores the metadata associated with a given deposit.
-  mapping(DepositIdentifier depositId => Deposit deposit) public deposits;
-
-  /// @notice Time at which rewards distribution will complete if there are no new rewards.
-  uint256 public rewardEndTime;
-
-  /// @notice Last time at which the global rewards accumulator was updated.
-  uint256 public lastCheckpointTime;
-
-  /// @notice Global rate at which rewards are currently being distributed to stakers,
-  /// denominated in scaled reward tokens per second, using the SCALE_FACTOR.
-  uint256 public scaledRewardRate;
-
-  /// @notice Checkpoint value of the global reward per token accumulator.
-  uint256 public rewardPerTokenAccumulatedCheckpoint;
-
-  /// @notice Maps addresses to whether they are authorized to call `notifyRewardAmount`.
-  mapping(address rewardNotifier => bool) public isRewardNotifier;
-
-  /// @notice Current configuration parameters for the fee assessed on claiming.
-  ClaimFeeParameters public claimFeeParameters;
-
+  /// @notice Initializes the `StakerUpgradeable` contract.
   /// @param _rewardToken ERC20 token in which rewards will be denominated.
   /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
-  /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
-  /// earning power for the staker system.
+  /// @param _maxClaimFee The maximum value to which the claim fee can be set.
   /// @param _admin Address which will have permission to manage reward notifiers, claim fee
   /// parameters, the max bump tip, and the reward calculator.
-  constructor(
+  /// @param _maxBumpTip Maximum tip a bumper can request.
+  /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
+  /// earning power for the staker system.
+  function __StakerUpgradeable_init(
     IERC20 _rewardToken,
     IERC20 _stakeToken,
-    IEarningPowerCalculator _earningPowerCalculator,
+    uint256 _maxClaimFee,
+    address _admin,
     uint256 _maxBumpTip,
-    address _admin
-  ) {
-    REWARD_TOKEN = _rewardToken;
-    STAKE_TOKEN = _stakeToken;
+    IEarningPowerCalculator _earningPowerCalculator
+  ) internal onlyInitializing {
+    __StakerUpgradeable_init_unchained(
+      _rewardToken, _stakeToken, _maxClaimFee, _admin, _maxBumpTip, _earningPowerCalculator
+    );
+  }
+
+  /// @notice Initializes the `StakerUpgradeable` contract
+  /// @param _rewardToken ERC20 token in which rewards will be denominated.
+  /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
+  /// @param _maxClaimFee The maximum value to which the claim fee can be set.
+  /// @param _admin Address which will have permission to manage reward notifiers, claim fee
+  /// parameters, the max bump tip, and the reward calculator.
+  /// @param _maxBumpTip Maximum tip a bumper can request.
+  /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
+  /// earning power for the staker system.
+  function __StakerUpgradeable_init_unchained(
+    IERC20 _rewardToken,
+    IERC20 _stakeToken,
+    uint256 _maxClaimFee,
+    address _admin,
+    uint256 _maxBumpTip,
+    IEarningPowerCalculator _earningPowerCalculator
+  ) internal onlyInitializing {
+    StakerStorage storage $ = _getStakerStorage();
+    $._rewardToken = IERC20(address(_rewardToken));
+    $._stakeToken = IERC20(address(_stakeToken));
+    $._maxClaimFee = _maxClaimFee;
     _setAdmin(_admin);
     _setMaxBumpTip(_maxBumpTip);
     _setEarningPowerCalculator(address(_earningPowerCalculator));
+  }
+
+  /// @notice A method to get the delegation surrogate contract for a given delegate.
+  /// @param _delegatee The address to which the delegation surrogate is delegating voting power.
+  /// @return The delegation surrogate.
+  /// @dev A concrete implementation should return a delegate surrogate address for a given
+  /// delegatee. In practice this may be as simple as returning an address stored in a mapping or
+  /// computing its create2 address.
+  function surrogates(address _delegatee) public view virtual returns (DelegationSurrogate);
+
+  /// @notice Timestamp representing the last time at which rewards have been distributed, which is
+  /// either the current timestamp (because rewards are still actively being streamed) or the time
+  /// at which the reward duration ended (because all rewards to date have already been streamed).
+  /// @return Timestamp representing the last time at which rewards have been distributed.
+  function lastTimeRewardDistributed() public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    if ($._rewardEndTime <= block.timestamp) return $._rewardEndTime;
+    else return block.timestamp;
+  }
+
+  /// @notice Live value of the global reward per token accumulator. It is the sum of the last
+  /// checkpoint value with the live calculation of the value that has accumulated in the interim.
+  /// This number should monotonically increase over time as more rewards are distributed.
+  /// @return Live value of the global reward per token accumulator.
+  function rewardPerTokenAccumulated() public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    if ($._totalEarningPower == 0) return $._rewardPerTokenAccumulatedCheckpoint;
+
+    return $._rewardPerTokenAccumulatedCheckpoint
+      + ($._scaledRewardRate * (lastTimeRewardDistributed() - $._lastCheckpointTime))
+        / $._totalEarningPower;
+  }
+
+  /// @notice Live value of the unclaimed rewards earned by a given deposit. It is the
+  /// sum of the last checkpoint value of the unclaimed rewards with the live calculation of the
+  /// rewards that have accumulated for this account in the interim. This value can only increase,
+  /// until it is reset to zero once the unearned rewards are claimed.
+  ///
+  /// Note that the contract tracks the unclaimed rewards internally with the scale factor
+  /// included, in order to avoid the accrual of precision losses as users takes actions that
+  /// cause rewards to be checkpointed. This external helper method is useful for integrations, and
+  /// returns the value after it has been scaled down to the reward token's raw decimal amount.
+  /// @param _depositId Identifier of the deposit in question.
+  /// @return Live value of the unclaimed rewards earned by a given deposit.
+  function unclaimedReward(DepositIdentifier _depositId) external view virtual returns (uint256) {
+    return _scaledUnclaimedReward(_getDeposit(_depositId)) / SCALE_FACTOR;
+  }
+
+  /// @notice ERC20 token in which rewards are denominated and distributed.
+  function REWARD_TOKEN() public view virtual returns (IERC20) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._rewardToken;
+  }
+
+  /// @notice Delegable governance token which users stake to earn rewards.
+  function STAKE_TOKEN() public view virtual returns (IERC20) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._stakeToken;
+  }
+
+  /// @notice The maximum value to which the claim fee can be set.
+  function MAX_CLAIM_FEE() public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._maxClaimFee;
+  }
+
+  /// @notice Permissioned actor that can enable/disable `rewardNotifier` addresses.
+  function admin() public view virtual returns (address) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._admin;
+  }
+
+  /// @notice Maximum tip a bumper can request.
+  function maxBumpTip() public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._maxBumpTip;
+  }
+
+  /// @notice Global amount currently staked across all deposits.
+  function totalStaked() public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._totalStaked;
+  }
+
+  /// @notice Global amount of earning power for all deposits.
+  function totalEarningPower() public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._totalEarningPower;
+  }
+
+  /// @notice Contract that determines a deposit's earning power based on their delegatee.
+  function earningPowerCalculator() public view virtual returns (IEarningPowerCalculator) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._earningPowerCalculator;
+  }
+
+  /// @notice Tracks the total staked by a depositor across all unique deposits.
+  function depositorTotalStaked(address depositor) public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._depositorTotalStaked[depositor];
+  }
+
+  /// @notice Tracks the total earning power by a depositor across all unique deposits.
+  function depositorTotalEarningPower(address depositor) public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._depositorTotalEarningPower[depositor];
+  }
+
+  /// @notice Stores the metadata associated with a given deposit.
+  function deposits(DepositIdentifier depositId) public view virtual returns (Deposit memory) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._deposits[depositId];
+  }
+
+  /// @notice Time at which rewards distribution will complete if there are no new rewards.
+  function rewardEndTime() public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._rewardEndTime;
+  }
+
+  /// @notice Last time at which the global rewards accumulator was updated.
+  function lastCheckpointTime() public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._lastCheckpointTime;
+  }
+
+  /// @notice Global rate at which rewards are currently being distributed to stakers.
+  function scaledRewardRate() public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._scaledRewardRate;
+  }
+
+  /// @notice Checkpoint value of the global reward per token accumulator.
+  function rewardPerTokenAccumulatedCheckpoint() public view virtual returns (uint256) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._rewardPerTokenAccumulatedCheckpoint;
+  }
+
+  /// @notice Maps addresses to whether they are authorized to call `notifyRewardAmount`.
+  function isRewardNotifier(address rewardNotifier) public view virtual returns (bool) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._isRewardNotifier[rewardNotifier];
+  }
+
+  /// @notice Current configuration parameters for the fee assessed on claiming.
+  function claimFeeParameters() public view virtual returns (ClaimFeeParameters memory) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._claimFeeParameters;
+  }
+
+  /// @notice Unique identifier that will be used for the next deposit.
+  function nextDepositId() public view virtual returns (DepositIdentifier) {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._nextDepositId;
   }
 
   /// @notice Set the admin address.
@@ -305,7 +483,8 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @dev Caller must be the current admin.
   function setRewardNotifier(address _rewardNotifier, bool _isEnabled) external virtual {
     _revertIfNotAdmin();
-    isRewardNotifier[_rewardNotifier] = _isEnabled;
+    StakerStorage storage $ = _getStakerStorage();
+    $._isRewardNotifier[_rewardNotifier] = _isEnabled;
     emit RewardNotifierSet(_rewardNotifier, _isEnabled);
   }
 
@@ -317,47 +496,17 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     _setClaimFeeParameters(_params);
   }
 
-  /// @notice A method to get the delegation surrogate contract for a given delegate.
-  /// @param _delegatee The address to which the delegation surrogate is delegating voting power.
-  /// @return The delegation surrogate.
-  /// @dev A concrete implementation should return a delegate surrogate address for a given
-  /// delegatee. In practice this may be as simple as returning an address stored in a mapping or
-  /// computing its create2 address.
-  function surrogates(address _delegatee) public view virtual returns (DelegationSurrogate);
-
-  /// @notice Timestamp representing the last time at which rewards have been distributed, which is
-  /// either the current timestamp (because rewards are still actively being streamed) or the time
-  /// at which the reward duration ended (because all rewards to date have already been streamed).
-  /// @return Timestamp representing the last time at which rewards have been distributed.
-  function lastTimeRewardDistributed() public view virtual returns (uint256) {
-    if (rewardEndTime <= block.timestamp) return rewardEndTime;
-    else return block.timestamp;
-  }
-
-  /// @notice Live value of the global reward per token accumulator. It is the sum of the last
-  /// checkpoint value with the live calculation of the value that has accumulated in the interim.
-  /// This number should monotonically increase over time as more rewards are distributed.
-  /// @return Live value of the global reward per token accumulator.
-  function rewardPerTokenAccumulated() public view virtual returns (uint256) {
-    if (totalEarningPower == 0) return rewardPerTokenAccumulatedCheckpoint;
-
-    return rewardPerTokenAccumulatedCheckpoint
-      + (scaledRewardRate * (lastTimeRewardDistributed() - lastCheckpointTime)) / totalEarningPower;
-  }
-
-  /// @notice Live value of the unclaimed rewards earned by a given deposit. It is the
-  /// sum of the last checkpoint value of the unclaimed rewards with the live calculation of the
-  /// rewards that have accumulated for this account in the interim. This value can only increase,
-  /// until it is reset to zero once the unearned rewards are claimed.
-  ///
-  /// Note that the contract tracks the unclaimed rewards internally with the scale factor
-  /// included, in order to avoid the accrual of precision losses as users takes actions that
-  /// cause rewards to be checkpointed. This external helper method is useful for integrations, and
-  /// returns the value after it has been scaled down to the reward token's raw decimal amount.
-  /// @param _depositId Identifier of the deposit in question.
-  /// @return Live value of the unclaimed rewards earned by a given deposit.
-  function unclaimedReward(DepositIdentifier _depositId) external view virtual returns (uint256) {
-    return _scaledUnclaimedReward(deposits[_depositId]) / SCALE_FACTOR;
+  /// @notice Internal helper to get a deposit in storage.
+  /// @param _depositId The identifier of the deposit.
+  /// @return The deposit in storage.
+  function _getDeposit(DepositIdentifier _depositId)
+    internal
+    view
+    virtual
+    returns (Deposit storage)
+  {
+    StakerStorage storage $ = _getStakerStorage();
+    return $._deposits[_depositId];
   }
 
   /// @notice Stake tokens to a new deposit. The caller must pre-approve the staking contract to
@@ -398,7 +547,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @param _amount Quantity of stake to be added.
   /// @dev The message sender must be the owner of the deposit.
   function stakeMore(DepositIdentifier _depositId, uint256 _amount) external virtual {
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, msg.sender);
     _stakeMore(deposit, _depositId, _amount);
   }
@@ -410,7 +559,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @dev The new delegatee may not be the zero address. The message sender must be the owner of
   /// the deposit.
   function alterDelegatee(DepositIdentifier _depositId, address _newDelegatee) external virtual {
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, msg.sender);
     _alterDelegatee(deposit, _depositId, _newDelegatee);
   }
@@ -422,7 +571,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @dev The new claimer may not be the zero address. The message sender must be the owner of
   /// the deposit.
   function alterClaimer(DepositIdentifier _depositId, address _newClaimer) external virtual {
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, msg.sender);
     _alterClaimer(deposit, _depositId, _newClaimer);
   }
@@ -433,7 +582,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @dev The message sender must be the owner of the deposit. Stake is withdrawn to the message
   /// sender's account.
   function withdraw(DepositIdentifier _depositId, uint256 _amount) external virtual {
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, msg.sender);
     _withdraw(deposit, _depositId, _amount);
   }
@@ -443,7 +592,7 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @param _depositId Identifier of the deposit from which accrued rewards will be claimed.
   /// @return Amount of reward tokens claimed, after the fee has been assessed.
   function claimReward(DepositIdentifier _depositId) external virtual returns (uint256) {
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     if (deposit.claimer != msg.sender && deposit.owner != msg.sender) {
       revert Staker__Unauthorized("not claimer or owner", msg.sender);
     }
@@ -466,23 +615,24 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   ///    required that a notifier contract always transfers the `_amount` to this contract before
   ///    calling this method.
   function notifyRewardAmount(uint256 _amount) external virtual {
-    if (!isRewardNotifier[msg.sender]) revert Staker__Unauthorized("not notifier", msg.sender);
+    StakerStorage storage $ = _getStakerStorage();
+    if (!$._isRewardNotifier[msg.sender]) revert Staker__Unauthorized("not notifier", msg.sender);
 
     // We checkpoint the accumulator without updating the timestamp at which it was updated,
     // because that second operation will be done after updating the reward rate.
-    rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
+    $._rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
 
-    if (block.timestamp >= rewardEndTime) {
-      scaledRewardRate = (_amount * SCALE_FACTOR) / REWARD_DURATION;
+    if (block.timestamp >= $._rewardEndTime) {
+      $._scaledRewardRate = (_amount * SCALE_FACTOR) / REWARD_DURATION;
     } else {
-      uint256 _remainingReward = scaledRewardRate * (rewardEndTime - block.timestamp);
-      scaledRewardRate = (_remainingReward + _amount * SCALE_FACTOR) / REWARD_DURATION;
+      uint256 _remainingReward = $._scaledRewardRate * ($._rewardEndTime - block.timestamp);
+      $._scaledRewardRate = (_remainingReward + _amount * SCALE_FACTOR) / REWARD_DURATION;
     }
 
-    rewardEndTime = block.timestamp + REWARD_DURATION;
-    lastCheckpointTime = block.timestamp;
+    $._rewardEndTime = block.timestamp + REWARD_DURATION;
+    $._lastCheckpointTime = block.timestamp;
 
-    if ((scaledRewardRate / SCALE_FACTOR) == 0) revert Staker__InvalidRewardRate();
+    if (($._scaledRewardRate / SCALE_FACTOR) == 0) revert Staker__InvalidRewardRate();
 
     // This check cannot _guarantee_ sufficient rewards have been transferred to the contract,
     // because it cannot isolate the unclaimed rewards owed to stakers left in the balance. While
@@ -490,7 +640,8 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     // critical that only safe reward notifier contracts are approved to call this method by the
     // admin.
     if (
-      (scaledRewardRate * REWARD_DURATION) > (REWARD_TOKEN.balanceOf(address(this)) * SCALE_FACTOR)
+      ($._scaledRewardRate * REWARD_DURATION)
+        > ($._rewardToken.balanceOf(address(this)) * SCALE_FACTOR)
     ) revert Staker__InsufficientRewardBalance();
 
     emit RewardNotified(_amount, msg.sender);
@@ -509,18 +660,19 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     address _tipReceiver,
     uint256 _requestedTip
   ) external virtual {
-    if (_requestedTip > maxBumpTip) revert Staker__InvalidTip();
+    StakerStorage storage $ = _getStakerStorage();
+    if (_requestedTip > $._maxBumpTip) revert Staker__InvalidTip();
 
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
 
     _checkpointGlobalReward();
     _checkpointReward(deposit);
 
     uint256 _unclaimedRewards = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
 
-    (uint256 _newEarningPower, bool _isQualifiedForBump) = earningPowerCalculator.getNewEarningPower(
-      deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower
-    );
+    (uint256 _newEarningPower, bool _isQualifiedForBump) = $
+      ._earningPowerCalculator
+      .getNewEarningPower(deposit.balance, deposit.owner, deposit.delegatee, deposit.earningPower);
     if (!_isQualifiedForBump || _newEarningPower == deposit.earningPower) {
       revert Staker__Unqualified(_newEarningPower);
     }
@@ -530,25 +682,24 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     }
 
     // Note: underflow causes a revert if the requested  tip is more than unclaimed rewards
-    if (_newEarningPower < deposit.earningPower && (_unclaimedRewards - _requestedTip) < maxBumpTip)
-    {
-      revert Staker__InsufficientUnclaimedRewards();
-    }
+    if (
+      _newEarningPower < deposit.earningPower && (_unclaimedRewards - _requestedTip) < $._maxBumpTip
+    ) revert Staker__InsufficientUnclaimedRewards();
 
     emit EarningPowerBumped(
       _depositId, deposit.earningPower, _newEarningPower, msg.sender, _tipReceiver, _requestedTip
     );
 
     // Update global earning power & deposit earning power based on this bump
-    totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
-    depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+    $._totalEarningPower =
+      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, $._totalEarningPower);
+    $._depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
+      deposit.earningPower, _newEarningPower, $._depositorTotalEarningPower[deposit.owner]
     );
     deposit.earningPower = _newEarningPower.toUint96();
 
     // Send tip to the receiver
-    SafeERC20.safeTransfer(REWARD_TOKEN, _tipReceiver, _requestedTip);
+    SafeERC20.safeTransfer($._rewardToken, _tipReceiver, _requestedTip);
     deposit.scaledUnclaimedRewardCheckpoint =
       deposit.scaledUnclaimedRewardCheckpoint - (_requestedTip * SCALE_FACTOR);
   }
@@ -581,15 +732,17 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @param _to Destination account of the stake token which is to be transferred.
   /// @param _value Quantity of stake token which is to be transferred.
   function _stakeTokenSafeTransferFrom(address _from, address _to, uint256 _value) internal virtual {
-    SafeERC20.safeTransferFrom(STAKE_TOKEN, _from, _to, _value);
+    StakerStorage storage $ = _getStakerStorage();
+    SafeERC20.safeTransferFrom($._stakeToken, _from, _to, _value);
   }
 
   /// @notice Internal method which generates and returns a unique, previously unused deposit
   /// identifier.
   /// @return _depositId Previously unused deposit identifier.
   function _useDepositId() internal virtual returns (DepositIdentifier _depositId) {
-    _depositId = nextDepositId;
-    nextDepositId = DepositIdentifier.wrap(DepositIdentifier.unwrap(_depositId) + 1);
+    StakerStorage storage $ = _getStakerStorage();
+    _depositId = $._nextDepositId;
+    $._nextDepositId = DepositIdentifier.wrap(DepositIdentifier.unwrap(_depositId) + 1);
   }
 
   /// @notice Internal convenience methods which performs the staking operations.
@@ -608,19 +761,21 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     DelegationSurrogate _surrogate = _fetchOrDeploySurrogate(_delegatee);
     _depositId = _useDepositId();
 
-    uint256 _earningPower = earningPowerCalculator.getEarningPower(_amount, _depositor, _delegatee);
+    StakerStorage storage $ = _getStakerStorage();
+    uint256 _earningPower =
+      $._earningPowerCalculator.getEarningPower(_amount, _depositor, _delegatee);
 
-    totalStaked += _amount;
-    totalEarningPower += _earningPower;
-    depositorTotalStaked[_depositor] += _amount;
-    depositorTotalEarningPower[_depositor] += _earningPower;
-    deposits[_depositId] = Deposit({
+    $._totalStaked += _amount;
+    $._totalEarningPower += _earningPower;
+    $._depositorTotalStaked[_depositor] += _amount;
+    $._depositorTotalEarningPower[_depositor] += _earningPower;
+    $._deposits[_depositId] = Deposit({
       balance: _amount.toUint96(),
       owner: _depositor,
       delegatee: _delegatee,
       claimer: _claimer,
       earningPower: _earningPower.toUint96(),
-      rewardPerTokenCheckpoint: rewardPerTokenAccumulatedCheckpoint,
+      rewardPerTokenCheckpoint: $._rewardPerTokenAccumulatedCheckpoint,
       scaledUnclaimedRewardCheckpoint: 0
     });
     _stakeTokenSafeTransferFrom(_depositor, address(_surrogate), _amount);
@@ -641,16 +796,17 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
     DelegationSurrogate _surrogate = surrogates(deposit.delegatee);
 
+    StakerStorage storage $ = _getStakerStorage();
     uint256 _newBalance = deposit.balance + _amount;
     uint256 _newEarningPower =
-      earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
+      $._earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
 
-    totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
-    totalStaked += _amount;
-    depositorTotalStaked[deposit.owner] += _amount;
-    depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+    $._totalEarningPower =
+      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, $._totalEarningPower);
+    $._totalStaked += _amount;
+    $._depositorTotalStaked[deposit.owner] += _amount;
+    $._depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
+      deposit.earningPower, _newEarningPower, $._depositorTotalEarningPower[deposit.owner]
     );
     deposit.earningPower = _newEarningPower.toUint96();
     deposit.balance = _newBalance.toUint96();
@@ -670,14 +826,15 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     _checkpointGlobalReward();
     _checkpointReward(deposit);
 
+    StakerStorage storage $ = _getStakerStorage();
     DelegationSurrogate _oldSurrogate = surrogates(deposit.delegatee);
     uint256 _newEarningPower =
-      earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee);
+      $._earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, _newDelegatee);
 
-    totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
-    depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+    $._totalEarningPower =
+      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, $._totalEarningPower);
+    $._depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
+      deposit.earningPower, _newEarningPower, $._depositorTotalEarningPower[deposit.owner]
     );
 
     emit DelegateeAltered(_depositId, deposit.delegatee, _newDelegatee, _newEarningPower);
@@ -698,14 +855,15 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     _checkpointGlobalReward();
     _checkpointReward(deposit);
 
+    StakerStorage storage $ = _getStakerStorage();
     // Updating the earning power here is not strictly necessary, but if the user is touching their
     // deposit anyway, it seems reasonable to make sure their earning power is up to date.
     uint256 _newEarningPower =
-      earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
-    totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
-    depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+      $._earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
+    $._totalEarningPower =
+      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, $._totalEarningPower);
+    $._depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
+      deposit.earningPower, _newEarningPower, $._depositorTotalEarningPower[deposit.owner]
     );
 
     deposit.earningPower = _newEarningPower.toUint96();
@@ -724,17 +882,18 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     _checkpointGlobalReward();
     _checkpointReward(deposit);
 
+    StakerStorage storage $ = _getStakerStorage();
     // overflow prevents withdrawing more than balance
     uint256 _newBalance = deposit.balance - _amount;
     uint256 _newEarningPower =
-      earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
+      $._earningPowerCalculator.getEarningPower(_newBalance, deposit.owner, deposit.delegatee);
 
-    totalStaked -= _amount;
-    totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
-    depositorTotalStaked[deposit.owner] -= _amount;
-    depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+    $._totalStaked -= _amount;
+    $._totalEarningPower =
+      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, $._totalEarningPower);
+    $._depositorTotalStaked[deposit.owner] -= _amount;
+    $._depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
+      deposit.earningPower, _newEarningPower, $._depositorTotalEarningPower[deposit.owner]
     );
 
     deposit.balance = _newBalance.toUint96();
@@ -755,9 +914,10 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
     _checkpointGlobalReward();
     _checkpointReward(deposit);
 
+    StakerStorage storage $ = _getStakerStorage();
     uint256 _reward = deposit.scaledUnclaimedRewardCheckpoint / SCALE_FACTOR;
     // Intentionally reverts due to overflow if unclaimed rewards are less than fee.
-    uint256 _payout = _reward - claimFeeParameters.feeAmount;
+    uint256 _payout = _reward - $._claimFeeParameters.feeAmount;
     if (_payout == 0) return 0;
 
     // retain sub-wei dust that would be left due to the precision loss
@@ -765,21 +925,21 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
       deposit.scaledUnclaimedRewardCheckpoint - (_reward * SCALE_FACTOR);
 
     uint256 _newEarningPower =
-      earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
+      $._earningPowerCalculator.getEarningPower(deposit.balance, deposit.owner, deposit.delegatee);
 
     emit RewardClaimed(_depositId, _claimer, _payout, _newEarningPower);
 
-    totalEarningPower =
-      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, totalEarningPower);
-    depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
-      deposit.earningPower, _newEarningPower, depositorTotalEarningPower[deposit.owner]
+    $._totalEarningPower =
+      _calculateTotalEarningPower(deposit.earningPower, _newEarningPower, $._totalEarningPower);
+    $._depositorTotalEarningPower[deposit.owner] = _calculateTotalEarningPower(
+      deposit.earningPower, _newEarningPower, $._depositorTotalEarningPower[deposit.owner]
     );
     deposit.earningPower = _newEarningPower.toUint96();
 
-    SafeERC20.safeTransfer(REWARD_TOKEN, _claimer, _payout);
-    if (claimFeeParameters.feeAmount > 0) {
+    SafeERC20.safeTransfer($._rewardToken, _claimer, _payout);
+    if ($._claimFeeParameters.feeAmount > 0) {
       SafeERC20.safeTransfer(
-        REWARD_TOKEN, claimFeeParameters.feeCollector, claimFeeParameters.feeAmount
+        $._rewardToken, $._claimFeeParameters.feeCollector, $._claimFeeParameters.feeAmount
       );
     }
     return _payout;
@@ -787,8 +947,9 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
 
   /// @notice Checkpoints the global reward per token accumulator.
   function _checkpointGlobalReward() internal virtual {
-    rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
-    lastCheckpointTime = lastTimeRewardDistributed();
+    StakerStorage storage $ = _getStakerStorage();
+    $._rewardPerTokenAccumulatedCheckpoint = rewardPerTokenAccumulated();
+    $._lastCheckpointTime = lastTimeRewardDistributed();
   }
 
   /// @notice Checkpoints the unclaimed rewards and reward per token accumulator of a given
@@ -798,8 +959,9 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// accumulator has been checkpointed. It assumes the global `rewardPerTokenCheckpoint` is up to
   /// date.
   function _checkpointReward(Deposit storage deposit) internal virtual {
+    StakerStorage storage $ = _getStakerStorage();
     deposit.scaledUnclaimedRewardCheckpoint = _scaledUnclaimedReward(deposit);
-    deposit.rewardPerTokenCheckpoint = rewardPerTokenAccumulatedCheckpoint;
+    deposit.rewardPerTokenCheckpoint = $._rewardPerTokenAccumulatedCheckpoint;
   }
 
   /// @notice Internal helper method which calculates and returns an updated value for total
@@ -818,47 +980,60 @@ abstract contract Staker is INotifiableRewardReceiver, Multicall {
   /// @notice Internal helper method which sets the admin address.
   /// @param _newAdmin Address of the new admin.
   function _setAdmin(address _newAdmin) internal virtual {
+    StakerStorage storage $ = _getStakerStorage();
     _revertIfAddressZero(_newAdmin);
-    emit AdminSet(admin, _newAdmin);
-    admin = _newAdmin;
+    emit AdminSet($._admin, _newAdmin);
+    $._admin = _newAdmin;
   }
 
   /// @notice Internal helper method which sets the earning power calculator address.
   function _setEarningPowerCalculator(address _newEarningPowerCalculator) internal virtual {
+    StakerStorage storage $ = _getStakerStorage();
     _revertIfAddressZero(_newEarningPowerCalculator);
-    emit EarningPowerCalculatorSet(address(earningPowerCalculator), _newEarningPowerCalculator);
-    earningPowerCalculator = IEarningPowerCalculator(_newEarningPowerCalculator);
+    emit EarningPowerCalculatorSet(address($._earningPowerCalculator), _newEarningPowerCalculator);
+    $._earningPowerCalculator = IEarningPowerCalculator(_newEarningPowerCalculator);
   }
 
   /// @notice Internal helper method which sets the max bump tip.
   /// @param _newMaxTip Value of the new max bump tip.
   function _setMaxBumpTip(uint256 _newMaxTip) internal virtual {
-    emit MaxBumpTipSet(maxBumpTip, _newMaxTip);
-    maxBumpTip = _newMaxTip;
+    StakerStorage storage $ = _getStakerStorage();
+    emit MaxBumpTipSet($._maxBumpTip, _newMaxTip);
+    $._maxBumpTip = _newMaxTip;
   }
 
   /// @notice Internal helper method which sets the claim fee parameters.
   /// @param _params The new fee parameters.
   function _setClaimFeeParameters(ClaimFeeParameters memory _params) internal virtual {
+    StakerStorage storage $ = _getStakerStorage();
     if (
-      _params.feeAmount > MAX_CLAIM_FEE
+      _params.feeAmount > $._maxClaimFee
         || (_params.feeCollector == address(0) && _params.feeAmount > 0)
     ) revert Staker__InvalidClaimFeeParameters();
 
     emit ClaimFeeParametersSet(
-      claimFeeParameters.feeAmount,
+      $._claimFeeParameters.feeAmount,
       _params.feeAmount,
-      claimFeeParameters.feeCollector,
+      $._claimFeeParameters.feeCollector,
       _params.feeCollector
     );
 
-    claimFeeParameters = _params;
+    $._claimFeeParameters = _params;
+  }
+
+  /// @notice Internal helper method to set the max claim fee.
+  /// @param _maxClaimFee The maximum claim fee value.
+  /// @dev This should only be called in constructors of concrete implementations.
+  function _setMaxClaimFee(uint256 _maxClaimFee) internal virtual {
+    StakerStorage storage $ = _getStakerStorage();
+    $._maxClaimFee = _maxClaimFee;
   }
 
   /// @notice Internal helper method which reverts Staker__Unauthorized if the message
   /// sender is not the admin.
   function _revertIfNotAdmin() internal view virtual {
-    if (msg.sender != admin) revert Staker__Unauthorized("not admin", msg.sender);
+    StakerStorage storage $ = _getStakerStorage();
+    if (msg.sender != $._admin) revert Staker__Unauthorized("not admin", msg.sender);
   }
 
   /// @notice Internal helper method which reverts Staker__Unauthorized if the alleged

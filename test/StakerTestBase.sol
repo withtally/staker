@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import {Vm, Test, stdStorage, StdStorage, console2, stdError} from "forge-std/Test.sol";
-import {Staker} from "../src/Staker.sol";
+import {StakerUpgradeable} from "../src/StakerUpgradeable.sol";
 import {DelegationSurrogate} from "../src/DelegationSurrogate.sol";
 import {ERC20VotesMock} from "./mocks/MockERC20Votes.sol";
 import {ERC20Fake} from "./fakes/ERC20Fake.sol";
@@ -23,14 +23,14 @@ abstract contract StakerTestBase is Test, PercentAssertions {
 
   address admin;
   address rewardNotifier;
-  Staker baseStaker;
+  StakerUpgradeable baseStaker;
   uint256 SCALE_FACTOR;
   uint256 maxBumpTip = 1e18;
 
   mapping(DelegationSurrogate surrogate => bool isKnown) isKnownSurrogate;
   mapping(address depositor => bool isKnown) isKnownDepositor;
 
-  function _deployStaker() public virtual returns (Staker _staker);
+  function _deployStaker() public virtual returns (StakerUpgradeable _staker);
 
   function setUp() public virtual {
     // Set the block timestamp to an arbitrary value to avoid introducing assumptions into tests
@@ -101,8 +101,8 @@ abstract contract StakerTestBase is Test, PercentAssertions {
   }
 
   function _setClaimFeeAndCollector(uint96 _amount, address _collector) internal {
-    Staker.ClaimFeeParameters memory _params =
-      Staker.ClaimFeeParameters({feeAmount: _amount, feeCollector: _collector});
+    StakerUpgradeable.ClaimFeeParameters memory _params =
+      StakerUpgradeable.ClaimFeeParameters({feeAmount: _amount, feeCollector: _collector});
 
     vm.prank(admin);
     baseStaker.setClaimFeeParameters(_params);
@@ -110,7 +110,7 @@ abstract contract StakerTestBase is Test, PercentAssertions {
 
   function _stake(address _depositor, uint256 _amount, address _delegatee)
     internal
-    returns (Staker.DepositIdentifier _depositId)
+    returns (StakerUpgradeable.DepositIdentifier _depositId)
   {
     vm.assume(_delegatee != address(0));
 
@@ -125,7 +125,7 @@ abstract contract StakerTestBase is Test, PercentAssertions {
 
   function _stake(address _depositor, uint256 _amount, address _delegatee, address _claimer)
     internal
-    returns (Staker.DepositIdentifier _depositId)
+    returns (StakerUpgradeable.DepositIdentifier _depositId)
   {
     vm.assume(_delegatee != address(0) && _claimer != address(0));
 
@@ -138,21 +138,20 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     _assumeSafeDepositorAndSurrogate(_depositor, _delegatee);
   }
 
-  function _fetchDeposit(Staker.DepositIdentifier _depositId)
+  function _fetchDeposit(StakerUpgradeable.DepositIdentifier _depositId)
     internal
     view
-    returns (Staker.Deposit memory)
+    returns (StakerUpgradeable.Deposit memory)
   {
-    (
-      uint96 _balance,
-      address _owner,
-      uint96 _earningPower,
-      address _delegatee,
-      address _claimer,
-      uint256 _rewardPerTokenCheckpoint,
-      uint256 _scaledUnclaimedRewardCheckpoint
-    ) = baseStaker.deposits(_depositId);
-    return Staker.Deposit({
+    StakerUpgradeable.Deposit memory _deposit = baseStaker.deposits(_depositId);
+    uint96 _balance = _deposit.balance;
+    address _owner = _deposit.owner;
+    uint96 _earningPower = _deposit.earningPower;
+    address _delegatee = _deposit.delegatee;
+    address _claimer = _deposit.claimer;
+    uint256 _rewardPerTokenCheckpoint = _deposit.rewardPerTokenCheckpoint;
+    uint256 _scaledUnclaimedRewardCheckpoint = _deposit.scaledUnclaimedRewardCheckpoint;
+    return StakerUpgradeable.Deposit({
       balance: _balance,
       owner: _owner,
       delegatee: _delegatee,
@@ -165,7 +164,7 @@ abstract contract StakerTestBase is Test, PercentAssertions {
 
   function _boundMintAndStake(address _depositor, uint256 _amount, address _delegatee)
     internal
-    returns (uint256 _boundedAmount, Staker.DepositIdentifier _depositId)
+    returns (uint256 _boundedAmount, StakerUpgradeable.DepositIdentifier _depositId)
   {
     _boundedAmount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _boundedAmount);
@@ -177,7 +176,7 @@ abstract contract StakerTestBase is Test, PercentAssertions {
     uint256 _amount,
     address _delegatee,
     address _claimer
-  ) internal returns (uint256 _boundedAmount, Staker.DepositIdentifier _depositId) {
+  ) internal returns (uint256 _boundedAmount, StakerUpgradeable.DepositIdentifier _depositId) {
     _boundedAmount = _boundMintAmount(_amount);
     _mintGovToken(_depositor, _boundedAmount);
     _depositId = _stake(_depositor, _boundedAmount, _delegatee, _claimer);

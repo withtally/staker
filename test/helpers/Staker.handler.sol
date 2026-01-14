@@ -7,7 +7,7 @@ import {StdUtils} from "forge-std/StdUtils.sol";
 import {console} from "forge-std/console.sol";
 import {AddressSet, LibAddressSet} from "../helpers/AddressSet.sol";
 import {DepositIdSet, LibDepositIdSet} from "../helpers/DepositIdSet.sol";
-import {Staker} from "../../src/Staker.sol";
+import {StakerUpgradeable} from "../../src/StakerUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract StakerHandler is CommonBase, StdCheats, StdUtils {
@@ -15,7 +15,7 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
   using LibDepositIdSet for DepositIdSet;
 
   // system setup
-  Staker public govStaker;
+  StakerUpgradeable public govStaker;
   IERC20 public stakeToken;
   IERC20 public rewardToken;
   address public admin;
@@ -49,7 +49,7 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
     _;
   }
 
-  constructor(Staker _govStaker) {
+  constructor(StakerUpgradeable _govStaker) {
     govStaker = _govStaker;
     stakeToken = IERC20(address(_govStaker.STAKE_TOKEN()));
     rewardToken = IERC20(address(_govStaker.REWARD_TOKEN()));
@@ -116,7 +116,7 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
 
     // update handler state
     _depositIds[_currentActor].push(ghost_depositCount);
-    _depositIdSet.add(Staker.DepositIdentifier.wrap(ghost_depositCount));
+    _depositIdSet.add(StakerUpgradeable.DepositIdentifier.wrap(ghost_depositCount));
     ghost_depositCount++;
     _surrogates.add(address(govStaker.surrogates(_delegatee)));
     ghost_stakeSum += _amount;
@@ -130,9 +130,10 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
     _useActor(_depositors, _actorSeed);
     vm.assume(_currentActor != address(0));
     vm.assume(_depositIds[_currentActor].length > 0);
-    Staker.DepositIdentifier _depositId =
-      Staker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
-    (uint256 _balance,,,,,,) = govStaker.deposits(_depositId);
+    StakerUpgradeable.DepositIdentifier _depositId =
+      StakerUpgradeable.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
+    StakerUpgradeable.Deposit memory _deposit = govStaker.deposits(_depositId);
+    uint256 _balance = _deposit.balance;
     _amount = uint256(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
     stakeToken.approve(address(govStaker), _amount);
@@ -149,9 +150,10 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
     _useActor(_depositors, _actorSeed);
     vm.assume(_currentActor != address(0));
     vm.assume(_depositIds[_currentActor].length > 0);
-    Staker.DepositIdentifier _depositId =
-      Staker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
-    (uint256 _balance,,,,,,) = govStaker.deposits(_depositId);
+    StakerUpgradeable.DepositIdentifier _depositId =
+      StakerUpgradeable.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
+    StakerUpgradeable.Deposit memory _deposit = govStaker.deposits(_depositId);
+    uint256 _balance = _deposit.balance;
     _amount = uint256(_bound(_amount, 0, _balance));
     vm.startPrank(_currentActor);
     govStaker.withdraw(_depositId, _amount);
@@ -167,8 +169,8 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
     _useActor(_depositors, _actorSeed);
     vm.assume(_currentActor != address(0));
     vm.assume(_depositIds[_currentActor].length > 0);
-    Staker.DepositIdentifier _depositId =
-      Staker.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
+    StakerUpgradeable.DepositIdentifier _depositId =
+      StakerUpgradeable.DepositIdentifier.wrap(_getActorRandDepositId(_actorDepositSeed));
     vm.startPrank(_currentActor);
     uint256 rewardsClaimed = govStaker.claimReward(_depositId);
     vm.stopPrank();
@@ -213,7 +215,7 @@ contract StakerHandler is CommonBase, StdCheats, StdUtils {
 
   function reduceDeposits(
     uint256 acc,
-    function(uint256,Staker.DepositIdentifier) external returns (uint256) func
+    function(uint256,StakerUpgradeable.DepositIdentifier) external returns (uint256) func
   ) public returns (uint256) {
     return _depositIdSet.reduce(acc, func);
   }

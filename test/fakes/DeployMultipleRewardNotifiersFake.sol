@@ -10,10 +10,11 @@ import {DeployIdentityEarningPowerCalculator} from
   "../../src/script/calculators/DeployIdentityEarningPowerCalculator.sol";
 import {IMintable} from "../../src/interfaces/IMintable.sol";
 import {IEarningPowerCalculator} from "../../src/interfaces/IEarningPowerCalculator.sol";
-import {Staker} from "../../src/Staker.sol";
+import {StakerUpgradeable} from "../../src/StakerUpgradeable.sol";
 import {StakerHarness} from "../harnesses/StakerHarness.sol";
 import {IERC20Staking} from "../../src/interfaces/IERC20Staking.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract DeployMultipleRewardNotifiersFake is
   DeployBase,
@@ -84,7 +85,7 @@ contract DeployMultipleRewardNotifiersFake is
     });
   }
 
-  function _deployRewardNotifiers(Staker _staker)
+  function _deployRewardNotifiers(StakerUpgradeable _staker)
     internal
     virtual
     override(DeployBase, DeployMintRewardNotifier, DeployTransferRewardNotifier)
@@ -97,16 +98,25 @@ contract DeployMultipleRewardNotifiersFake is
     internal
     virtual
     override
-    returns (Staker)
+    returns (StakerUpgradeable)
   {
     StakerConfiguration memory _config = _stakerConfiguration(_earningPowerCalculator);
-    return new StakerHarness(
-      _config.rewardToken,
-      IERC20Staking(address(_config.stakeToken)),
-      _config.earningPowerCalculator,
-      _config.maxBumpTip,
-      deployer,
-      name
+    StakerHarness implementation = new StakerHarness();
+    ERC1967Proxy proxy = new ERC1967Proxy(
+      address(implementation),
+      abi.encodeCall(
+        StakerHarness.initialize,
+        (
+          _config.rewardToken,
+          IERC20Staking(address(_config.stakeToken)),
+          1e18,
+          deployer,
+          _config.maxBumpTip,
+          _config.earningPowerCalculator,
+          name
+        )
+      )
     );
+    return StakerHarness(address(proxy));
   }
 }

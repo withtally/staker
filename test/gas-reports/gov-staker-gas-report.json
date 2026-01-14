@@ -1,70 +1,70 @@
 {
-  "generatedAt": 1738772511,
+  "generatedAt": 1755001934,
   "reportName:": "gov-stakerGasReport",
   "results": [
     {
       "scenarioName": "First stake to a new delegatee",
-      "gasUsed": 331255
+      "gasUsed": 333651
     },
     {
       "scenarioName": "Second stake to a existing delegatee",
-      "gasUsed": 164973
+      "gasUsed": 167260
     },
     {
       "scenarioName": "Second stake to a new delegatee",
-      "gasUsed": 297055
+      "gasUsed": 299451
     },
     {
       "scenarioName": "Stake more after initial stake",
-      "gasUsed": 101818
+      "gasUsed": 104135
     },
     {
       "scenarioName": "Alter delegatee with new delegatee",
-      "gasUsed": 218712
+      "gasUsed": 221137
     },
     {
       "scenarioName": "Alter delegatee with existing delegatee",
-      "gasUsed": 86606
+      "gasUsed": 88922
     },
     {
       "scenarioName": "Alter claimer to a new address",
-      "gasUsed": 69683
+      "gasUsed": 69870
     },
     {
       "scenarioName": "Withdraw full stake",
-      "gasUsed": 110825
+      "gasUsed": 113139
     },
     {
       "scenarioName": "Withdraw partial stake",
-      "gasUsed": 125225
+      "gasUsed": 127539
     },
     {
       "scenarioName": "Claim reward when no reward",
-      "gasUsed": 46021
+      "gasUsed": 46188
     },
     {
       "scenarioName": "Claim reward when reward",
-      "gasUsed": 165132
+      "gasUsed": 167444
     },
     {
       "scenarioName": "Notify reward",
-      "gasUsed": 45750
+      "gasUsed": 47950
     },
     {
       "scenarioName": "Second notify reward",
-      "gasUsed": 46099
+      "gasUsed": 48310
     },
     {
       "scenarioName": "Bump earning power up no reward",
-      "gasUsed": 82880
+      "gasUsed": 85461
     },
     {
       "scenarioName": "Bump earning power down with reward",
-      "gasUsed": 111652
+      "gasUsed": 114242
     },
     {
       "scenarioName": "Bump earning power up with reward",
-      "gasUsed": 111652
+      "gasUsed": 114242
     }
   ]
 }

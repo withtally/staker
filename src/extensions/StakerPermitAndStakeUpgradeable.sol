@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.23;
 
-import {Staker} from "../Staker.sol";
+import {StakerUpgradeable} from "../StakerUpgradeable.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 
 /// @title StakerPermitAndStake
@@ -11,15 +11,29 @@ import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC2
 /// The permit functionality is used in conjunction with staking operations, improving UX by
 /// enabling users to approve and stake tokens in a single transaction. Note that this extension
 /// requires the stake token to support EIP-2612 permit functionality.
-abstract contract StakerPermitAndStake is Staker {
+abstract contract StakerPermitAndStakeUpgradeable is StakerUpgradeable {
   /// @notice Thrown if an inheritor misconfigures the staking token on deployment.
-  error StakerPermitAndStake__UnauthorizedToken();
+  error StakerPermitAndStakeUpgradeable__UnauthorizedToken();
 
+  /// @notice Initializes the `StakerPermitAndStakeUpgradeable` contract.
   /// @param _permitToken The token that is used for staking, which must support EIP-2612. It also
   /// must be the same as the parent Staker's STAKE_TOKEN.
-  constructor(IERC20Permit _permitToken) {
-    if (address(STAKE_TOKEN) != address(_permitToken)) {
-      revert StakerPermitAndStake__UnauthorizedToken();
+  function __StakerPermitAndStakeUpgradeable_init(IERC20Permit _permitToken)
+    internal
+    onlyInitializing
+  {
+    __StakerPermitAndStakeUpgradeable_init_unchained(_permitToken);
+  }
+
+  /// @notice Initializes the `StakerPermitAndStakeUpgradeable` contract.
+  /// @param _permitToken The token that is used for staking, which must support EIP-2612. It also
+  /// must be the same as the parent Staker's STAKE_TOKEN.
+  function __StakerPermitAndStakeUpgradeable_init_unchained(IERC20Permit _permitToken)
+    internal
+    onlyInitializing
+  {
+    if (address(STAKE_TOKEN()) != address(_permitToken)) {
+      revert StakerPermitAndStakeUpgradeable__UnauthorizedToken();
     }
   }
 
@@ -45,7 +59,7 @@ abstract contract StakerPermitAndStake is Staker {
     bytes32 _r,
     bytes32 _s
   ) external virtual returns (DepositIdentifier _depositId) {
-    try IERC20Permit(address(STAKE_TOKEN)).permit(
+    try IERC20Permit(address(STAKE_TOKEN())).permit(
       msg.sender, address(this), _amount, _deadline, _v, _r, _s
     ) {} catch {}
     _depositId = _stake(msg.sender, _amount, _delegatee, _claimer);
@@ -70,10 +84,10 @@ abstract contract StakerPermitAndStake is Staker {
     bytes32 _r,
     bytes32 _s
   ) external virtual {
-    Deposit storage deposit = deposits[_depositId];
+    Deposit storage deposit = _getDeposit(_depositId);
     _revertIfNotDepositOwner(deposit, msg.sender);
 
-    try IERC20Permit(address(STAKE_TOKEN)).permit(
+    try IERC20Permit(address(STAKE_TOKEN())).permit(
       msg.sender, address(this), _amount, _deadline, _v, _r, _s
     ) {} catch {}
     _stakeMore(deposit, _depositId, _amount);

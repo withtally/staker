@@ -5,7 +5,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {DeployBase} from "./DeployBase.sol";
 import {IEarningPowerCalculator} from "../interfaces/IEarningPowerCalculator.sol";
-import {Staker} from "../Staker.sol";
 
 /// @title DeployStaker
 /// @author [ScopeLift](https://scopelift.co)
